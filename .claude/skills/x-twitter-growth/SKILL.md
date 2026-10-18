@@ -11,6 +11,9 @@ metadata:
 
 # X/Twitter Growth Engine
 
+> Note (this repo): the `scripts/*.py` named below are NOT included (third-party
+> code, not reviewed). Do those steps by hand, with web search where needed.
+
 X-specific growth skill. For general social media content across platforms, see `social-content`. For social strategy and calendar planning, see `social-media-manager`. This skill goes deep on X.
 
 ## When to Use This vs Other Skills

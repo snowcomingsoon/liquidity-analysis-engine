@@ -1,11 +1,6 @@
----
-description: Review UI code for Vercel Web Interface Guidelines compliance
-argument-hint: <file-or-pattern>
----
-
 # Web Interface Guidelines
 
-Review these files for compliance: $ARGUMENTS
+Review the files the user names for compliance.
 
 Read files, check against rules below. Output concise but comprehensive—sacrifice grammar for brevity. High signal-to-noise.
 

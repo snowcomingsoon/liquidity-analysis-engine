@@ -1,7 +1,8 @@
 # Skill di terzi
 
 Scelte il 18/10/2026 dal catalogo skill-issue.in (Lorenzo: "quelle che servono
-voglio"). Solo testo: nessuno script, nessuna CLI, nessuna chiave. Ogni file e'
+voglio"). Solo testo: nessuno script, nessuna CLI, nessuna chiave (x-twitter-growth
+nomina degli script Python: non sono inclusi, quei passi si fanno a mano). Ogni file e'
 stato letto prima di entrare qui; aggiornarle = rileggerle.
 
 | skill | da | licenza | a cosa serve qui |
