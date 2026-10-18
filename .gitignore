@@ -1,5 +1,6 @@
 backend/.env
-.claude/
+.claude/*
+!.claude/skills/
 __pycache__/
 *.pyc
 .venv/
