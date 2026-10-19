@@ -33,10 +33,11 @@ jobs:
             HOLD = re.compile(r"top 10|single wallet|wallets hold|unidentified contract|held by contracts", re.I)
             lb = json.load(open(base + "/onchain_leaderboard.json"))
             ent = {}
-            for src in ("entries", "excluded"):
-                for k, e in (lb.get(src) or {}).items():
-                    if isinstance(e, dict):
-                        ent[k] = e
+            for src in ("entries", "excluded", "gone"):
+                v = lb.get(src) or {}
+                for e in (v.values() if isinstance(v, dict) else v):
+                    if isinstance(e, dict) and e.get("token_address"):
+                        ent[f"{e.get('chain')}:{e['token_address']}"] = e
             db = sqlite3.connect(f"file:{base}/onchain_projects.db?mode=ro", uri=True)
             db.row_factory = sqlite3.Row
             stat, why_kind, out = {}, {}, []
