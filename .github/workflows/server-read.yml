@@ -54,7 +54,7 @@ jobs:
             def factory_of(pool: str) -> str | None:
                 body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "eth_call",
                                    "params": [{"to": pool, "data": FACTORY_SELECTOR}, "latest"]}).encode()
-                req = urllib.request.Request(RPC, data=body, headers={"Content-Type": "application/json"})
+                req = urllib.request.Request(RPC, data=body, headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
                 try:
                     with urllib.request.urlopen(req, timeout=15) as r:
                         out = json.loads(r.read().decode()).get("result") or ""

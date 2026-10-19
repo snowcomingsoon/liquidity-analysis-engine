@@ -31,11 +31,12 @@ base = next(d for d in ("/srv/backend/data", "/app/backend/data", "backend/data"
 def factory_of(pool: str) -> str | None:
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "eth_call",
                        "params": [{"to": pool, "data": FACTORY_SELECTOR}, "latest"]}).encode()
-    req = urllib.request.Request(RPC, data=body, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(RPC, data=body, headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             out = json.loads(r.read().decode()).get("result") or ""
-    except Exception:
+    except Exception as exc:
+        print("  rpc error", type(exc).__name__, str(exc)[:80])
         return None
     return ("0x" + out[-40:]).lower() if len(out) >= 42 else None
 
@@ -56,6 +57,10 @@ print("pools read in the last 7 days by chain",
 protocol = Counter()
 for (net, pool), p in sorted(pools.items()):
     if net != "eth":
+        continue
+    if len(pool) == 66:            # a 32-byte pool id: Uniswap V4's PoolManager, not a pool contract
+        protocol["uniswap-v4 (pool id)"] += 1
+        print("eth pool", pool, "uniswap-v4 pool id", "series", p["series"])
         continue
     f = factory_of(pool)
     kind = ("uniswap-v3" if f == UNISWAP_V3_FACTORY else "uniswap-v2" if f == UNISWAP_V2_FACTORY
