@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0353", "Gemme: progetti seri scartati per emissione, GitHub e sito letti male",
+     "Lorenzo, 19/10: 'Vedi altre criticita' che potrebbero falsare i risultati delle gemme o escludere progetti che non lo meriterebbero?', poi 'procedi con la misura dei punti'.",
+     "media"),
     ("seed-0352", "Gemme: holder che sono pool, lock o contratti contati come wallet nel limite del 40%",
      "Lorenzo, 19/10: 'in alcuni casi quelli che risultano tra i top 10 holders sono anche indirizzi dove magari c'e' il pool della liquidita' oppure l'indirizzo dove ci sono i token bloccati [...] studiare un sistema che ci puo' permettere di non scartare progetti che potrebbero rientrare in questa categoria'.",
      "media"),

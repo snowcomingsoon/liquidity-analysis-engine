@@ -1,3 +1,13 @@
+# 2026-10-19 — Altri scarti ingiusti delle gemme: emissione, GitHub, siti, meme — `seed-0353` (Claude, a mano)
+
+Lorenzo: "Vedi altre criticita' che potrebbero falsare i risultati delle gemme o escludere progetti che non lo meriterebbero?", poi "procedi con la misura dei punti". Sonda una tantum sul branch (server in sola lettura; GoPlus, RPC, RugCheck, Solana RPC, Chrome headless dal runner), poi tolta. Scarti negli ultimi 30 giorni e cosa sono davvero:
+- **"mint enabled" 526.** EVM (71 letti): chi puo' emettere e' un wallet solo in 6; 28 un contratto (governance, timelock, multisig), 33 nessun owner (minter di emissione: CRV, AERO, BAL, PENDLE...), 3 token bridgiati (RSR, RNBW, ODOS su Base). Solana (98 letti): autorita' in un wallet 19, in un programma 79 (governance MetaDAO/SPL, launchpad: un'autorita' `BCD75RNB` su 12 token, emittenti RWA `WV9PJN7X` su 10, staking/LST). GoPlus `is_mintable` dice solo che la funzione esiste.
+- **GitHub "all commits on a single day" 75: bug.** Si guarda solo l'ultima pagina di 100 commit: elizaOS (19.564 stelle, 100+ commit) scartato. 43 su 75 hanno cartelle di codice vero (contratti, programmi Rust).
+- **GitHub "almost no code" 151: bug sul repository scelto.** Per un link a un'organizzazione si legge l'ultimo repository toccato (`legit.github_repo`, sort=pushed): Beefy (BIFI), Badger, Send, Mind Network (FHE) giudicati dal profilo `.github` o da un repo di dati. 144 su 151 senza cartelle di codice: in gran parte vuoti davvero.
+- **Sito "empty page" 198** (60 aperti in Chrome): 15 (25%) pieni in un browser vero (app.drift.trade, r0ar.io, dith.ai, facticity.ai), 29 vuoti anche li', 16 irraggiungibili, nessun muro Cloudflare. Tutti i 15 pieni hanno HTML grezzo >= 11 KB; fra i vuoti solo ~7 lo superano.
+- **Nomi meme 581:** quasi tutti meme veri (cat 109, pepe 77, doge 60, inu 48, baby 33); dubbi DEGEN, gmAI, Arbitrage Ape. Nessuna modifica.
+**Proposte a Lorenzo (in attesa):** emissione fatale solo se la controlla un wallet (contratto/programma: segnalazione e punti in meno; bridge: niente); GitHub: correggere il bug dei 100 commit e scegliere il repository con piu' codice/stelle dell'organizzazione, "un solo giorno" da fatale a penalita' se c'e' codice vero; sito vuoto con HTML >= 11 KB trattato come "non leggibile" (non fatale) invece che scartato.
+
 # 2026-10-19 — Holder delle gemme: i "programmi" Solana fuori dai limiti per wallet — `seed-0352` (Claude, a mano)
 
 Lorenzo: "in alcuni casi quelli che risultano tra i top 10 holders sono anche indirizzi dove magari c'e' il pool della liquidita' oppure l'indirizzo dove ci sono i token bloccati [...] studiare un sistema che ci puo' permettere di non scartare progetti" (soglia gemme 40%), poi "procedi con la misura".

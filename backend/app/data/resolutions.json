@@ -3244,5 +3244,10 @@
     "status": "risolto",
     "at": 1792414157,
     "summary": "Su Solana i conti gestiti da programmi (staking, vesting, lock non riconosciuti, casse) non contano piu' come wallet nei limiti degli holder, ne' all'ingresso ne' nelle gemme: come gia' i contratti su Ethereum e Base. Restano due protezioni: se un solo programma ha piu' del 50% il progetto resta escluso (potrebbe essere la cassa del team), e oltre il 20% in programmi il voto perde qualche punto. Pool di liquidita' e lock noti erano gia' esclusi, gli exchange non comparivano mai. I progetti scartati o fermati per concentrazione vengono riesaminati da soli. Nella scheda della gemma (account whitekobra) il top 10 si vede diviso: tutti gli holder, contratti/programmi, wallet."
+  },
+  "seed-0353": {
+    "status": "in corso",
+    "at": 1792416677,
+    "summary": "Misurati gli scarti dell'ultimo mese. Emissione: in circa 8 casi su 10 a poter creare nuovi token non e' un wallet ma un contratto, un programma, una governance o un bridge (Curve, Aerodrome, Pendle, MetaDAO). GitHub: due errori nostri, uno scarta i progetti molto attivi come se avessero fatto tutto in un giorno (elizaOS), l'altro giudica le organizzazioni dal repository sbagliato (Beefy, Badger). Siti: un quarto delle pagine 'vuote' e' pieno in un browser vero (Drift). Il filtro dei nomi meme invece funziona. In attesa della scelta di Lorenzo sulle correzioni."
   }
 }
