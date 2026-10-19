@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from app.trading.onchain import depth, leaderboard as lb
+from app.trading.onchain import depth, legit, leaderboard as lb
 
 NOW = 1_790_000_000.0
 DAY = 86400
@@ -1013,3 +1013,36 @@ def test_with_deepseek_off_the_research_steps_do_nothing_else(monkeypatch):
     assert asyncio.run(judge.judge(e, "")) is None
     assert asyncio.run(judge.review_board([e])) == {}
     assert asyncio.run(narrative_map.step(time.time() + 10 ** 6)) == {}
+
+
+# Raydium's AMM authority (a program-derived address) and an ordinary wallet.
+PDA = "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1"
+WALLET = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM"
+
+
+def test_program_accounts_are_told_from_wallets():
+    assert legit.is_program_account(PDA)
+    assert not legit.is_program_account(WALLET)
+    assert not legit.is_program_account("o1") and not legit.is_program_account(None)
+
+
+def test_solana_program_accounts_leave_the_wallet_limits():
+    """Lorenzo, 19/10: staking, vesting and locks are not whales (MNDE, SONIC)."""
+    holders = [{"address": "vault", "owner": PDA, "pct": 30.0}] + \
+              [{"address": f"h{i}", "owner": f"o{i}", "pct": 2.0} for i in range(10)]
+    p = depth.judge_tokenomics_solana(_rug(holders=holders))
+    assert not p["fatal"]
+    assert p["facts"]["top10_pct"] == 20.0 and p["facts"]["contracts_pct"] == 30.0
+    assert p["facts"]["top10_all_pct"] == 48.0
+    assert any("held by programs" in f for f in p["flags"])
+    top, top10 = legit.holder_concentration(_rug(holders=holders))
+    assert (top, top10) == (2.0, 20.0)
+
+
+def test_one_program_account_with_most_of_the_supply_still_fails():
+    holders = [{"address": "vault", "owner": PDA, "pct": 55.0},
+               {"address": "h1", "owner": "o1", "pct": 2.0}]
+    assert "one program account holds 55%" in depth.judge_tokenomics_solana(_rug(holders=holders))["fatal"]
+    assert legit.program_share(_rug(holders=holders)) == (55.0, 55.0)
+    check = legit.judge_rugcheck({**_rug(holders=holders), "risks": []})
+    assert check["ok"] is False and "one program account holds 55%" in check["detail"]

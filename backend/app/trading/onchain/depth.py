@@ -544,7 +544,15 @@ def judge_tokenomics_solana(report: dict | None, exclude: set[str] | None = None
                              (m.get("liquidityBAccount") or {}).get("owner")) if isinstance(v, str)}
     holders = [h for h in report.get("topHolders") or []
                if h.get("address") not in skip and h.get("owner") not in skip]
-    pcts = sorted((float(h.get("pct") or 0) for h in holders), reverse=True)
+    # Accounts owned by a program (off-curve owner: staking, vesting, locks
+    # RugCheck does not name, treasuries) are not "a single wallet": out of
+    # the wallet limits like EVM contracts (Lorenzo, 19/10), with the same
+    # cap on the biggest one and the same penalty.
+    programs = sorted((float(h.get("pct") or 0) for h in holders if legit.is_program_account(h.get("owner"))),
+                      reverse=True)
+    all_pcts = sorted((float(h.get("pct") or 0) for h in holders), reverse=True)
+    pcts = sorted((float(h.get("pct") or 0) for h in holders if not legit.is_program_account(h.get("owner"))),
+                  reverse=True)
     supply = float((report.get("token") or {}).get("supply") or 0)
     creator_pct = float(report.get("creatorBalance") or 0) / supply * 100 if supply else 0.0
     insiders = sum(1 for h in holders if h.get("insider")) + int(report.get("graphInsidersDetected") or 0)
@@ -556,7 +564,7 @@ def judge_tokenomics_solana(report: dict | None, exclude: set[str] | None = None
     lp_locked = max((float((m.get("lp") or {}).get("lpLockedPct") or 0) for m in report.get("markets") or []),
                     default=None)
     fee = float((report.get("transferFee") or {}).get("pct") or 0)
-    return _judge_tokenomics(
+    out = _judge_tokenomics(
         top1=pcts[0] if pcts else 0.0, top10=sum(pcts[:10]), creator=creator_pct,
         holders=int(report.get("totalHolders") or 0), insiders=insiders, linked_pct=linked_pct,
         linked_verified=verified, lp_locked=lp_locked,
@@ -568,6 +576,27 @@ def judge_tokenomics_solana(report: dict | None, exclude: set[str] | None = None
             ("mint", "mintAuthority" in report),
             ("freeze", "freezeAuthority" in report),
         ) if not present))
+    return _with_contracts(out, sum(programs), programs[0] if programs else 0.0, sum(all_pcts[:10]),
+                           "one program account holds", "held by programs (staking, vesting, locks or treasury)")
+
+
+def _with_contracts(out: dict, in_contracts: float, biggest: float, top10_all: float,
+                    fatal_text: str, flag_text: str) -> dict:
+    """The holders left out of the wallet limits (EVM contracts, Solana
+    program accounts): in the facts, a cap on the biggest one, a penalty."""
+    out["facts"]["contracts_pct"] = round(in_contracts, 1)
+    out["facts"]["top10_all_pct"] = round(top10_all, 1)
+    # A contract is not proof of a pool or a vesting: a multisig or a proxy
+    # the team controls is a whale too (audit 29/09, M01). Unidentified
+    # contracts stay out of the per-wallet limits (GRID, BV7X), but one
+    # holding a majority of the supply is not waved through.
+    if biggest > CONTRACT_MAX_PCT and not out["fatal"]:
+        out["fatal"] = f"{fatal_text} {biggest:.0f}%"
+        out["score"] = 0
+    if in_contracts > TOP1_MAX_PCT and not out["fatal"]:
+        out["flags"].append(f"{in_contracts:.0f}% {flag_text}")
+        out["score"] = max(0, out["score"] - round(min(in_contracts, 60) / 6))
+    return out
 
 
 LP_COVER_MIN = 0.5
@@ -634,24 +663,15 @@ def judge_tokenomics_evm(info: dict | None, pair_address: str = "", liquidity_us
         mintable=str(info.get("is_mintable")) == "1", freezable=str(info.get("transfer_pausable")) == "1",
         tax=max(pct(info.get("buy_tax")), pct(info.get("sell_tax"))),
         rugged=str(info.get("is_honeypot")) == "1", unknown=unknown)
-    out["facts"]["contracts_pct"] = round(in_contracts, 1)
     if lp_note:
         out["facts"]["lp_note"] = lp_note
-    # A contract is not proof of a pool or a vesting: a multisig or a proxy
-    # the team controls is a whale too (audit 29/09, M01). Unidentified
-    # contracts stay out of the per-wallet limits (GRID, BV7X), but one
-    # holding a majority of the supply is not waved through.
-    if biggest_contract > CONTRACT_MAX_PCT and not out["fatal"]:
-        out["fatal"] = f"one unidentified contract holds {biggest_contract:.0f}%"
-        out["score"] = 0
     out["facts"]["top_holders"] = [
         {"pct": round(pct(h.get("percent")), 2), "contract": str(h.get("is_contract")) == "1",
          **({"tag": h["tag"]} if h.get("tag") else {})}
         for h in sorted(holders, key=lambda h: -pct(h.get("percent")))[:10]]
-    if in_contracts > TOP1_MAX_PCT and not out["fatal"]:
-        out["flags"].append(f"{in_contracts:.0f}% held by contracts (pools, vesting or treasury)")
-        out["score"] = max(0, out["score"] - round(min(in_contracts, 60) / 6))
-    return out
+    top10_all = sum(sorted((pct(h.get("percent")) for h in holders), reverse=True)[:10])
+    return _with_contracts(out, in_contracts, biggest_contract, top10_all,
+                           "one unidentified contract holds", "held by contracts (pools, vesting or treasury)")
 
 
 CONTRACT_MAX_PCT = 50.0

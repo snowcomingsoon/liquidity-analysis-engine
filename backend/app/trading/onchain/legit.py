@@ -61,6 +61,7 @@ LP_LOCKED_MIN_PCT = 80.0
 # conti noti del launchpad non contano.
 HOLDER_MAX_PCT = 15.0
 TOP10_MAX_PCT = 35.0
+PROGRAM_MAX_PCT = 50.0      # one program account (Solana), like depth.CONTRACT_MAX_PCT on EVM
 TAX_MAX_PCT = 10.0
 TOP_HOLDER_MAX_PCT = 30.0
 # Wallets RugCheck links by transfers or trades (funded by the same wallet,
@@ -334,6 +335,13 @@ def judge_rugcheck(report: dict | None, meme: bool = False) -> dict:
     if meme and top is None:
         return _check("security", "RugCheck", None, "holder list not available yet", facts=holders)
     top, top10 = top or 0.0, top10 or 0.0
+    in_programs, biggest_program = program_share(report)
+    holders["programs_pct"] = round(in_programs, 2)
+    # Out of the wallet limits, but one program owning most of the supply is
+    # not waved through: it can be the team's own treasury (as on EVM).
+    if biggest_program > PROGRAM_MAX_PCT:
+        return _check("security", "RugCheck", False, f"one program account holds {biggest_program:.0f}% of supply",
+                      facts=holders)
     if top > HOLDER_MAX_PCT:
         return _check("security", "RugCheck", False, f"a single wallet holds {top:.0f}% of supply",
                       facts=holders)
@@ -372,18 +380,68 @@ def linked_share(report: dict) -> tuple[float | None, int]:
     return held / supply * 100, len(nets)
 
 
-def holder_concentration(report: dict) -> tuple[float | None, float | None]:
-    """(% del primo wallet, % dei primi 10), senza pool, locker e conti noti.
-    (None, None) quando il report non ha la lista dei holder."""
-    if not report.get("topHolders"):
-        return None, None
+# A Solana address is either a public key on the ed25519 curve (someone holds
+# its private key: a wallet) or off it (a program-derived address: only a
+# program can move what it owns). Measured 19/10 on the 120 biggest gem
+# rejections: program accounts (staking, vesting, locks RugCheck does not
+# know, treasuries) were 32% of the counted top 10, and 26 of 98 projects
+# over the 40% limit were under it with wallets alone (MNDE, SONIC, NATIX).
+_ED_P = 2 ** 255 - 19
+_ED_D = (-121665 * pow(121666, _ED_P - 2, _ED_P)) % _ED_P
+_B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+
+def is_program_account(address: str | None) -> bool:
+    """True for an off-curve (program-derived) Solana address. Anything that
+    does not decode to 32 bytes is not called a program."""
+    if not address or not isinstance(address, str):
+        return False
+    n = 0
+    for c in address:
+        i = _B58.find(c)
+        if i < 0:
+            return False
+        n = n * 58 + i
+    raw = n.to_bytes((n.bit_length() + 7) // 8, "big") if n else b""
+    raw = b"\0" * (len(address) - len(address.lstrip("1"))) + raw
+    if len(raw) != 32:
+        return False
+    y = int.from_bytes(raw, "little") & ((1 << 255) - 1)
+    if y >= _ED_P:
+        return True
+    u, v = (y * y - 1) % _ED_P, (_ED_D * y * y + 1) % _ED_P
+    x2 = u * pow(v, _ED_P - 2, _ED_P) % _ED_P
+    return x2 != 0 and pow(x2, (_ED_P - 1) // 2, _ED_P) != 1
+
+
+def _holder_split(report: dict) -> tuple[list[float], list[float]]:
+    """Shares of wallets and of program accounts, pools, lockers and known
+    accounts left out."""
     skip = set((report.get("knownAccounts") or {}).keys())
     for m in report.get("markets") or []:
         skip |= {m.get("pubkey"), m.get("liquidityA"), m.get("liquidityB")}
     skip.discard(None)
-    held = sorted((float(h.get("pct") or 0) for h in report.get("topHolders") or []
-                   if h.get("owner") not in skip and h.get("address") not in skip), reverse=True)
+    wallets, programs = [], []
+    for h in report.get("topHolders") or []:
+        if h.get("owner") in skip or h.get("address") in skip:
+            continue
+        (programs if is_program_account(h.get("owner")) else wallets).append(float(h.get("pct") or 0))
+    return sorted(wallets, reverse=True), sorted(programs, reverse=True)
+
+
+def holder_concentration(report: dict) -> tuple[float | None, float | None]:
+    """(% del primo wallet, % dei primi 10), senza pool, locker, conti noti
+    e conti di programmi. (None, None) quando il report non ha la lista dei holder."""
+    if not report.get("topHolders"):
+        return None, None
+    held, _ = _holder_split(report)
     return (held[0] if held else 0.0), sum(held[:10])
+
+
+def program_share(report: dict) -> tuple[float, float]:
+    """(% in program accounts, % of the biggest one)."""
+    _, programs = _holder_split(report)
+    return sum(programs), (programs[0] if programs else 0.0)
 
 
 def _stems(text: str) -> set[str]:

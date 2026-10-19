@@ -159,7 +159,7 @@ USAGE_DEAD_VOL_USD = 2_000           # 7-day average a day: below it AND few buy
 USAGE_DEAD_BUYERS = 10               # distinct buyers in 24 hours
 USAGE_HOLDERS_MIN = 100
 USAGE_SHRINK_MAX = 0.10              # holders down more than 10% in 30 days
-USAGE_TOP10_MAX_PCT = 40.0           # wallets only: pools and contracts are not whales
+USAGE_TOP10_MAX_PCT = 40.0           # wallets only: pools, contracts and program accounts are not whales
 USAGE_STALE_S = 3 * 86400           # an older snapshot is no measure
 # Where the usage score starts counting (not bars): $25k a day, 30 buyers,
 # 100 trades, 500 holders.
@@ -211,7 +211,7 @@ NO_GITHUB_PENALTY = 10.0
 KOBRA_SCORE_WEIGHTS = {"usage": 0.25, "product": 0.35, "token": 0.20, "deepseek": 0.20}
 KOBRA_NO_GITHUB_PENALTY = 5.0
 KOBRA_GROWTH_WEIGHT = 20              # inside usage, next to volume/cap 45, volume 30, buyers 25
-RULES_VERSION = 12             # 2: "no GitHub" stopped being a ban; 3: radar launches out;
+RULES_VERSION = 13             # 2: "no GitHub" stopped being a ban; 3: radar launches out;
                                # 4: research read by reader.py, older bans and readings dropped;
                                # 5: reader recognises research-stage code and stated limits
                                # 6: no age limits, strict band from $100k to $2M, one rule chain
@@ -222,6 +222,7 @@ RULES_VERSION = 12             # 2: "no GitHub" stopped being a ban; 3: radar la
                                # 10: EVM rows stamped "no pool" by an address-case bug ask DexScreener again
                                # 11: DexScreener's own links fill website/GitHub of rows without them
                                # 12: rows rejected for "a single wallet" are looked at again (contracts left out)
+                               # 13: Solana program accounts leave the wallet limits like EVM contracts
 
 _entries: dict[str, dict] = {}     # chain:token
 _excluded: list[dict] = []
@@ -243,6 +244,7 @@ _pearl_primed = False               # the same for Pearl
 _dirty = False
 _reset_market = False     # set by _load when the stored rules predate version 10
 _requeue_fatals = False   # set by _load when the stored rules predate version 8
+_recheck_programs = False  # set by _load when the stored rules predate version 13
 
 
 def _key(chain: str, token: str) -> str:
@@ -265,9 +267,16 @@ def _load() -> None:
             for e in _entries.values():
                 (e.get("pillars") or {}).pop("site", None)
                 (e.get("checked_at") or {}).pop("site", None)
-        global _requeue_fatals, _reset_market
+        global _requeue_fatals, _reset_market, _recheck_programs
         if rules < 12:
             _reset_market = True
+        if rules < 13:
+            # Solana holders read with program accounts counted as wallets: read again.
+            _recheck_programs = True
+            for e in _entries.values():
+                if e.get("chain") == "solana":
+                    (e.get("pillars") or {}).pop("tokenomics", None)
+                    (e.get("checked_at") or {}).pop("tokenomics", None)
         if rules < 8:
             # Fatal pillars scored by checks fixed since (contracts counted as
             # one wallet, JS sites read as empty: BV7X, PFWA) are redone once.
@@ -677,7 +686,8 @@ def _ramp(x: float, lo: float, hi: float) -> float:
 
 
 def wallet_top10(e: dict) -> float | None:
-    """The top 10 wallets' share from GoPlus (contracts left out), or None:
+    """The top 10 wallets' share (EVM contracts and Solana program accounts
+    left out, depth.py), or None:
     GeckoTerminal's split counts pools and contracts and cannot judge this."""
     f = ((e.get("pillars") or {}).get("tokenomics") or {}).get("facts") or {}
     return f.get("top10_pct") if f.get("source") != "geckoterminal" else None
@@ -1834,6 +1844,10 @@ def startup_requeue() -> None:
         if _reset_market:
             # Wallet limits now leave contracts out (BV7X: 41% in a contract): look again.
             n += projects_db.recheck_studied(("a single wallet holds", "single wallet"), ("rejected",))
+        if _recheck_programs:
+            # Wallet limits now leave Solana program accounts out (19/10: MNDE, SONIC, NATIX).
+            n += projects_db.recheck_studied(("a single wallet holds", "top 10 hold", "top 10 wallets hold"),
+                                             ("rejected", "studied"))
         if _requeue_fatals:
             n += projects_db.recheck_studied(("github:", "site:", "tokenomics:"), ("rejected",))
         if n:
