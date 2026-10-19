@@ -31,10 +31,30 @@ def _load() -> None:
         return
     for item in raw:
         try:
+            if isinstance(item, dict) and isinstance(item.get("symbol"), str):
+                item = {**item, "symbol": _dex_symbol_fixed(item["symbol"])}
             entry = FavoriteEntry(**item)
             _entries[entry.id] = entry
         except (TypeError, ValueError):
             continue
+
+
+def normalize_symbol(symbol: str) -> str:
+    """Tickers in upper case; a DEX pair ("BASE@chain:pool") as given, since
+    a Solana pool address is case-sensitive and the chain is lower case."""
+    symbol = symbol.strip()
+    return symbol if "@" in symbol and ":" in symbol else symbol.upper()
+
+
+def _dex_symbol_fixed(symbol: str) -> str:
+    """DEX pairs saved upper-cased before 19/10 ("WOOD@ROBINHOOD:0XF683..."):
+    an EVM pool comes back (its address is case-insensitive); a Solana one
+    cannot, and is left as it is."""
+    base, sep, rest = symbol.partition("@")
+    chain, sep2, pool = rest.partition(":")
+    if sep and sep2 and pool[:2] in ("0X", "0x"):
+        return f"{base}@{chain.lower()}:{pool.lower()}"
+    return symbol
 
 
 def _save() -> None:
@@ -64,7 +84,7 @@ def add_entry(
 ) -> FavoriteEntry:
     """Upsert: pinning a ticker that's already a favorite for this owner
     just returns the existing entry instead of creating a duplicate row."""
-    symbol = symbol.strip().upper()
+    symbol = normalize_symbol(symbol)
     for entry in _entries.values():
         if (
             entry.owner_id == owner_id
