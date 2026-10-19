@@ -3239,5 +3239,10 @@
     "status": "scartato",
     "at": 1792409223,
     "summary": "Resta online la prima parte: tutte le richieste a GeckoTerminal passano da un unico regolatore, con pausa comune dopo un rifiuto. Le candele Ethereum costruite in proprio (Squid) sono state provate e abbandonate: coprivano solo 2 delle 101 pool dell'archivio, nella prova reale mostravano scarti di prezzo e di volume non spiegati rispetto a GeckoTerminal, e per funzionare servivano un nodo Ethereum e un accesso SQD a pagamento. Lorenzo: 'non vale la pena implementare niente di tutto questo'."
+  },
+  "seed-0352": {
+    "status": "in corso",
+    "at": 1792413582,
+    "summary": "Misurato sui 120 progetti piu' capitalizzati scartati o fermati per concentrazione: pool di liquidita' e lock noti erano gia' esclusi dal conteggio (ne restano quasi zero), gli exchange non compaiono mai nei primi 10. Il problema vero e' su Solana: i conti gestiti da programmi (staking, vesting, lock non riconosciuti, ma anche casse del team) vengono contati come persone e pesano in media un terzo del top 10. Contando solo i wallet, 26 dei 98 oltre il 40% passerebbero (fra questi Marinade, Sonic, NATIX, Access, Shadow). Su Ethereum e Base nessun cambiamento: i contratti erano gia' esclusi. In attesa della scelta di Lorenzo su come trattarli."
   }
 }

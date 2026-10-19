@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0352", "Gemme: holder che sono pool, lock o contratti contati come wallet nel limite del 40%",
+     "Lorenzo, 19/10: 'in alcuni casi quelli che risultano tra i top 10 holders sono anche indirizzi dove magari c'e' il pool della liquidita' oppure l'indirizzo dove ci sono i token bloccati [...] studiare un sistema che ci puo' permettere di non scartare progetti che potrebbero rientrare in questa categoria'.",
+     "media"),
     ("seed-0351", "Candele: meno limiti e attese da GeckoTerminal, e candele Ethereum proprie",
      "Lorenzo, 19/10, con ISTRUZIONI_CLAUDE_SQUID.md: 'ridurre i limiti e le attese nell'acquisizione delle candele, coordinando prima tutte le richieste GeckoTerminal e introducendo poi un provider autonomo per le pool Ethereum Uniswap V3. Usa come riferimento https://github.com/subsquid-labs/uniswapv3-squid'.",
      "media"),
