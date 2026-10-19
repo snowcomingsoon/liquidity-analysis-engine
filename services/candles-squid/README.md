@@ -23,7 +23,10 @@ One row per (pool, token side, timeframe, UTC bucket start):
   before it, by block and log index; quote USDC/USDT/DAI → 1 USD
   (`pricing = stable-peg`); any other quote → null (`pricing = none`), never
   guessed. Before the first reference swap ETH/USD is read once from the
-  reference pool's `slot0` at `START_BLOCK - 1`.
+  reference pool's `slot0` at `START_BLOCK - 1`; that needs an archive RPC
+  (publicnode refuses it without a token), and without one the WETH-quoted
+  swaps before the first reference swap stay unpriced (`pricedSwaps <
+  swaps`), which the app reads as an incomplete window.
 - `volumeToken` (token units), `volumeUsd` (USD, priced swaps only),
   `swaps`, `pricedSwaps`.
 - open/close are the first/last swap by `(block, logIndex)`; the inverse side

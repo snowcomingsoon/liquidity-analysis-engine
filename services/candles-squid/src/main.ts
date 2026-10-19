@@ -181,11 +181,16 @@ async function main() {
 
         let eth = await store.get(EthUsd, 'last')
         if (eth == null) {
-            const seed = await ethUsdAt(ref, START_BLOCK - 1)
-            assert(seed != null, 'no ETH/USD at START_BLOCK - 1 on the reference pool')
-            eth = new EthUsd({id: 'last', block: START_BLOCK - 1, logIndex: 0, price: toDecimal(seed)})
+            // slot0 at START_BLOCK - 1 needs an archive node (public RPCs refuse
+            // it): without one, ETH/USD starts at the reference pool's first
+            // swap, and WETH-quoted swaps before it stay unpriced.
+            const seed = await ethUsdAt(ref, START_BLOCK - 1).catch((err) => {
+                console.warn(`no ETH/USD seed at ${START_BLOCK - 1}: ${err?.message ?? err}`)
+                return null
+            })
+            if (seed != null) eth = new EthUsd({id: 'last', block: START_BLOCK - 1, logIndex: 0, price: toDecimal(seed)})
         }
-        const q: QuotePrices = {ethUsd: fromDecimal(eth.price), weth: WETH, stables: STABLES}
+        const q: QuotePrices = {ethUsd: eth == null ? null : fromDecimal(eth.price), weth: WETH, stables: STABLES}
 
         const touched = new Map<string, Candle>()
         const getCandle = async (id: string) => touched.get(id) ?? (await store.get(Candle, id))
@@ -218,15 +223,14 @@ async function main() {
                     const usd = ref.token1 === WETH ? inverse(p0) : p0
                     if (usd != null) {
                         q.ethUsd = usd
-                        eth.block = block.header.number
-                        eth.logIndex = log.logIndex
-                        eth.price = toDecimal(usd)
+                        eth = new EthUsd({id: 'last', block: block.header.number, logIndex: log.logIndex,
+                                          price: toDecimal(usd)})
                     }
                 }
             }
         }
         await store.upsert([...touched.values()])
-        await store.upsert(eth)
+        if (eth != null) await store.upsert(eth)
         const last = blocks[blocks.length - 1].header
         await store.upsert(new SyncStatus({
             id: 'head', block: last.number, timestamp: Math.floor(last.timestamp / 1000),
