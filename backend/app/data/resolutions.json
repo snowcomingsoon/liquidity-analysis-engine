@@ -3246,8 +3246,8 @@
     "summary": "Su Solana i conti gestiti da programmi (staking, vesting, lock non riconosciuti, casse) non contano piu' come wallet nei limiti degli holder, ne' all'ingresso ne' nelle gemme: come gia' i contratti su Ethereum e Base. Restano due protezioni: se un solo programma ha piu' del 50% il progetto resta escluso (potrebbe essere la cassa del team), e oltre il 20% in programmi il voto perde qualche punto. Pool di liquidita' e lock noti erano gia' esclusi, gli exchange non comparivano mai. I progetti scartati o fermati per concentrazione vengono riesaminati da soli. Nella scheda della gemma (account whitekobra) il top 10 si vede diviso: tutti gli holder, contratti/programmi, wallet."
   },
   "seed-0353": {
-    "status": "in corso",
-    "at": 1792416677,
-    "summary": "Misurati gli scarti dell'ultimo mese. Emissione: in circa 8 casi su 10 a poter creare nuovi token non e' un wallet ma un contratto, un programma, una governance o un bridge (Curve, Aerodrome, Pendle, MetaDAO). GitHub: due errori nostri, uno scarta i progetti molto attivi come se avessero fatto tutto in un giorno (elizaOS), l'altro giudica le organizzazioni dal repository sbagliato (Beefy, Badger). Siti: un quarto delle pagine 'vuote' e' pieno in un browser vero (Drift). Il filtro dei nomi meme invece funziona. In attesa della scelta di Lorenzo sulle correzioni."
+    "status": "risolto",
+    "at": 1792417489,
+    "summary": "Corretti i quattro scarti ingiusti trovati misurando l'ultimo mese. Emissione: scarta solo se a poter creare nuovi token e' un wallet; se lo fa un contratto, un programma o una governance il progetto perde 10 punti e lo si vede nella scheda; se lo fa il bridge della catena, niente. GitHub: un repository molto attivo non viene piu' scambiato per uno fatto in un giorno (elizaOS), un repository con codice vero pubblicato in un giorno perde punti invece del progetto, e per un'organizzazione si legge il repository principale invece dell'ultimo modificato (Beefy, Badger). Siti: una pagina che il lettore vede vuota ma con un HTML sostanzioso conta come 'non leggibile', non come vuota. Il filtro dei nomi meme resta com'e'. I progetti scartati per questi motivi vengono riesaminati da soli. La sentinella ora scrive una riga nei log a ogni giro."
   }
 }
