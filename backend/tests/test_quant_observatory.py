@@ -148,7 +148,7 @@ def test_gem_bar_holes_are_filled_from_geckoterminal(monkeypatch):
     monkeypatch.setitem(alert_track._bars, k, [list(r) for r in sampled])
     calls = []
 
-    async def fake_candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def fake_candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         calls.append((pool, tf, agg, limit))
         return [candle(start + 900, 11)]
 

@@ -28,7 +28,7 @@ import time
 import httpx
 
 from app import http_client
-from app.providers import gecko_client
+from app.providers import candle_source, gecko_client
 import pandas as pd
 from cachetools import TTLCache
 
@@ -227,50 +227,64 @@ class DexScreenerProvider(DataProvider):
         # request cannot drain the per-minute budget.
         want = max(outputsize * fold, fold) if since_ms is None else None
         since_s = since_ms // 1000 if since_ms is not None else None
-        url = f"{self._geckoterminal_base}/networks/{network}/pools/{pool}/ohlcv/{timeframe}"
-        rows: list = []
-        before: int | None = None
-        for _page in range(GECKO_MAX_PAGES):
-            limit = GECKO_PAGE if want is None else min(GECKO_PAGE, want - len(rows))
-            params = {"aggregate": aggregate, "limit": limit, "currency": "usd"}
-            if before is not None:
-                params["before_timestamp"] = before
-            # Il prezzo di quale lato del pool: di default GeckoTerminal da' la
-            # base, ma un token puo' essere la quota (MYCE nel pool SHROOM/MYCE).
-            if token_address:
-                params["token"] = token_address
-            try:
-                payload = await gecko_get(url, params, caller="ohlcv:chart")
-            except httpx.HTTPError as exc:
-                if rows:
-                    break  # keep the pages already read
-                raise ProviderUnreachable(f"GeckoTerminal unreachable for {symbol}: {exc}") from exc
-            except NoDataYet:
-                if rows:
+
+        async def gecko_rows() -> list:
+            url = f"{self._geckoterminal_base}/networks/{network}/pools/{pool}/ohlcv/{timeframe}"
+            rows: list = []
+            before: int | None = None
+            for _page in range(GECKO_MAX_PAGES):
+                limit = GECKO_PAGE if want is None else min(GECKO_PAGE, want - len(rows))
+                params = {"aggregate": aggregate, "limit": limit, "currency": "usd"}
+                if before is not None:
+                    params["before_timestamp"] = before
+                # Il prezzo di quale lato del pool: di default GeckoTerminal da' la
+                # base, ma un token puo' essere la quota (MYCE nel pool SHROOM/MYCE).
+                if token_address:
+                    params["token"] = token_address
+                try:
+                    payload = await gecko_get(url, params, caller="ohlcv:chart")
+                except httpx.HTTPError as exc:
+                    if rows:
+                        break  # keep the pages already read
+                    raise ProviderUnreachable(f"GeckoTerminal unreachable for {symbol}: {exc}") from exc
+                except NoDataYet:
+                    if rows:
+                        break
+                    raise
+                if payload is None:
+                    if rows:
+                        break
+                    raise ProviderError(f"Pool not found on {chain}: {pool}")
+                page = (
+                    payload.get("data", {}).get("attributes", {}).get("ohlcv_list", [])
+                    if isinstance(payload, dict) else []
+                )
+                if not page:
                     break
-                raise
-            if payload is None:
-                if rows:
+                rows.extend(page)
+                oldest = min(int(r[0]) for r in page)
+                if len(page) < limit or (want is not None and len(rows) >= want) \
+                        or (since_s is not None and oldest <= since_s) or (before is not None and oldest >= before):
                     break
-                raise ProviderError(f"Pool not found on {chain}: {pool}")
-            page = (
-                payload.get("data", {}).get("attributes", {}).get("ohlcv_list", [])
-                if isinstance(payload, dict) else []
-            )
-            if not page:
-                break
-            rows.extend(page)
-            oldest = min(int(r[0]) for r in page)
-            if len(page) < limit or (want is not None and len(rows) >= want) \
-                    or (since_s is not None and oldest <= since_s) or (before is not None and oldest >= before):
-                break
-            before = oldest
-        if not rows and timeframe == "minute":
-            # Pool appena nato: GeckoTerminal ha gli scambi subito, le candele
-            # qualche minuto dopo. DexScreener il grafico lo mostra da subito
-            # (Lorenzo: "su Dex Screener ci sono sempre"), quindi le candele
-            # si costruiscono dagli scambi.
-            rows = await self._rows_from_trades(network, pool, aggregate * 60, token_address)
+                before = oldest
+            if not rows and timeframe == "minute":
+                # Pool appena nato: GeckoTerminal ha gli scambi subito, le candele
+                # qualche minuto dopo. DexScreener il grafico lo mostra da subito
+                # (Lorenzo: "su Dex Screener ci sono sempre"), quindi le candele
+                # si costruiscono dagli scambi.
+                rows = await self._rows_from_trades(network, pool, aggregate * 60, token_address)
+            return rows
+
+        # One provider per call (candle_source.py): the squid only when it
+        # covers the whole window, and only with settings.squid_mode "on".
+        tf_s = candle_source.TF_SECONDS.get((timeframe, int(aggregate)))
+        if candle_source.mode() == "off" or tf_s is None:
+            rows, provider = await gecko_rows(), candle_source.PROVIDER_GECKO
+        else:
+            now = time.time()
+            start = since_s if since_s is not None else now - (want or 1) * tf_s
+            rows, provider = await candle_source.route(network, pool, timeframe, aggregate, token_address or "",
+                                                       start, now, gecko_rows)
         if not rows:
             raise NoDataYet(f"No data available for {symbol} ({interval})")
 
@@ -283,6 +297,7 @@ class DexScreenerProvider(DataProvider):
         df = df[~df.index.duplicated(keep="first")]
         df = df[["open", "high", "low", "close", "volume"]]
 
+        df.attrs["provider"] = provider
         if fold > 1:
             df = resample_by_count(df, fold)
         if since_ms is not None:

@@ -94,6 +94,14 @@ class Settings(BaseSettings):
     # Lorenzo, 18/10: between the runs, a light round every 10 minutes on
     # the fast sources and the launchpads, alerts at once (nightly.sentinel_loop).
     onchain_sentinel_enabled: bool = True
+    # Candles squid (services/candles-squid, ISTRUZIONI_CLAUDE_SQUID.md):
+    # "off" never calls it, "compare" keeps GeckoTerminal's answers and
+    # measures the squid's beside them, "on" lets it serve the requests it
+    # covers entirely. Off until Lorenzo says otherwise, after validation.
+    squid_mode: str = "off"
+    squid_url: str = "http://squid-api:4350/graphql"
+    squid_pools: str = ""            # the same allowlist as the squid's POOLS
+    squid_max_lag_s: int = 900
     # Lorenzo, 12/10: "la nostra selezione non e' molto popolata, aggiungi
     # controllo ogni ora". A run at every whole hour besides the ones above;
     # those runs get onchain_hourly_max_minutes, the main one keeps max_hours.

@@ -3662,6 +3662,14 @@ async def onchain_gecko(user: User = Depends(auth.get_current_user)) -> dict:
     return gecko_client.metrics()
 
 
+@app.get("/api/onchain/candles-source")
+async def onchain_candles_source(user: User = Depends(auth.get_current_user)) -> dict:
+    """Candle source router (candle_source.py): mode, requests by status and,
+    in "compare" mode, how far the squid's candles are from GeckoTerminal's."""
+    from app.providers import candle_source
+    return candle_source.metrics()
+
+
 @app.get("/api/onchain/track")
 async def onchain_track(user: User = Depends(auth.get_current_user)) -> dict:
     """Track record: how the Gem Finder's picks went after 1/3/7/30/90 days,

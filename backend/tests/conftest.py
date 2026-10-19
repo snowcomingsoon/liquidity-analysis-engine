@@ -1,6 +1,6 @@
 import pytest
 
-from app.providers import dexscreener, gecko_client
+from app.providers import candle_source, dexscreener, gecko_client
 
 
 @pytest.fixture(autouse=True)
@@ -11,9 +11,11 @@ def _fresh_gecko_gate(monkeypatch):
     monkeypatch.setattr(gecko_client, "DEFAULT_COOLDOWN_S", 0.01)
     dexscreener._gecko_seen.clear()
     gecko_client.reset_for_tests()
+    candle_source.reset_for_tests()
     yield
     dexscreener._gecko_seen.clear()
     gecko_client.reset_for_tests()
+    candle_source.reset_for_tests()
 
 
 @pytest.fixture(autouse=True)

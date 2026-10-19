@@ -55,7 +55,7 @@ def test_fill_stores_mature_token(monkeypatch, tmp_path):
     _setup(monkeypatch, tmp_path, now)
     entry = outcomes._journal["solana:mature"]
 
-    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token=""):
+    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token="", **kw):
         return _bars(entry["at"])
 
     monkeypatch.setattr(alert_track, "_candles", fake_candles)
@@ -83,7 +83,7 @@ def test_fill_marks_gone_pool(monkeypatch, tmp_path):
     now = time.time()
     _setup(monkeypatch, tmp_path, now)
 
-    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token=""):
+    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token="", **kw):
         return []
 
     monkeypatch.setattr(alert_track, "_candles", fake_candles)
@@ -97,7 +97,7 @@ def test_summary_counts_rows(monkeypatch, tmp_path):
     _setup(monkeypatch, tmp_path, now)
     entry = outcomes._journal["solana:mature"]
 
-    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token=""):
+    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token="", **kw):
         return _bars(entry["at"])
 
     monkeypatch.setattr(alert_track, "_candles", fake_candles)
@@ -114,7 +114,7 @@ def test_done_count_empty_and_after_write(monkeypatch, tmp_path):
 
     entry = outcomes._journal["solana:mature"]
 
-    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token=""):
+    async def fake_candles(client, net, pool, tf, aggregate, before, limit, token="", **kw):
         return _bars(entry["at"])
 
     monkeypatch.setattr(alert_track, "_candles", fake_candles)

@@ -43,7 +43,7 @@ def test_no_candles_is_closed_not_priced_later():
 def test_backfill_skips_known_and_retries_when_gecko_is_down(monkeypatch):
     calls = []
 
-    async def fake(client, net, pool, tf, agg, before, limit, token=""):
+    async def fake(client, net, pool, tf, agg, before, limit, token="", **kw):
         calls.append((net, pool, tf))
         return None if pool == "DOWN" else [[T0 + 60, 0, 0, 0, 2.0, 0], [T0 + 2 * H, 0, 0, 0, 3.0, 0]]
 

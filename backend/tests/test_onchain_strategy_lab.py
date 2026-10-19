@@ -50,7 +50,7 @@ def test_next_due_takes_new_tokens_first_then_the_oldest():
 
 
 def test_every_top_token_gets_every_strategy_and_the_agent_says_so(monkeypatch):
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         assert (net, pool, tf, agg) == ("solana", "Pair", "minute", 5)
         return list(reversed(_bars()))
     monkeypatch.setattr(lab.alert_track, "_candles", candles)
@@ -70,7 +70,7 @@ def _daily_bars(n=200, t0=1_780_000_000):
 
 
 def test_daily_backtest_runs_only_the_trend_follower(monkeypatch):
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         if (tf, agg) == ("day", 1):
             return _daily_bars()
         return _bars()
@@ -88,7 +88,7 @@ def _spaced(n, step, now=1_800_000_000):
 
 
 def test_daily_falls_back_to_8h_when_the_daily_is_short(monkeypatch):
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         if (tf, agg) == ("day", 1):
             return _spaced(30, 86400)
         if (tf, agg) == ("hour", 4):
@@ -121,7 +121,7 @@ def test_the_ladder_steps_down_to_the_first_timeframe_that_enters(monkeypatch):
     now = 1_800_000_000
     calls = []
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         calls.append((tf, agg))
         step = {"day": 86400, "hour": 3600, "minute": 60}[tf] * agg
         return _spaced(min(1000, 200 * 86400 // step), step, now)
@@ -137,7 +137,7 @@ def test_the_ladder_steps_down_to_the_first_timeframe_that_enters(monkeypatch):
 def test_no_trend_ema_entry_anywhere_adapts_to_trend_hf(monkeypatch):
     now = 1_800_000_000
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         step = {"day": 86400, "hour": 3600, "minute": 60}[tf] * agg
         return _spaced(min(1000, 200 * 86400 // step), step, now)
     monkeypatch.setattr(lab.alert_track, "_candles", candles)
@@ -155,7 +155,7 @@ def test_until_the_top_50_test_the_old_rule_runs(monkeypatch):
     now = 1_800_000_000
     asked = []
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         asked.append((tf, agg))
         step = {"day": 86400, "hour": 3600, "minute": 60}[tf] * agg
         return _spaced(30 if tf == "day" else 180, step, now)
@@ -170,7 +170,7 @@ def test_the_archive_answers_the_second_run_without_gecko(monkeypatch):
     now = 1_800_000_000
     asked = []
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         asked.append((tf, agg, limit))
         step = {"day": 86400, "hour": 3600, "minute": 60}[tf] * agg
         return _spaced(min(1000, 200 * 86400 // step), step, now)
@@ -187,7 +187,7 @@ def test_the_archive_answers_the_second_run_without_gecko(monkeypatch):
 def test_no_entry_anywhere_keeps_the_widest_timeframe(monkeypatch):
     now = 1_800_000_000
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         step = {"day": 86400, "hour": 3600, "minute": 60}[tf] * agg
         return _spaced(min(1000, 200 * 86400 // step), step, now)
     monkeypatch.setattr(lab.alert_track, "_candles", candles)
@@ -199,7 +199,7 @@ def test_a_young_token_starts_on_the_rung_its_history_allows(monkeypatch):
     now = 1_800_000_000
     calls = []
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         calls.append((tf, agg))
         if (tf, agg) == ("day", 1):
             return _spaced(4, 86400, now)
@@ -215,7 +215,7 @@ def test_a_just_listed_token_uses_the_5m_it_already_has(monkeypatch):
     now = 1_800_000_000
     calls = []
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         calls.append((tf, agg))
         if (tf, agg) == ("day", 1):
             return _spaced(1, 86400, now + 80000)
@@ -229,7 +229,7 @@ def test_a_just_listed_token_uses_the_5m_it_already_has(monkeypatch):
 def test_daily_too_few_candles_is_an_error_and_does_not_drop_the_5m(monkeypatch):
     now = 1_800_000_000
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         if (tf, agg) == ("day", 1):
             return _spaced(1, 86400, now + 80000)
         return _spaced(40, 300, now)
@@ -240,7 +240,7 @@ def test_daily_too_few_candles_is_an_error_and_does_not_drop_the_5m(monkeypatch)
 
 
 def test_daily_fetch_failure_keeps_the_5m_result(monkeypatch):
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         if (tf, agg) == ("day", 1):
             return None
         return _bars()
@@ -253,7 +253,7 @@ def test_the_trigger_needs_60_closed_candles_and_the_forming_one_is_dropped(monk
     now = 1_800_000_000
     start = now - 59 * 86400 - 3600          # 59 closed days and one still forming
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         if (tf, agg) == ("day", 1):
             return [[start + i * 86400, 1, 1, 1, 1, 1] for i in range(60)]
         if (tf, agg) == ("hour", 4):
@@ -317,7 +317,7 @@ def test_gecko_busy_retries_next_tick_and_a_missing_pool_is_resolved(monkeypatch
 
     seen = {}
 
-    async def candles(client, net, pool, *a):
+    async def candles(client, net, pool, *a, **kw):
         seen["pool"] = pool
         return _bars(50)
     monkeypatch.setattr(lab.alert_track, "_candles", candles)
@@ -386,7 +386,7 @@ def test_stale_arrows_are_redone_first(monkeypatch, tmp_path):
 def test_rsi_bb_runs_down_the_same_ladder(monkeypatch):
     now = 1_800_000_000
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         step = {"day": 86400, "hour": 3600, "minute": 60}[tf] * agg
         return _spaced(min(1000, 200 * 86400 // step), step, now)
     monkeypatch.setattr(lab.alert_track, "_candles", candles)

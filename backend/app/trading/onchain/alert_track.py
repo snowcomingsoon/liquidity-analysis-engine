@@ -277,23 +277,41 @@ def from_candles(a: dict, candles: list, now: float, tail: list | None = None) -
 
 
 async def _candles(client, net: str, pool: str, tf: str, aggregate: int, before: float, limit: int,
-                   token: str = "") -> list | None:
+                   token: str = "", source: str = "auto") -> list | None:
     """Candles through the shared GeckoTerminal limiter. [] = the pool is
-    unknown there; None = no answer now (try again on the next start)."""
+    unknown there; None = no answer now (try again on the next start).
+    `source="gecko"` never asks the candles squid (candle_archive: one
+    provider per archived series)."""
+    rows, _ = await _candles_from(client, net, pool, tf, aggregate, before, limit, token, source)
+    return rows
+
+
+async def _candles_from(client, net: str, pool: str, tf: str, aggregate: int, before: float, limit: int,
+                        token: str = "", source: str = "auto") -> tuple[list | None, str]:
+    """The rows and the provider that gave them (candle_source.py routes the
+    pools the candles squid covers, by settings.squid_mode)."""
     if net == "cex":
         from app.trading.onchain import cex_candles
-        return await cex_candles.candles(pool, tf, aggregate, before, limit)
+        return await cex_candles.candles(pool, tf, aggregate, before, limit), "cex"
+    from app.providers import candle_source
     from app.providers.dexscreener import gecko_get
-    params = {"aggregate": aggregate, "before_timestamp": int(before), "limit": limit, "currency": "usd"}
-    if token:
-        params["token"] = token     # the token's side of the pool, not always the base
-    try:
-        payload = await gecko_get(GECKO_OHLCV.format(net=net, pool=pool, tf=tf), params, caller="ohlcv:alerts")
-    except Exception:
-        return None
-    if payload is None:
-        return []
-    return ((payload.get("data") or {}).get("attributes") or {}).get("ohlcv_list") or []
+
+    async def gecko() -> list | None:
+        params = {"aggregate": aggregate, "before_timestamp": int(before), "limit": limit, "currency": "usd"}
+        if token:
+            params["token"] = token     # the token's side of the pool, not always the base
+        try:
+            payload = await gecko_get(GECKO_OHLCV.format(net=net, pool=pool, tf=tf), params, caller="ohlcv:alerts")
+        except Exception:
+            return None
+        if payload is None:
+            return []
+        return ((payload.get("data") or {}).get("attributes") or {}).get("ohlcv_list") or []
+
+    tf_s = candle_source.TF_SECONDS.get((tf, int(aggregate)))
+    if source != "auto" or candle_source.mode() == "off" or tf_s is None:
+        return await gecko(), candle_source.PROVIDER_GECKO
+    return await candle_source.route(net, pool, tf, aggregate, token, before - limit * tf_s, before, gecko)
 
 
 async def backfill(client: httpx.AsyncClient, items: list[dict], kind: str = "meme",
@@ -312,19 +330,36 @@ async def backfill(client: httpx.AsyncClient, items: list[dict], kind: str = "me
         if a is None:
             continue
         token = item.get("token_address") or ""
-        first = await _candles(client, net, item["pair_address"], "minute", 5,
-                               at + (max(CHECKPOINTS_H) + 1) * 3600, 600, token)
+        from app.providers import candle_source
+        if candle_source.mode() == "off":
+            first, provider = await _candles(client, net, item["pair_address"], "minute", 5,
+                                             at + (max(CHECKPOINTS_H) + 1) * 3600, 600, token), "geckoterminal"
+        else:
+            first, provider = await _candles_from(client, net, item["pair_address"], "minute", 5,
+                                                  at + (max(CHECKPOINTS_H) + 1) * 3600, 600, token)
         await asyncio.sleep(gap_s)
         tail = None
         if first is not None and now - at > (max(CHECKPOINTS_H) + 1) * 3600:
-            tail = await _candles(client, net, item["pair_address"], "hour", 4, min(now, at + KEEP_WATCHING_S), 100,
-                                  token)
+            if provider == "geckoterminal":
+                tail = await _candles(client, net, item["pair_address"], "hour", 4, min(now, at + KEEP_WATCHING_S),
+                                      100, token, source="gecko")
+            else:
+                # One source per alert: the squid's hourly candles, or both stretches from GeckoTerminal.
+                tail, tail_from = await _candles_from(client, net, item["pair_address"], "hour", 1,
+                                                      min(now, at + KEEP_WATCHING_S), 400, token)
+                if tail_from != provider:
+                    first = await _candles(client, net, item["pair_address"], "minute", 5,
+                                           at + (max(CHECKPOINTS_H) + 1) * 3600, 600, token, source="gecko")
+                    tail = await _candles(client, net, item["pair_address"], "hour", 4,
+                                          min(now, at + KEEP_WATCHING_S), 100, token, source="gecko")
+                    provider = "geckoterminal"
             await asyncio.sleep(gap_s)
         if first is None:
             # GeckoTerminal did not answer: forget it, the next start tries again.
             _alerts.pop(f"{kind}:{item['chain']}:{item.get('token_address') or item['pair_address']}", None)
             continue
         from_candles(a, first, now, tail)
+        a["data_provider"] = provider     # which source the returns were measured on
         merge_bars(key_of(a), first)
         a["bars_fetched"] = True
         n += 1
@@ -431,7 +466,7 @@ async def _refresh_system(client, now: float, gap_s: float | None) -> int:
             # fill the holes (stored closed bars are never revised).
             a["gem_candles_at"] = now
             got = await _candles(client, net, a["pair_address"], "minute", 5, now,
-                                 GEM_GAP_LOOKBACK_S // BAR_S + 12, a.get("token_address") or "")
+                                 GEM_GAP_LOOKBACK_S // BAR_S + 12, a.get("token_address") or "", source="gecko")
             fetched += 1
             if got:
                 merge_bars(key_of(a), got)

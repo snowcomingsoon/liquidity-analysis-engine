@@ -32,7 +32,7 @@ def test_the_loop_warms_the_stalest_series_of_the_top(monkeypatch):
     now = 1_800_000_000
     asked = []
 
-    async def candles(client, net, pool, tf, agg, before, limit, token=""):
+    async def candles(client, net, pool, tf, agg, before, limit, token="", **kw):
         asked.append((pool, tf, agg))
         return [[now - 3600, 1, 1, 1, 1, 1]]
     monkeypatch.setattr(ca.alert_track, "_candles", candles)

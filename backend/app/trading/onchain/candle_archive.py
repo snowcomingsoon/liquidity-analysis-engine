@@ -58,7 +58,14 @@ CREATE TABLE IF NOT EXISTS candles (
     k TEXT, t INTEGER, o REAL, h REAL, l REAL, c REAL, v REAL, PRIMARY KEY (k, t)
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS fetched (k TEXT PRIMARY KEY, at REAL, n INTEGER);
+CREATE TABLE IF NOT EXISTS series (k TEXT PRIMARY KEY, provider TEXT NOT NULL, version TEXT);
 """
+# Provenance (19/10, candles squid): one provider per series, never mixed.
+# The archive is filled from GeckoTerminal only (or the exchange, net "cex");
+# series written before this table are GeckoTerminal's, the "cex" ones the
+# exchange's, by the only paths that ever wrote them.
+PROVIDER_GECKO = "geckoterminal"
+PROVIDER_CEX = "cex"
 
 
 def _db() -> sqlite3.Connection:
@@ -67,6 +74,9 @@ def _db() -> sqlite3.Connection:
         _conn = sqlite3.connect(_DB_FILE, check_same_thread=False)
         _conn.execute("PRAGMA journal_mode=WAL")
         _conn.executescript(_SCHEMA)
+        _conn.execute("INSERT OR IGNORE INTO series (k, provider, version) SELECT k, CASE WHEN k LIKE 'cex:%' "
+                      "THEN ? ELSE ? END, 'legacy' FROM fetched", (PROVIDER_CEX, PROVIDER_GECKO))
+        _conn.commit()
         _conn_path = _DB_FILE
     return _conn
 
@@ -107,7 +117,19 @@ def put(k: str, rows: list[list], now: float) -> None:
                        (k, k, n - MAX_BARS))
             n = MAX_BARS
         db.execute("INSERT OR REPLACE INTO fetched VALUES (?, ?, ?)", (k, now, n))
+        db.execute("INSERT OR IGNORE INTO series (k, provider, version) VALUES (?, ?, ?)",
+                   (k, provider_of(k), None))
         db.commit()
+
+
+def provider_of(k: str) -> str:
+    return PROVIDER_CEX if k.startswith("cex:") else PROVIDER_GECKO
+
+
+def series_provider(k: str) -> str | None:
+    with _lock:
+        row = _db().execute("SELECT provider FROM series WHERE k = ?", (k,)).fetchone()
+    return row[0] if row else None
 
 
 async def candles(client: httpx.AsyncClient, net: str, pair: str, tf: str, agg: int, now: float,
@@ -124,7 +146,7 @@ async def candles(client: httpx.AsyncClient, net: str, pair: str, tf: str, agg: 
     # Only the missing stretch (plus a little overlap: the last candle was
     # still forming), or a full call the first time.
     limit = LIMIT if at is None else max(10, min(LIMIT, int((now - at) // step_of(tf, agg)) + 3))
-    raw = await alert_track._candles(client, net, pair, tf, agg, now, limit, token)
+    raw = await alert_track._candles(client, net, pair, tf, agg, now, limit, token, source="gecko")
     if raw is None:
         have = await asyncio.to_thread(get, k)
         return have or None

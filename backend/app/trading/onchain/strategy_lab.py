@@ -323,7 +323,7 @@ async def run_one(client: httpx.AsyncClient, e: dict, now: float) -> dict | None
         _results[key] = {"at": now, "symbol": symbol, "pair": None, "error": "no pool"}
         return _results[key]
     bars = await alert_track._candles(client, _net(e["chain"]), pair, "minute", 5, now, BARS,
-                                      e["token_address"])
+                                      e["token_address"], source="gecko")
     if bars is None:
         return None
     if not bars:
