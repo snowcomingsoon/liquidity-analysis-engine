@@ -319,7 +319,9 @@ def judge_rugcheck(report: dict | None, meme: bool = False) -> dict:
         return _check("security", "RugCheck", None, "report not available yet")
     if report.get("rugged"):
         return _check("security", "RugCheck", False, "flagged as a rug")
-    danger = [r.get("name") or "risk" for r in report.get("risks") or [] if r.get("level") == "danger"]
+    program_mint = mint_by_program(report)
+    danger = [r.get("name") or "risk" for r in report.get("risks") or [] if r.get("level") == "danger"
+              and not (program_mint and re.search(r"mint", r.get("name") or "", re.I))]
     if danger:
         return _check("security", "RugCheck", False, ", ".join(danger[:3]))
     top, top10 = holder_concentration(report)
@@ -466,7 +468,76 @@ async def goplus(chain: str, token: str, client: httpx.AsyncClient) -> dict | No
     except (httpx.HTTPError, ValueError, KeyError):
         return None
     result = (body or {}).get("result") or {}
-    return result.get(token.lower()) or result.get(token) or None
+    info = result.get(token.lower()) or result.get(token) or None
+    if info and _flag(info, "is_mintable"):
+        info["mint_control"] = await evm_mint_control(chain, token, info, client)
+    return info
+
+
+# Who can mint (19/10). GoPlus's is_mintable says a mint function exists, not
+# who can call it: of 71 EVM gem rejections only 6 had a wallet behind it;
+# the rest were governance or timelocks (contract owner), minter contracts
+# with no owner (CRV, AERO, BAL, PENDLE) and L2 bridge tokens (RSR on Base).
+MINT_WALLET, MINT_CONTRACT, MINT_NO_OWNER, MINT_BRIDGE, MINT_UNKNOWN = \
+    "wallet", "contract", "no owner", "bridge", "unknown"
+MINT_SAFE = (MINT_CONTRACT, MINT_NO_OWNER, MINT_BRIDGE)       # not fatal; the first two cost points
+_BRIDGE_VIEWS = ("0xd6c0b2c4", "0xc01e1bd6", "0x033964be")   # remoteToken(), l1Token(), REMOTE_TOKEN()
+_OWNER_VIEW = "0x8da5cb5b"                                     # owner()
+
+
+def _word_address(out) -> str | None:
+    if not isinstance(out, str) or len(out) < 66:
+        return None
+    try:
+        return None if int(out[2:66], 16) == 0 else "0x" + out[26:66].lower()
+    except ValueError:
+        return None
+
+
+async def evm_mint_control(chain: str, token: str, info: dict, client: httpx.AsyncClient) -> str:
+    """bridge (only the canonical bridge mints), no owner (a minter contract
+    or role), contract (governance, timelock, multisig), wallet, or unknown
+    (not readable: judged like a wallet)."""
+    from app.trading.onchain import unlocks   # unlocks reads chains this module also serves
+
+    async def rpc(method: str, params: list):
+        try:
+            return await unlocks._rpc(chain, method, params, client)
+        except Exception:
+            return None
+    for sel in _BRIDGE_VIEWS:
+        if _word_address(await rpc("eth_call", [{"to": token, "data": sel}, "latest"])):
+            return MINT_BRIDGE
+    owner = str(info.get("owner_address") or "").lower()
+    if not owner:
+        owner = _word_address(await rpc("eth_call", [{"to": token, "data": _OWNER_VIEW}, "latest"])) or ""
+    try:
+        if not owner or int(owner, 16) == 0 or owner == "0x000000000000000000000000000000000000dead":
+            return MINT_NO_OWNER
+    except ValueError:
+        return MINT_UNKNOWN
+    code = await rpc("eth_getCode", [owner, "latest"])
+    if not isinstance(code, str):
+        return MINT_UNKNOWN
+    code = code.lower()
+    return MINT_WALLET if code in ("0x", "") or code.startswith("0xef0100") else MINT_CONTRACT
+
+
+def mint_authority(report: dict) -> str | None:
+    """The Solana mint authority's address in a RugCheck report, if any."""
+    for v in ((report.get("token") or {}).get("mintAuthority"), report.get("mintAuthority")):
+        if isinstance(v, str) and v:
+            return v
+        if isinstance(v, dict) and isinstance(v.get("address") or v.get("pubkey"), str):
+            return v.get("address") or v.get("pubkey")
+    return None
+
+
+def mint_by_program(report: dict) -> bool:
+    """A program holds the mint authority: governance (MetaDAO, SPL
+    Governance), a launchpad, an issuer, a staking pool. 79 of 98 Solana
+    gem rejections for minting (19/10); a wallet authority stays fatal."""
+    return is_program_account(mint_authority(report))
 
 
 def _flag(info: dict, key: str) -> bool:
@@ -486,7 +557,7 @@ def judge_goplus(info: dict | None) -> dict:
             tax = 0.0
         if tax > TAX_MAX_PCT:
             problems.append(f"{label} {tax:.0f}%")
-    if _flag(info, "is_mintable"):
+    if _flag(info, "is_mintable") and info.get("mint_control") not in MINT_SAFE:
         problems.append("supply can be minted")
     if _flag(info, "can_take_back_ownership") or _flag(info, "hidden_owner"):
         problems.append("owner can reclaim the contract")
@@ -629,14 +700,18 @@ async def github_repo(owner: str, repo: str | None, client: httpx.AsyncClient) -
         if r.status_code == 404:
             return {}
         return r.json() if r.status_code == 200 else None
-    r = await gh_get(client, f"{GITHUB_API}/users/{owner}/repos", params={"sort": "pushed", "per_page": 10},
+    r = await gh_get(client, f"{GITHUB_API}/users/{owner}/repos", params={"sort": "pushed", "per_page": 100},
                          headers=_gh_headers(), timeout=8.0)
     if r.status_code == 404:
         return {}
     if r.status_code != 200:
         return None
-    own = [x for x in r.json() if not x.get("fork") and x.get("size")]
-    return max(own, key=lambda x: x.get("pushed_at") or "", default={})
+    # The account's main repository, not the last one touched: that was the
+    # profile (.github) or a data repo, and Beefy, Badger, Send were judged
+    # "almost no code" by it (19/10). Most stars, then the biggest.
+    own = [x for x in r.json() if isinstance(x, dict) and not x.get("fork") and x.get("size")
+           and (x.get("name") or "").lower() not in (".github", owner.lower())]
+    return max(own, key=lambda x: (x.get("stargazers_count") or 0, x.get("size") or 0), default={})
 
 
 _FIND_TTL_S = 7 * 86400

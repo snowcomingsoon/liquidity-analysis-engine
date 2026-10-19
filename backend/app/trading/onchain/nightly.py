@@ -560,8 +560,15 @@ async def sentinel_loop(*, clock: Callable[[], float] = time.time, sleep=asyncio
                 async with _research_lock, \
                         httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "Mozilla/5.0 (LiquidityEngine)"}) as client:
                     steps = steps_factory(client)
-                    if not steps.busy():
-                        await sentinel_once(steps, clock=clock, sleep=sleep)
+                    if steps.busy():
+                        logger.info("sentinel: skipped, an optimization is running")
+                    else:
+                        start = clock()
+                        ticks = await sentinel_once(steps, clock=clock, sleep=sleep)
+                        # One line per round: the only proof in the logs that it runs.
+                        logger.info("sentinel: round done, %d ticks in %.0f s", ticks, clock() - start)
+            elif settings.onchain_sentinel_enabled:
+                logger.info("sentinel: skipped, a research run is on")
         except Exception:
             logger.exception("sentinel: round failed")
         await sleep(SENTINEL_EVERY_S)

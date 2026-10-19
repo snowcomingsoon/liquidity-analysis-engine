@@ -45,6 +45,7 @@ WEIGHTS = {"github": 0.40, "site": 0.30, "tokenomics": 0.30}
 # GitHub
 GH_COMMITS_PAGE = 100
 GH_MIN_CODE_BYTES = 5_000          # sotto, e' un README con un file
+GH_REAL_CODE_BYTES = 20_000        # a single-day repository with this much code is a code drop, not a fake
 GH_TRIVIAL_MAX = 0.70              # oltre, i commit sono solo caricamenti e ritocchi al README
 GH_BORN_WITH_TOKEN_S = 3 * 86400
 # I messaggi che GitHub scrive da solo quando si modifica un file dal browser.
@@ -112,6 +113,7 @@ def _pending(key: str, why: str) -> dict:
 
 
 UNREADABLE_JS = "site built in JavaScript, not readable"
+EMPTY_BIG_HTML = 11_000
 
 
 def _unreadable(key: str, why: str, facts: dict | None = None) -> dict:
@@ -230,7 +232,10 @@ def judge_github(data: dict | None, launched_at: float | None = None, now: float
         fatal = "empty repository"
     elif code < GH_MIN_CODE_BYTES:
         fatal = f"almost no code ({code // 1024} KB)"
-    elif len(days) < 2:
+    elif len(days) < 2 and len(commits) < GH_COMMITS_PAGE and code < GH_REAL_CODE_BYTES:
+        # Only the last page of commits is read: a full page on one day is a
+        # busy repository (elizaOS, 19/10), and real code published in one
+        # go is a code drop, not a fake (it costs points below).
         fatal = "all commits on a single day"
     elif trivial_ratio > GH_TRIVIAL_MAX:
         fatal = f"{round(trivial_ratio * 100)}% of commits are uploads or README tweaks"
@@ -238,6 +243,9 @@ def judge_github(data: dict | None, launched_at: float | None = None, now: float
         flags.append("repository born with the token")
     if last_days is not None and last_days > 90:
         flags.append(f"idle for {round(last_days)} days")
+    one_day = len(days) < 2 and len(commits) < GH_COMMITS_PAGE and not fatal
+    if one_day:
+        flags.append("all commits on a single day")
     if len(authors) <= 1 and contributors <= 1:
         flags.append("single author")
     if trivial_ratio > 0.4 and not fatal:
@@ -255,6 +263,8 @@ def judge_github(data: dict | None, launched_at: float | None = None, now: float
     score *= 1 - 0.5 * trivial_ratio
     if "repository born with the token" in flags:
         score *= 0.8
+    if one_day:
+        score *= 0.7
     return _pillar("github", score, facts, flags)
 
 
@@ -384,6 +394,7 @@ def anatomy(html_text: str, base_url: str) -> dict:
     builder = next((b for b in _BUILDERS if b in generator or f"{b}." in html_text[:20000].lower()), None)
     return {
         "words": len(text.split()),
+        "html_bytes": len(html_text),
         "text": text,
         "internal": [u for _, u in internal],
         "docs": docs, "app": app, "github": github, "explorer": explorer,
@@ -449,6 +460,11 @@ def judge_site(page: dict | None, followed: list[dict], registered_at: float | N
     if page["lorem"]:
         return _pillar("site", 0, facts, flags, "placeholder text (lorem ipsum / coming soon)")
     empty = page["words"] < 40 and not page["internal"] and not page["spa"]
+    if empty and page.get("html_bytes", 0) >= EMPTY_BIG_HTML:
+        # A page our reader sees empty but that ships a real HTML is built
+        # by scripts: 15 of 60 "empty" rejections had real content in a
+        # browser (Drift, 19/10), every one over 11 KB of HTML.
+        return _unreadable("site", UNREADABLE_JS, facts)
     if empty:
         return _pillar("site", 0, facts, flags, "empty page")
     if not page["internal"] and not page["docs"] and not page["app"]:
@@ -564,11 +580,13 @@ def judge_tokenomics_solana(report: dict | None, exclude: set[str] | None = None
     lp_locked = max((float((m.get("lp") or {}).get("lpLockedPct") or 0) for m in report.get("markets") or []),
                     default=None)
     fee = float((report.get("transferFee") or {}).get("pct") or 0)
+    program_mint = bool(report.get("mintAuthority")) and legit.mint_by_program(report)
     out = _judge_tokenomics(
         top1=pcts[0] if pcts else 0.0, top10=sum(pcts[:10]), creator=creator_pct,
         holders=int(report.get("totalHolders") or 0), insiders=insiders, linked_pct=linked_pct,
         linked_verified=verified, lp_locked=lp_locked,
-        mintable=bool(report.get("mintAuthority")), freezable=bool(report.get("freezeAuthority")),
+        mintable=bool(report.get("mintAuthority")) and not program_mint,
+        freezable=bool(report.get("freezeAuthority")),
         tax=fee, rugged=bool(report.get("rugged")),
         # null = revoked (a real answer); a missing key = RugCheck didn't say.
         unknown=frozenset(k for k, present in (
@@ -576,8 +594,24 @@ def judge_tokenomics_solana(report: dict | None, exclude: set[str] | None = None
             ("mint", "mintAuthority" in report),
             ("freeze", "freezeAuthority" in report),
         ) if not present))
+    if program_mint:
+        _mint_controlled(out, "a program (governance, launchpad, issuer or staking)")
     return _with_contracts(out, sum(programs), programs[0] if programs else 0.0, sum(all_pcts[:10]),
                            "one program account holds", "held by programs (staking, vesting, locks or treasury)")
+
+
+MINT_CONTROLLED_PENALTY = 10
+
+
+def _mint_controlled(out: dict, by: str) -> None:
+    """Minting a contract or program controls: not fatal (Lorenzo, 19/10:
+    CRV, AERO, PENDLE, MetaDAO were rejected for it), flagged, and it costs
+    points, since a team multisig can still dilute."""
+    out["facts"]["mint_by"] = by
+    if out["fatal"]:
+        return
+    out["flags"].append(f"new tokens can be minted by {by}")
+    out["score"] = max(0, out["score"] - MINT_CONTROLLED_PENALTY)
 
 
 def _with_contracts(out: dict, in_contracts: float, biggest: float, top10_all: float,
@@ -656,13 +690,20 @@ def judge_tokenomics_evm(info: dict | None, pair_address: str = "", liquidity_us
         lp_locked = None
         lp_note = (f"GoPlus LP data covers ${lp_value:,.0f} of ${liquidity_usd:,.0f} liquidity: "
                    "the main pool's lock is not in it")
+    mint_control = info.get("mint_control") if str(info.get("is_mintable")) == "1" else None
     out = _judge_tokenomics(
         top1=pcts[0] if pcts else 0.0, top10=sum(pcts[:10]),
         creator=max(pct(info.get("creator_percent")), pct(info.get("owner_percent"))),
         holders=int(info.get("holder_count") or 0), insiders=0, lp_locked=lp_locked,
-        mintable=str(info.get("is_mintable")) == "1", freezable=str(info.get("transfer_pausable")) == "1",
+        mintable=str(info.get("is_mintable")) == "1" and mint_control not in legit.MINT_SAFE,
+        freezable=str(info.get("transfer_pausable")) == "1",
         tax=max(pct(info.get("buy_tax")), pct(info.get("sell_tax"))),
         rugged=str(info.get("is_honeypot")) == "1", unknown=unknown)
+    if mint_control in (legit.MINT_CONTRACT, legit.MINT_NO_OWNER):
+        _mint_controlled(out, "a contract (governance, timelock or minter)" if mint_control == legit.MINT_CONTRACT
+                         else "a minter contract or role (no owner)")
+    elif mint_control == legit.MINT_BRIDGE:
+        out["facts"]["mint_by"] = "the chain's bridge"
     if lp_note:
         out["facts"]["lp_note"] = lp_note
     out["facts"]["top_holders"] = [

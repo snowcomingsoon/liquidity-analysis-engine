@@ -211,7 +211,7 @@ NO_GITHUB_PENALTY = 10.0
 KOBRA_SCORE_WEIGHTS = {"usage": 0.25, "product": 0.35, "token": 0.20, "deepseek": 0.20}
 KOBRA_NO_GITHUB_PENALTY = 5.0
 KOBRA_GROWTH_WEIGHT = 20              # inside usage, next to volume/cap 45, volume 30, buyers 25
-RULES_VERSION = 13             # 2: "no GitHub" stopped being a ban; 3: radar launches out;
+RULES_VERSION = 14             # 2: "no GitHub" stopped being a ban; 3: radar launches out;
                                # 4: research read by reader.py, older bans and readings dropped;
                                # 5: reader recognises research-stage code and stated limits
                                # 6: no age limits, strict band from $100k to $2M, one rule chain
@@ -223,6 +223,7 @@ RULES_VERSION = 13             # 2: "no GitHub" stopped being a ban; 3: radar la
                                # 11: DexScreener's own links fill website/GitHub of rows without them
                                # 12: rows rejected for "a single wallet" are looked at again (contracts left out)
                                # 13: Solana program accounts leave the wallet limits like EVM contracts
+                               # 14: minting by a contract/program, busy or code-drop repos, script-built sites
 
 _entries: dict[str, dict] = {}     # chain:token
 _excluded: list[dict] = []
@@ -245,6 +246,8 @@ _dirty = False
 _reset_market = False     # set by _load when the stored rules predate version 10
 _requeue_fatals = False   # set by _load when the stored rules predate version 8
 _recheck_programs = False  # set by _load when the stored rules predate version 13
+_recheck_misreads = False  # set by _load when the stored rules predate version 14
+MISREAD_FATALS = ("new tokens can be minted", "all commits on a single day", "almost no code", "empty page")
 
 
 def _key(chain: str, token: str) -> str:
@@ -267,9 +270,19 @@ def _load() -> None:
             for e in _entries.values():
                 (e.get("pillars") or {}).pop("site", None)
                 (e.get("checked_at") or {}).pop("site", None)
-        global _requeue_fatals, _reset_market, _recheck_programs
+        global _requeue_fatals, _reset_market, _recheck_programs, _recheck_misreads
         if rules < 12:
             _reset_market = True
+        if rules < 14:
+            # Fatal verdicts that misread who can mint, a busy repository, an
+            # account's profile repo or a script-built site: read again.
+            _recheck_misreads = True
+            for e in _entries.values():
+                p = e.get("pillars") or {}
+                for name in [n for n, x in p.items()
+                             if any(m in ((x or {}).get("fatal") or "") for m in MISREAD_FATALS)]:
+                    p.pop(name, None)
+                    (e.get("checked_at") or {}).pop(name, None)
         if rules < 13:
             # Solana holders read with program accounts counted as wallets: read again.
             _recheck_programs = True
@@ -1844,6 +1857,8 @@ def startup_requeue() -> None:
         if _reset_market:
             # Wallet limits now leave contracts out (BV7X: 41% in a contract): look again.
             n += projects_db.recheck_studied(("a single wallet holds", "single wallet"), ("rejected",))
+        if _recheck_misreads:
+            n += projects_db.recheck_studied(MISREAD_FATALS, ("rejected", "studied"))
         if _recheck_programs:
             # Wallet limits now leave Solana program accounts out (19/10: MNDE, SONIC, NATIX).
             n += projects_db.recheck_studied(("a single wallet holds", "top 10 hold", "top 10 wallets hold"),

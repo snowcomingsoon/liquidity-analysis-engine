@@ -413,7 +413,7 @@ function pillarBlock(e, k, label) {
       + fact(f.top10_all_pct == null ? "Top 10" : "Top 10 wallets", f.top10_pct == null ? null : `${f.top10_pct}%`)
       + fact("Creator", f.creator_pct == null ? null : `${f.creator_pct}%`) + fact("Holder", f.holders)
       + fact("Locked liquidity", f.lp_locked_pct == null ? null : `${f.lp_locked_pct}%`)
-      + fact("Mint · freeze", f.mint == null ? null : `${f.mint ? "active" : "revoked"} · ${f.freeze ? "active" : "revoked"}`)
+      + fact("Mint · freeze", f.mint == null ? null : `${f.mint ? "active" : f.mint_by ? `by ${escapeHtml(f.mint_by)}` : "revoked"} · ${f.freeze ? "active" : "revoked"}`)
       + fact("Tax", f.tax_pct == null ? null : `${f.tax_pct}%`);
   }
   const flags = [...(p.flags ?? []), ...(f.red_flags ?? [])].map((x) => `<li>${escapeHtml(x)}</li>`).join("");

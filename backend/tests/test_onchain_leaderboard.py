@@ -2,6 +2,8 @@
 ordine. Tutto senza rete: i giudizi sono funzioni pure."""
 import time
 
+import asyncio
+
 import pytest
 
 from app.trading.onchain import depth, legit, leaderboard as lb
@@ -49,7 +51,7 @@ def test_github_upload_only_repo_is_rejected():
 
 def test_github_one_day_and_tiny_code_are_rejected():
     same_day = [_commit(NOW - i * 60) for i in range(20)]
-    assert "single day" in depth.judge_github(_repo(commits=same_day), now=NOW)["fatal"]
+    assert "single day" in depth.judge_github(_repo(commits=same_day, languages={"Rust": 12_000}), now=NOW)["fatal"]
     spread = [_commit(NOW - i * DAY) for i in range(20)]
     assert "code" in depth.judge_github(_repo(commits=spread, languages={"HTML": 900}), now=NOW)["fatal"]
 
@@ -1046,3 +1048,93 @@ def test_one_program_account_with_most_of_the_supply_still_fails():
     assert legit.program_share(_rug(holders=holders)) == (55.0, 55.0)
     check = legit.judge_rugcheck({**_rug(holders=holders), "risks": []})
     assert check["ok"] is False and "one program account holds 55%" in check["detail"]
+
+
+def test_github_code_drop_and_busy_repo_are_not_fakes():
+    """19/10: real code published in one day costs points; a full page of
+    commits on one day is a busy repository (elizaOS), not a fake."""
+    same_day = [_commit(NOW - i * 60) for i in range(20)]
+    spread = [_commit(NOW - i * DAY) for i in range(20)]
+    drop = depth.judge_github(_repo(commits=same_day), now=NOW)
+    assert not drop["fatal"] and "all commits on a single day" in drop["flags"]
+    assert drop["score"] < depth.judge_github(_repo(commits=spread), now=NOW)["score"]
+    busy = [_commit(NOW - i * 60) for i in range(depth.GH_COMMITS_PAGE)]
+    p = depth.judge_github(_repo(commits=busy, languages={"Rust": 12_000}), now=NOW)
+    assert not p["fatal"] and "all commits on a single day" not in p["flags"]
+
+
+def test_solana_mint_by_a_program_costs_points_not_the_project():
+    clean = depth.judge_tokenomics_solana(_rug())
+    by_program = depth.judge_tokenomics_solana({**_rug(), "token": {"supply": 1_000_000, "mintAuthority": PDA},
+                                                 "mintAuthority": PDA})
+    assert not by_program["fatal"] and by_program["score"] == clean["score"] - depth.MINT_CONTROLLED_PENALTY
+    assert "program" in by_program["facts"]["mint_by"]
+    by_wallet = depth.judge_tokenomics_solana({**_rug(), "mintAuthority": WALLET})
+    assert "minted" in by_wallet["fatal"]
+    risk = {"risks": [{"name": "Mint Authority still enabled", "level": "danger"}]}
+    assert "Mint" not in (legit.judge_rugcheck({**_rug(), **risk, "mintAuthority": PDA})["detail"] or "")
+    assert legit.judge_rugcheck({**_rug(), **risk, "mintAuthority": WALLET})["ok"] is False
+
+
+def _goplus(**kw):
+    return {"is_mintable": "1", "holder_count": "3000", "transfer_pausable": "0", "buy_tax": "0", "sell_tax": "0",
+            "holders": [{"address": f"0x{i:040x}", "percent": "0.02", "is_contract": 0} for i in range(1, 11)],
+            "lp_holders": [], **kw}
+
+
+@pytest.mark.parametrize("control,fatal", [("wallet", True), ("unknown", True), (None, True),
+                                           ("contract", False), ("no owner", False), ("bridge", False)])
+def test_evm_mint_is_fatal_only_with_a_wallet_behind_it(control, fatal):
+    p = depth.judge_tokenomics_evm(_goplus(**({"mint_control": control} if control else {})))
+    assert bool(p["fatal"]) == fatal
+    assert ("supply can be minted" in (legit.judge_goplus(_goplus(**({"mint_control": control} if control else {})))
+                                       .get("detail") or "")) == fatal
+
+
+def test_evm_mint_control_reads_bridge_owner_and_code(monkeypatch):
+    from app.trading.onchain import unlocks
+    answers = {}
+
+    async def rpc(chain, method, params, client):
+        key = params[0]["data"] if method == "eth_call" else params[0]
+        return answers.get((method, key))
+    monkeypatch.setattr(unlocks, "_rpc", rpc)
+    word = "0x" + "0" * 24 + "ab" * 20
+    run = lambda info: asyncio.run(legit.evm_mint_control("base", "0xt", info, None))  # noqa: E731
+    answers[("eth_call", "0xd6c0b2c4")] = word
+    assert run({}) == legit.MINT_BRIDGE
+    answers.clear()
+    assert run({}) == legit.MINT_NO_OWNER
+    owner = "0x" + "ab" * 20
+    answers[("eth_getCode", owner)] = "0x6080"
+    assert run({"owner_address": owner}) == legit.MINT_CONTRACT
+    answers[("eth_getCode", owner)] = "0x"
+    assert run({"owner_address": owner}) == legit.MINT_WALLET
+    answers.pop(("eth_getCode", owner))
+    assert run({"owner_address": owner}) == legit.MINT_UNKNOWN
+
+
+def test_an_account_is_judged_by_its_main_repository(monkeypatch):
+    class R:
+        status_code = 200
+
+        def json(self):
+            return [{"name": ".github", "size": 5, "pushed_at": "2026-10-19", "stargazers_count": 0},
+                    {"name": "data", "size": 900, "pushed_at": "2026-10-18", "stargazers_count": 1},
+                    {"name": "beefy-v2", "size": 50_000, "pushed_at": "2026-09-01", "stargazers_count": 300},
+                    {"name": "fork", "size": 90_000, "fork": True, "stargazers_count": 999}]
+
+    async def gh_get(client, url, **kw):
+        return R()
+    monkeypatch.setattr(legit, "gh_get", gh_get)
+    assert asyncio.run(legit.github_repo("beefyfinance", None, None))["name"] == "beefy-v2"
+
+
+def test_a_script_built_page_is_unreadable_not_empty():
+    html = "<html><head>" + "<script>var x=1;</script>" * 600 + "</head><body><p>Loading</p></body></html>"
+    page = {**depth.anatomy(html, "https://x.io"), "url": "https://x.io"}
+    assert page["html_bytes"] >= depth.EMPTY_BIG_HTML and page["words"] < 40
+    site = depth.judge_site(page, [], None, now=NOW)
+    assert not site["fatal"] and site["unreadable"]
+    small = {**depth.anatomy("<html><body><p>Hi</p></body></html>", "https://x.io"), "url": "https://x.io"}
+    assert depth.judge_site(small, [], None, now=NOW)["fatal"] == "empty page"
