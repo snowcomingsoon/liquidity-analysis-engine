@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0351", "Candele: meno limiti e attese da GeckoTerminal, e candele Ethereum proprie",
+     "Lorenzo, 19/10, con ISTRUZIONI_CLAUDE_SQUID.md: 'ridurre i limiti e le attese nell'acquisizione delle candele, coordinando prima tutte le richieste GeckoTerminal e introducendo poi un provider autonomo per le pool Ethereum Uniswap V3. Usa come riferimento https://github.com/subsquid-labs/uniswapv3-squid'.",
+     "media"),
     ("seed-0350", "Con DeepSeek spento la ricerca lo chiama comunque",
      "Lorenzo, 19/10, dopo il controllo della ricerca delle 3 (75 errori nei log, 52 di DeepSeek spento): 'forse ha senso anche impedire direttamente che chiamino DeepSeek che comunque e' spento e quindi non puo' rispondere, no?'.",
      "bassa"),

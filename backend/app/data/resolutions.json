@@ -3234,5 +3234,10 @@
     "status": "risolto",
     "at": 1792393730,
     "summary": "Con DeepSeek spento per la ricerca, i passi che lo usano (narrative, controllo di coerenza, giudice, revisione della classifica, lettura del codice, lettura AI del sito, dossier, studi, riassunto Telegram) ora si fermano subito, senza provarci. Oltre a togliere gli errori dai log, si risparmiano letture inutili: la lettura del codice scaricava i file da GitHub consumando la sua quota, e il giudice leggeva X, Telegram e Discord per una risposta che non sarebbe mai arrivata. La chat con DeepSeek resta come prima. Riaccendendo DeepSeek per la ricerca tutto riparte da solo."
+  },
+  "seed-0351": {
+    "status": "scartato",
+    "at": 1792409223,
+    "summary": "Resta online la prima parte: tutte le richieste a GeckoTerminal passano da un unico regolatore, con pausa comune dopo un rifiuto. Le candele Ethereum costruite in proprio (Squid) sono state provate e abbandonate: coprivano solo 2 delle 101 pool dell'archivio, nella prova reale mostravano scarti di prezzo e di volume non spiegati rispetto a GeckoTerminal, e per funzionare servivano un nodo Ethereum e un accesso SQD a pagamento. Lorenzo: 'non vale la pena implementare niente di tutto questo'."
   }
 }
