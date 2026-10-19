@@ -404,7 +404,13 @@ function pillarBlock(e, k, label) {
       + fact("Sections", (f.sections ?? []).join(", ") || null)
       + fact("Domain", f.domain_days == null ? null : `registered ${f.domain_days} d ago`);
   } else {
-    rows = fact("Top wallet", f.top1_pct == null ? null : `${f.top1_pct}%`) + fact("Top 10", f.top10_pct == null ? null : `${f.top10_pct}%`)
+    // The split behind the 40% limit (Lorenzo, 19/10): the top 10 of every
+    // holder, then what is held by contracts / program accounts (left out of
+    // the limit), then the wallets the limit is measured on.
+    rows = fact("Top wallet", f.top1_pct == null ? null : `${f.top1_pct}%`)
+      + fact("Top 10, all holders", f.top10_all_pct == null ? null : `${f.top10_all_pct}%`)
+      + fact("In contracts / programs", f.contracts_pct == null ? null : `${f.contracts_pct}%`)
+      + fact(f.top10_all_pct == null ? "Top 10" : "Top 10 wallets", f.top10_pct == null ? null : `${f.top10_pct}%`)
       + fact("Creator", f.creator_pct == null ? null : `${f.creator_pct}%`) + fact("Holder", f.holders)
       + fact("Locked liquidity", f.lp_locked_pct == null ? null : `${f.lp_locked_pct}%`)
       + fact("Mint · freeze", f.mint == null ? null : `${f.mint ? "active" : "revoked"} · ${f.freeze ? "active" : "revoked"}`)
