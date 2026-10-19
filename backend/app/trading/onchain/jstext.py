@@ -325,6 +325,16 @@ async def render(url: str, allow_host: Callable[[str], Awaitable[bool]]) -> str 
         hosts: dict[str, bool] = {}
 
         async def route(r):
+            # A request still in flight when the page closes cannot be
+            # answered any more: Playwright raised it from its event listener
+            # ("handler is closed", 4 tracebacks in 30 minutes, 19/10).
+            try:
+                await _route(r)
+            except Exception as exc:
+                if "closed" not in str(exc).lower():
+                    logger.warning("headless render: request not handled: %s", exc)
+
+        async def _route(r):
             req = r.request
             if req.resource_type in ("image", "media", "font"):
                 return await r.abort()
