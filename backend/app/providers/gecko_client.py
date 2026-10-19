@@ -12,7 +12,8 @@ What this module owns, for the whole process:
 - one window of the requests sent in the last minute: background callers
   stop at BACKGROUND_SHARE of the learned limit, urgent ones (someone
   waiting on a chart, `urgent` context) at the limit, the same window:
-  urgent capacity is part of the ceiling, never added to it (caps());
+  urgent capacity is part of the ceiling, never added to it (caps(),
+  following the share of 429s);
 - a cooldown after a 429, as long as its Retry-After (DEFAULT_COOLDOWN_S
   without one), that every caller waits out;
 - counters per caller: requests, 429s, other errors, time spent waiting,
@@ -44,13 +45,19 @@ logger = logging.getLogger(__name__)
 
 WINDOW_S = 60.0
 # The ceiling is learned, not assumed (19/10): at 13 requests a minute, under
-# the old fixed 28, GeckoTerminal refused 30 of 84 (36%), and every 429 cost a
-# request and a wait of up to a minute for all. The limit drops by a quarter
-# on a 429 and climbs by one after RAISE_EVERY_S without one.
+# the old fixed 28, GeckoTerminal refused 30 of 84 (36%); dropping by a quarter
+# on every 429 then sank it to 5 a minute, where it still refused 5% and the
+# answers fell from 8.3 to 3.9 a minute. A few 429s are GeckoTerminal's
+# noise: the limit follows the share of 429s over the last RATE_WINDOW_S,
+# down when it passes LOWER_ABOVE, up one step when it stays under RAISE_BELOW.
 GLOBAL_PER_MIN = 28          # never above this
-MIN_PER_MIN = 5              # never below this
-START_PER_MIN = 10           # where a restart begins
-RAISE_EVERY_S = 300.0
+MIN_PER_MIN = 8              # never below this
+START_PER_MIN = 12           # where a restart begins
+RAISE_EVERY_S = 120.0        # at most one step up per this
+LOWER_EVERY_S = 60.0         # at most one step down per this
+RATE_WINDOW_S = 300.0
+LOWER_ABOVE, RAISE_BELOW = 0.15, 0.05
+MIN_SAMPLE = 10              # answers in the window before the share means anything
 BACKGROUND_SHARE = 0.6       # of the limit the background may use: the rest waits for a person
 BACKGROUND_PER_MIN = round(GLOBAL_PER_MIN * BACKGROUND_SHARE)    # at the top of the range
 DEFAULT_COOLDOWN_S = 5.0     # a 429 without Retry-After
@@ -59,7 +66,8 @@ MAX_WAIT_STEP_S = 5.0
 
 urgent: contextvars.ContextVar[bool] = contextvars.ContextVar("gecko_urgent", default=False)
 calls: deque[float] = deque()            # monotonic times of the requests in the window
-_state = {"cooldown_until": 0.0, "limit": float(START_PER_MIN), "raised_at": 0.0}
+_state = {"cooldown_until": 0.0, "limit": float(START_PER_MIN), "changed_at": 0.0}
+answers: deque[tuple[float, bool]] = deque()     # (monotonic time, was a 429) of the last RATE_WINDOW_S
 _metrics: dict[str, dict[str, float]] = {}
 _started = time.time()
 
@@ -67,26 +75,34 @@ _started = time.time()
 def reset_for_tests() -> None:
     _saved["at"] = 0.0
     calls.clear()
-    _state.update(cooldown_until=0.0, limit=float(START_PER_MIN), raised_at=0.0)
+    answers.clear()
+    _state.update(cooldown_until=0.0, limit=float(START_PER_MIN), changed_at=0.0)
     _metrics.clear()
 
 
-def caps(now: float | None = None) -> tuple[int, int]:
-    """(background, urgent) requests a minute allowed now; climbs back one
-    step per RAISE_EVERY_S since the last 429 or raise."""
+def refused_share(now: float | None = None) -> tuple[float, int]:
+    """(share of 429s, answers) over the last RATE_WINDOW_S."""
     now = time.monotonic() if now is None else now
-    if not _state["raised_at"]:
-        _state["raised_at"] = now
-    while now - _state["raised_at"] >= RAISE_EVERY_S and _state["limit"] < GLOBAL_PER_MIN:
-        _state["limit"] = min(GLOBAL_PER_MIN, _state["limit"] + 1)
-        _state["raised_at"] += RAISE_EVERY_S
+    while answers and now - answers[0][0] > RATE_WINDOW_S:
+        answers.popleft()
+    n = len(answers)
+    return (sum(1 for _, r in answers if r) / n if n else 0.0), n
+
+
+def caps(now: float | None = None) -> tuple[int, int]:
+    """(background, urgent) requests a minute allowed now, the limit moved
+    by the share of 429s: down 15% past LOWER_ABOVE, up one under RAISE_BELOW."""
+    now = time.monotonic() if now is None else now
+    if not _state["changed_at"]:
+        _state["changed_at"] = now
+    share, n = refused_share(now)
+    since = now - _state["changed_at"]
+    if n >= MIN_SAMPLE and share > LOWER_ABOVE and since >= LOWER_EVERY_S:
+        _state.update(limit=max(float(MIN_PER_MIN), _state["limit"] * 0.85), changed_at=now)
+    elif share < RAISE_BELOW and since >= RAISE_EVERY_S and _state["limit"] < GLOBAL_PER_MIN:
+        _state.update(limit=min(float(GLOBAL_PER_MIN), _state["limit"] + 1), changed_at=now)
     limit = int(_state["limit"])
     return max(1, round(limit * BACKGROUND_SHARE)), limit
-
-
-def _lower(now: float) -> None:
-    _state["limit"] = max(float(MIN_PER_MIN), _state["limit"] * 0.75)
-    _state["raised_at"] = now
 
 
 def load() -> int:
@@ -147,11 +163,10 @@ def retry_after_s(resp: httpx.Response) -> float:
 
 
 def note_response(resp: httpx.Response, caller: str) -> None:
+    answers.append((time.monotonic(), resp.status_code == 429))
     if resp.status_code == 429:
         _m(caller)["http_429"] += 1
         until = time.monotonic() + retry_after_s(resp)
-        if time.monotonic() >= _state["cooldown_until"]:
-            _lower(time.monotonic())       # once per cooldown: the 429s of one burst are one signal
         if until > _state["cooldown_until"]:
             _state["cooldown_until"] = until
             logger.info("GeckoTerminal 429 (%s): every caller waits %.0fs", caller, until - time.monotonic())
@@ -188,7 +203,9 @@ def metrics() -> dict:
     total = {f: sum(r[f] for r in _metrics.values()) for f in ("requests", "http_429", "errors", "cache_hits")}
     ohlcv = sum(v["requests"] for k, v in _metrics.items() if k.startswith("ohlcv"))
     background, top = caps()
+    share, n = refused_share()
     return {"since": _started, "window_now": load(), "global_per_min": top,
+            "refused_share_5min": round(share, 3), "answers_5min": n,
             "background_per_min": background, "ceiling_per_min": GLOBAL_PER_MIN,
             "cooldown_s": round(max(0.0, _state["cooldown_until"] - time.monotonic()), 1),
             "total": total, "ohlcv_requests": ohlcv, "other_requests": total["requests"] - ohlcv,

@@ -95,19 +95,31 @@ def test_metrics_are_saved_for_a_look_from_outside(tmp_path):
     assert not g.save(p, now=1_010.0)                              # every 5 minutes
 
 
-def test_the_limit_is_learned_from_the_429s():
-    """19/10: GeckoTerminal refused 36% at 13 a minute; the limit follows it."""
-    g._state["limit"] = float(g.START_PER_MIN)
-    start = g.caps()[1]
-    asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
-    lowered = g.caps()[1]
-    assert lowered < start
-    asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
-    assert g.caps()[1] < lowered
-    for _ in range(40):
-        g.calls.clear()
-        asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
-    assert g.caps()[1] == g.MIN_PER_MIN
+def test_the_limit_follows_the_share_of_429s():
+    """19/10: a few 429s are noise (5% even at 4 a minute); a lot of them
+    (36% at 13 a minute) are the limit."""
     now = time.monotonic()
-    assert g.caps(now + 3 * g.RAISE_EVERY_S + 1)[1] == g.MIN_PER_MIN + 3
-    assert g.caps(now + 1000 * g.RAISE_EVERY_S)[1] == g.GLOBAL_PER_MIN
+    g._state.update(limit=float(g.START_PER_MIN), changed_at=now)
+    g.answers.extend([(now, False)] * 19 + [(now, True)])          # 5%: noise
+    assert g.caps(now + g.LOWER_EVERY_S)[1] == g.START_PER_MIN
+    g.answers.extend([(now, True)] * 10)                           # 37%: the limit
+    lowered = g.caps(now + g.LOWER_EVERY_S)[1]
+    assert lowered < g.START_PER_MIN
+    assert g.caps(now + g.LOWER_EVERY_S + 1)[1] == lowered         # one step per LOWER_EVERY_S
+    g.answers.clear()
+    t = now + g.LOWER_EVERY_S
+    for _ in range(3):
+        t += g.RAISE_EVERY_S
+        g.caps(t)
+    assert g.caps(t)[1] == lowered + 3
+    for _ in range(100):
+        g.answers.extend([(t, True)] * 10)
+        t += g.LOWER_EVERY_S
+        g.caps(t)
+    assert g.caps(t)[1] == g.MIN_PER_MIN
+
+
+def test_a_429_is_counted_in_the_share():
+    asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
+    asyncio.run(g.request(_Client([200]), "https://x", caller="usage"))
+    assert g.refused_share() == (0.5, 2)
