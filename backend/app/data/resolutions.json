@@ -3234,5 +3234,10 @@
     "status": "risolto",
     "at": 1792393730,
     "summary": "Con DeepSeek spento per la ricerca, i passi che lo usano (narrative, controllo di coerenza, giudice, revisione della classifica, lettura del codice, lettura AI del sito, dossier, studi, riassunto Telegram) ora si fermano subito, senza provarci. Oltre a togliere gli errori dai log, si risparmiano letture inutili: la lettura del codice scaricava i file da GitHub consumando la sua quota, e il giudice leggeva X, Telegram e Discord per una risposta che non sarebbe mai arrivata. La chat con DeepSeek resta come prima. Riaccendendo DeepSeek per la ricerca tutto riparte da solo."
+  },
+  "seed-0351": {
+    "status": "in corso",
+    "at": 1792407821,
+    "summary": "Fatto e online: tutte le richieste a GeckoTerminal passano da un unico regolatore (prima scanner, listing, prezzi, radar, ricerca e scheda token lo scavalcavano), con pausa comune dopo un rifiuto e contatori per ogni parte del sito. Preparato ma spento: un indicizzatore proprio per le pool Ethereum Uniswap V3 che costruisce le candele dagli scambi on-chain, e il collegamento che lo usa solo quando copre tutto il periodo richiesto. Nella prova reale le candele coincidono con GeckoTerminal sulla pool piu' liquida (scarto 0.03%), ma su altre c'e' uno scarto costante pari alla commissione e il volume ha picchi non spiegati: per questo resta spento. Copre solo 2 delle 101 pool dell'archivio, e per usarlo davvero servono un nodo Ethereum e un accesso SQD non pubblici."
   }
 }
