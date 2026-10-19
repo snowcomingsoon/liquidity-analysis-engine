@@ -159,3 +159,13 @@ def test_project_also_shows_in_its_other_narratives(monkeypatch):
     assert [(e["symbol"], e["also"]) for e in rwa["entries"]] == [("R", True)]
     # One podium place, in the arena it competes for.
     assert [(e["symbol"], e["arena"]) for e in out["p4p"]] == [("R", "privacy")]
+
+
+def test_podium_fills_three_steps_from_small_arenas(monkeypatch):
+    """Two arenas of two have no spread: their leaders still stand on the
+    podium after the ones that lead by a z (Lorenzo, 19/10: two steps only)."""
+    monkeypatch.setattr(arenas, "_catalog", lambda: CAT)
+    es = [_e(f"A{i}", s, ["ai_agents"]) for i, s in enumerate([90, 70, 60])] + \
+         [_e("P0", 80, ["privacy"]), _e("P1", 50, ["privacy"]), _e("R0", 75, ["rwa"]), _e("R1", 55, ["rwa"])]
+    out = arenas.build(es, ladder={}, tenure={})
+    assert [e["symbol"] for e in out["p4p"]][:3] == ["A0", "P0", "R0"]

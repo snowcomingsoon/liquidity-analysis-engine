@@ -232,3 +232,42 @@ def test_linkless_rows_get_a_verdict_and_return_when_links_appear():
     db.apply_pairs("solana", ["Bare"], [{**_pair("Bare", 500_000, 50_000),
                                           "info": {"websites": [{"url": "https://bare.io"}]}}], T0 + 60)
     assert [p["token"] for p in db.due_for_analysis(10, now=T0 + 60)] == ["Bare"]
+
+
+def test_one_evm_contract_is_one_project_whatever_the_case():
+    """PRIORS entered twice, checksummed and lowercase (Lorenzo, 19/10)."""
+    mixed, low = "0xAbCdEf0000000000000000000000000000000001", "0xabcdef0000000000000000000000000000000001"
+    assert lb.add({"chain": "base", "token_address": mixed, "symbol": "PRIORS"}, "jupiter", T0)
+    assert not lb.add({"chain": "base", "token_address": low, "symbol": "Priors Agents"}, "coingecko", T0 + 1)
+    assert list(lb._entries) == [f"base:{low}"] and lb._entries[f"base:{low}"]["token_address"] == low
+    assert db.get("base", mixed)["token"] == low
+    # Solana addresses are case-sensitive: two spellings are two tokens.
+    assert db.upsert({"chain": "solana", "token_address": "AbC"}, "jupiter", T0)
+    assert db.upsert({"chain": "solana", "token_address": "abc"}, "jupiter", T0)
+
+
+def test_mixed_case_rows_merge_into_the_lowercase_one(monkeypatch, tmp_path):
+    import sqlite3
+    path = tmp_path / "old.db"
+    c = sqlite3.connect(path)
+    c.executescript(db._SCHEMA)
+    rows = [("base:0xAB", "base", "0xAB", "ranked", 70), ("base:0xab", "base", "0xab", "rejected", None),
+            ("bsc:0xCD", "bsc", "0xCD", "studied", 60)]
+    c.executemany("INSERT INTO projects (key, chain, token, status, score, first_seen, last_seen)"
+                  " VALUES (?, ?, ?, ?, ?, 0, 0)", rows)
+    c.commit()
+    c.close()
+    monkeypatch.setattr(db, "_DB_FILE", path)
+    got = {r["key"]: r["status"] for r in db._db().execute("SELECT key, status FROM projects")}
+    assert got == {"base:0xab": "ranked", "bsc:0xcd": "studied"}
+
+
+def test_board_entries_merge_their_spellings():
+    lb._entries.update({
+        "base:0xAB": {"chain": "base", "token_address": "0xAB", "rank": 3, "pillars": {"site": {}}, "found_at": 2},
+        "base:0xab": {"chain": "base", "token_address": "0xab", "rank": None, "pillars": {}, "found_at": 1},
+    })
+    lb._gone["bsc:0xEF"] = 5.0
+    lb._merge_spellings()
+    assert list(lb._entries) == ["base:0xab"] and lb._entries["base:0xab"]["rank"] == 3
+    assert lb._gone == {"bsc:0xef": 5.0}

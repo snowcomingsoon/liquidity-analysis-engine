@@ -141,7 +141,7 @@ async function showScan(d, list, took) {
     <ul class="scan-checks">${(d.checks ?? []).map((c) => `<li data-ok="${c.ok === true ? "yes" : c.ok === false ? "no" : "unknown"}">
       <span>${escapeHtml(c.label)}</span><small>${escapeHtml(c.detail ?? "")}</small></li>`).join("")}</ul>
     <details class="scan-trail"><summary>Scout ran ${ran} checks${took ? ` in ${took}s` : ""}</summary><ol class="scan-steps is-done">${stepsDone}</ol></details>
-    <div class="scan-links">${g && (g.status === "unknown" || g.status === "rejected" || g.status === "studied") ? `<button type="button" class="btn-quiet scan-add" data-add><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg><span>${g.status === "unknown" ? "Add to database" : "Study again"}</span></button>` : ""}
+    <div class="scan-links">${g && !g.added && (g.status === "unknown" || g.status === "rejected" || g.status === "studied") ? `<button type="button" class="btn-quiet scan-add" data-add><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg><span>${g.status === "unknown" ? "Add to database" : "Study again"}</span></button>` : ""}
     <button type="button" class="btn-quiet" data-full>Full token page</button>
     ${t.pair_url ? `<a class="btn-quiet" href="${escapeHtml(t.pair_url)}" target="_blank" rel="noopener">DexScreener</a>` : ""}</div>`);
   bodyEl.animate?.([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
@@ -229,6 +229,7 @@ function recheckBlock(r) {
 }
 
 function gemStatus(g) {
+  if (g.added) return ["pass", `Gem Finder: added · score ${g.score} · the board studies it now`];
   if (g.status === "ranked") return ["pass", `Gem Finder: ranked #${g.rank} · score ${g.score}`];
   if (g.status === "unknown") return g.score == null ? ["wait", "Gem Finder: not studied yet"]
     : g.why ? ["wait", `Scout: would not rank yet · ${g.why}`] : ["pass", `Scout: would qualify · score ${g.score}`];

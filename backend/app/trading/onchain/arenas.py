@@ -53,7 +53,8 @@ LAYER_CHAIN = "layer"
 MIN_SIZE = 2                       # an arena of one has no peers: its project goes elsewhere
 SPREAD_MIN = 3                     # a spread needs at least three projects
 SPREAD_FLOOR = 5.0                 # points: five near-equal scores are not "+4 sigma"
-P4P_SIZE = 3
+P4P_SIZE = 3                       # shown; P4P_SEND go out, so a hidden one leaves room
+P4P_SEND = 10
 
 BLOCKS = ("usage", "participation", "product", "token", "deepseek")
 RATING_START = 1500.0
@@ -196,8 +197,9 @@ def build(entries: list[dict], ladder: dict | None = None, prefer: set[str] | No
         label = LABELS.get(key) or (cat.get(key) or {}).get("label") or key
         arenas.append({"key": key, "label": label, "heat": _heat(key, cat), "size": len(rows),
                        "median": round(med, 1), "entries": rows})
-        lead = rows[0]
-        if lead["z"] is not None and lead["z"] > 0 and key != OTHER and not lead.get("also"):
+        # The arena's own leader: a copy from another narrative competes there.
+        lead = next((r for r in rows if not r.get("also")), None)
+        if lead is not None and key != OTHER:
             p4p.append({**lead, "arena": key, "arena_label": label})
     if record:
         # Out of the pool (a gate, a rejection, a rug): out now, and a return starts afresh.
@@ -212,8 +214,11 @@ def build(entries: list[dict], ladder: dict | None = None, prefer: set[str] | No
                            "size": 0, "median": 0.0, "entries": []})
     arenas.sort(key=lambda a: (not a["entries"], a["key"] not in FIRST, a["key"] == OTHER, -a["heat"],
                                -_score(a["entries"][0]) if a["entries"] else 0.0))
-    p4p.sort(key=lambda e: -e["z"])
-    return {"arenas": arenas, "p4p": p4p[:P4P_SIZE],
+    # Leaders by how far they lead (z) first; then, so the podium never stands
+    # with two steps (Lorenzo, 19/10), the leaders of the arenas too small
+    # for a spread or led by a hair, by score.
+    p4p.sort(key=lambda e: (not (e["z"] or 0) > 0, -(e["z"] or 0), -_score(e)))
+    return {"arenas": arenas, "p4p": p4p[:P4P_SEND],
             "ladder": {"nights": ladder.get("nights") or 0, "ready": (ladder.get("nights") or 0) >= LADDER_READY_NIGHTS}}
 
 

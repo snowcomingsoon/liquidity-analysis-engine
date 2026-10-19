@@ -3264,5 +3264,20 @@
     "status": "risolto",
     "at": 1792447004,
     "summary": "Spidey Show era passato per due buchi. Il suo sito e' fatto in JavaScript e non si legge, e in quel caso il controllo del sito dava un voto neutro di 50 ignorando che la descrizione non diceva niente (nessun prodotto, il token senza un ruolo). Inoltre il 68% della supply era in 54 wallet collegati fra loro, un lancio coordinato, ma era solo una segnalazione. Ora un sito illeggibile con una descrizione vuota scarta il progetto, e lo scarta anche avere piu' della meta' della supply in wallet collegati. Dalla Top escono Spidey Show, ARGUS, GDAO e BASK, tutti nella stessa situazione."
+  },
+  "seed-0357": {
+    "status": "risolto",
+    "at": 1792449898,
+    "summary": "Lo stesso contratto era entrato due volte perche' gli indirizzi EVM erano salvati come arrivavano, a volte con maiuscole e minuscole miste: per il sistema erano due token diversi. Ora l'indirizzo di contratto e' uno solo, sempre in minuscolo, nella bacheca e nel database; i doppioni gia' salvati sono stati fusi (resta la riga piu' avanti). Nella Top e nelle arene lo stesso indirizzo compare una volta sola, anche se e' su due chain diverse."
+  },
+  "seed-0358": {
+    "status": "risolto",
+    "at": 1792449898,
+    "summary": "La scansione manuale leggeva il token e dava un punteggio, ma non lo metteva in bacheca: serviva premere 'Add to database', e il punteggio era calcolato con i pesi standard, non con quelli delle tue arene. Ora, se la lettura passa, il token entra da solo e la bacheca lo studia subito; il punteggio mostrato usa i pesi del tuo account; e se manca qualcosa per la Top (per esempio la soglia dei 300 mila di capitalizzazione) la scheda lo dice invece di scrivere 'would qualify'."
+  },
+  "seed-0359": {
+    "status": "risolto",
+    "at": 1792449898,
+    "summary": "Il podio prendeva solo il primo di ogni arena con almeno tre progetti e un vantaggio misurabile, poi tagliava a tre sul server: un token nascosto o un'arena piccola lasciavano due gradini. Ora arrivano fino a dieci candidati, il podio si riempie anche con i primi delle arene piccole (dopo quelli in netto vantaggio) e il primo di un'arena e' sempre un suo progetto, non una copia da un'altra narrativa. La Top resta le migliori 25 per punteggio: le arene sembrano piu' grandi perche' un progetto con piu' narrative compare in piu' arene."
   }
 }

@@ -10,7 +10,7 @@ from app.auth import get_current_user
 def test_stream_sends_id_and_keeps_result_for_a_dropped_client(monkeypatch):
     from app.trading.onchain import manual_scan
 
-    async def fake_scan(query, emit=None):
+    async def fake_scan(query, emit=None, **kw):
         emit({"plan": ["dex"]})
         return {"token": {"symbol": query}}
 

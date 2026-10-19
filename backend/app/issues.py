@@ -165,6 +165,15 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0359", "Podio con due soli token e Top che non si riempie",
+     "Lorenzo, 19/10: 'il podio, che non si aggiorna sempre bene e a volte rimangono solo due token sul podio. Lo stesso vale per la sezione top [...] non riesca a riempirsi in modo diciamo corretto'.",
+     "media"),
+    ("seed-0358", "Scansione manuale: punteggio da arena ma il token non entra",
+     "Lorenzo, 19/10: 'capire se funziona bene la scansione di un token manualmente [...] ho ricevuto un punteggio che sarebbe entrato nelle arene, ma poi nelle arene il token in questione non e' entrato'.",
+     "media"),
+    ("seed-0357", "Doppioni: PRIORS e Priors Agents con lo stesso contratto",
+     "Lorenzo, 19/10: 'il problema dei doppioni [...] Priors e Priors Agents, che hanno pero' lo stesso contratto [...] Deve far fede l'indirizzo di contratto'.",
+     "media"),
     ("seed-0356", "Spidey Show, una meme coin, entrato nelle gemme",
      "Lorenzo, 19/10: 'Con le ultime modifiche ho visto passare un progetto che assolutamente non deve passare. Si tratta del progetto Spidey Show, che e' entrato nelle gemme e e' una meme coin a tutti gli effetti. Bisogna capire come ha fatto a entrare, perche', e risolvere il problema'.",
      "alta"),

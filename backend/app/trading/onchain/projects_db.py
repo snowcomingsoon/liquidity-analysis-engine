@@ -85,6 +85,7 @@ def _db() -> sqlite3.Connection:
             _conn.execute("ALTER TABLE projects ADD COLUMN cg_mcap REAL")
         if "narr_at" not in cols:  # when DeepSeek mapped the row's narratives (narrative_map.py)
             _conn.execute("ALTER TABLE projects ADD COLUMN narr_at REAL")
+        _merge_spellings(_conn)
         _conn_path = _DB_FILE
     return _conn
 
@@ -95,8 +96,40 @@ def reset_for_tests() -> None:
         _db().commit()
 
 
+def norm_token(token: str) -> str:
+    """One spelling per contract. EVM addresses ignore case, and PRIORS entered
+    twice, once checksummed and once lowercase (Lorenzo, 19/10: "deve far fede
+    l'indirizzo di contratto"). Solana, Tron and TON addresses are case-sensitive
+    and never start with 0x (base58 has no 0)."""
+    t = (token or "").strip()
+    return t.lower() if t[:2].lower() == "0x" else t
+
+
+_STATUS_RANK = {"ranked": 4, "studied": 3, "analyzing": 2, "new": 1, "rejected": 0}
+
+
+def _merge_spellings(conn: sqlite3.Connection) -> None:
+    """Rows saved under a mixed-case EVM address: renamed to the lowercase one,
+    and when both exist only the more advanced row stays."""
+    rows = conn.execute("SELECT key, chain, token, status, score, first_seen FROM projects"
+                        " WHERE token LIKE '0x%' AND token != lower(token)").fetchall()
+    for r in rows:
+        low = norm_token(r["token"])
+        lk = f"{r['chain']}:{low}"
+        other = conn.execute("SELECT key, status, score, first_seen FROM projects WHERE key = ?", (lk,)).fetchone()
+        if other is not None:
+            rank = lambda x: (_STATUS_RANK.get(x["status"], 0), x["score"] or 0, -(x["first_seen"] or 0))  # noqa: E731
+            if rank(other) >= rank(r):
+                conn.execute("DELETE FROM projects WHERE key = ?", (r["key"],))
+                continue
+            conn.execute("DELETE FROM projects WHERE key = ?", (lk,))
+        conn.execute("UPDATE projects SET key = ?, token = ? WHERE key = ?", (lk, low, r["key"]))
+    if rows:
+        conn.commit()
+
+
 def key(chain: str, token: str) -> str:
-    return f"{chain}:{token}"
+    return f"{chain}:{norm_token(token)}"
 
 
 def _row(r: sqlite3.Row | None) -> dict | None:
@@ -145,7 +178,7 @@ def upsert_many(items: list[dict], source: str, now: float | None = None) -> int
 
 
 def _upsert(db: sqlite3.Connection, item: dict, source: str, now: float | None) -> bool:
-    chain, token = item.get("chain"), item.get("token_address")
+    chain, token = item.get("chain"), norm_token(item.get("token_address") or "")
     if not chain or not token:
         return False
     now = now or time.time()

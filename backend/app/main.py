@@ -3898,6 +3898,16 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
                                      "market_cap", "liquidity_usd", "change_24h", "launched_at", "score", "early", "usage", "hidden",
                                      "blocks")},
             "narratives": sorted(_narr_now(e)), "on_board": True} for e in board if not onchain_leaderboard.no_name(e.get("symbol"))]
+    # One contract, one place, whatever the chain or the address' case
+    # (Lorenzo, 19/10: PRIORS and "Priors Agents" shared one contract).
+    addrs: set[str] = set()
+    unique = []
+    for e in out:
+        a = onchain_projects_db.norm_token(e["token_address"])
+        if a not in addrs:
+            addrs.add(a)
+            unique.append(e)
+    out = unique
     if full:
         # Whitekobra's weights (leaderboard.KOBRA_SCORE_WEIGHTS), on the board's own entries.
         for e in out:
@@ -3934,7 +3944,7 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
                     continue
             elif big:
                 continue
-        if key in seen:
+        if key in seen or onchain_projects_db.norm_token(row["token"]) in addrs:
             continue
         j = onchain_judge.get(row["chain"], row["token"])
         if j and j.get("verdict") in ("avoid", "scam") and (j.get("confidence") or 0) >= onchain_judge.VETO_MIN_CONF:
@@ -3985,6 +3995,7 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
             elif mcap > hi:
                 continue
         seen.add(key)
+        addrs.add(onchain_projects_db.norm_token(row["token"]))
         # The market of the last minute (live_market_loop), the analysis' one otherwise.
         lv = onchain_leaderboard.live(row["chain"], row["token"]) or {}
         out.append({"chain": row["chain"], "token_address": row["token"],
@@ -5091,7 +5102,7 @@ class ScanRequest(BaseModel):
 async def onchain_manual_scan(req: ScanRequest, user: User = Depends(auth.get_current_user)) -> dict:
     """A ticker or address through the whole system, on request (manual_scan.py)."""
     from app.trading.onchain import manual_scan
-    return await manual_scan.scan(req.query[:80])
+    return await manual_scan.scan(req.query[:80], kobra=_full_score(user))
 
 
 # A manual scan is a job (jobs.py), so a phone that lost the stream (Safari:
@@ -5136,7 +5147,7 @@ async def onchain_manual_scan_stream(req: ScanStreamRequest, request: Request,
 
     async def work() -> dict:
         try:
-            result = await manual_scan.scan(query, emit=emit)
+            result = await manual_scan.scan(query, emit=emit, kobra=_full_score(user))
         except Exception:
             logger.exception("manual scan failed")
             result = {"error": "Scan failed, try again."}

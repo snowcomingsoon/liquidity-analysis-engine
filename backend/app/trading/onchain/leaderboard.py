@@ -253,7 +253,29 @@ MISREAD_FATALS = ("new tokens can be minted", "all commits on a single day", "al
 
 
 def _key(chain: str, token: str) -> str:
-    return f"{chain}:{token}"
+    return projects_db.key(chain, token)
+
+
+def _merge_spellings() -> None:
+    """Entries saved under a mixed-case EVM address move to the lowercase one;
+    of two spellings of one contract (PRIORS twice in the Top, 19/10) the
+    ranked one stays, then the one with more pillars, then the older."""
+    for k in list(_entries):
+        e = _entries[k]
+        low = projects_db.norm_token(e.get("token_address") or "")
+        nk = f"{e.get('chain')}:{low}"
+        if nk == k:
+            continue
+        e = _entries.pop(k)
+        e["token_address"] = low
+        other = _entries.get(nk)
+        if other is not None:
+            rank = lambda x: (x.get("rank") is not None, len(x.get("pillars") or {}), -(x.get("found_at") or 0))  # noqa: E731
+            if rank(other) >= rank(e):
+                continue
+        _entries[nk] = e
+    for k in [k for k in _gone if ":" in k and _key(*k.split(":", 1)) != k]:
+        _gone[_key(*k.split(":", 1))] = _gone.pop(k)
 
 
 # ------------------------------------------------------------------ memoria
@@ -344,6 +366,7 @@ def _load() -> None:
         if rules >= RULES_VERSION:
             _excluded.extend(x for x in raw.get("excluded") or [] if isinstance(x, dict))
             _gone.update(raw.get("gone") or {})
+        _merge_spellings()
         _state["examined"] = int(raw.get("examined") or 0)
         _state["rescored_rules"] = raw.get("rescored_rules")
         _alerted.update(raw.get("alerted") or [])
@@ -406,9 +429,10 @@ def merge_narratives(hint: list[str] | None, site: list[str] | None, more: list[
 
 def add(item: dict, source: str, now: float | None = None) -> bool:
     """Un progetto da esaminare. False se c'e' gia' o e' gia' stato bocciato."""
-    chain, token = item.get("chain"), item.get("token_address")
+    chain, token = item.get("chain"), projects_db.norm_token(item.get("token_address") or "")
     if not chain or not token:
         return False
+    item = {**item, "token_address": token}
     k = _key(chain, token)
     now = now or time.time()
     try:

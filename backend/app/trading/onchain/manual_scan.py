@@ -205,7 +205,8 @@ async def _timed(coro, what: str):
         return None
 
 
-async def report(item: dict, gem: dict, client: httpx.AsyncClient, step: "Steps") -> dict | None:
+async def report(item: dict, gem: dict, client: httpx.AsyncClient, step: "Steps",
+                 kobra: bool = False) -> dict | None:
     """The Scout's report, as the Top shows it (leaderboard.gemWhy): score,
     pillars, research summary, DeepSeek's verdict, the code reading.
     Lorenzo, 30/09: "nella scansione manuale manca tutta la descrizione che
@@ -266,9 +267,11 @@ async def report(item: dict, gem: dict, client: httpx.AsyncClient, step: "Steps"
     e["code"] = c
     rc = await _recheck(e, item, client, step)
     j, c = e["judge"], e["code"]
-    score = leaderboard.final_score(e)
-    # The reason is the fresh reading's, not the stored rejection's.
-    why = leaderboard.qualifies(e)
+    # The weights of the arenas this account sees (KOBRA_SCORE_WEIGHTS for whitekobra).
+    score = leaderboard.final_score(e, kobra=kobra)
+    # The reason is the fresh reading's, not the stored rejection's; then the
+    # Top's usage bars, so "would qualify" never hides the $300k floor.
+    why = leaderboard.qualifies(e) or leaderboard.usage_gate(e)
     if not why and gem.get("status") == "rejected":
         why = "passes on a fresh reading: study again to enter the board"
     gem.update(score=round(score), why=why,
@@ -387,7 +390,7 @@ class Steps:
                 self(k, "skip")
 
 
-async def scan(query: str, emit=None) -> dict:
+async def scan(query: str, emit=None, kobra: bool = False) -> dict:
     query = (query or "").strip()
     if not query:
         return {"error": "Write a ticker or an address."}
@@ -447,7 +450,12 @@ async def scan(query: str, emit=None) -> dict:
             step(k, "skip")
     else:
         async with httpx.AsyncClient(timeout=15.0, headers={"User-Agent": "Mozilla/5.0 (LiquidityEngine)"}) as client:
-            rep = await report(item, gem, client, step)
+            rep = await report(item, gem, client, step, kobra=kobra)
+        # A score that would enter the arenas enters the board by itself
+        # (Lorenzo, 19/10: the scan said it would make it, the arenas never
+        # saw it): the board's own analysis and rules decide from here.
+        if gem["status"] in ("unknown", "rejected", "studied") and not gem.get("why") and rep is not None:
+            gem["added"] = bool(add(item["chain"], item["token_address"]).get("added"))
     step("memory", "run")
     feats = outcomes.features(item)
     pool = rug_memory.cases()
