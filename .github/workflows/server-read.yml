@@ -1,38 +1,99 @@
-name: Server read (layers)
+name: Server read (holders probe)
 
-# Read-only look at what the layer engine found on the server (Lorenzo,
-# 01/10: "vai con l'action"): the engine's own store and the layer rows of
-# the project database, opened read-only. Nothing is written. Run by hand.
+# One-off probe (19/10, Lorenzo: "procedi con la misura"): the gem candidates
+# rejected for holder concentration, read-only from the server, then their
+# top holders labelled from RugCheck / GoPlus on the runner. Branch only,
+# never merged.
 
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/elegant-galileo-rgatl1]
+    paths: [.github/workflows/server-read.yml, scripts/holders_probe/**]
 
 jobs:
   read:
     runs-on: ubuntu-latest
     steps:
-      - name: Layer engine state
+      - uses: actions/checkout@v4
+      - name: Rejected for concentration (read-only)
+        id: server
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          capture_stdout: true
           script: |
-            # Standard library only: importing the app in a second process
-            # is killed for memory (exit 137).
             docker exec -i deploy-app-1 python - <<'PY'
-            import glob, json, sqlite3, time
+            import glob, json, re, sqlite3, time
             base = next(d for d in ("/srv/backend/data", "/app/backend/data", "backend/data", "data")
                         if glob.glob(d + "/onchain_projects.db"))
-            try:
-                s = json.load(open(base + "/onchain_layers.json"))
-            except OSError:
-                s = {"last_run": 0, "found": {}}
-            print("last_run", time.strftime("%Y-%m-%d %H:%M", time.gmtime(s["last_run"])) if s.get("last_run") else "never")
-            for gid, x in sorted((s.get("found") or {}).items(), key=lambda kv: -(kv[1].get("score") or 0)):
-                print("found", gid, x.get("type"), x.get("status"), x.get("score"), (x.get("cex") or {}).get("pair"), x.get("why") or "")
+            now = time.time()
+            HOLD = re.compile(r"top 10|single wallet|wallets hold|unidentified contract|held by contracts", re.I)
+            lb = json.load(open(base + "/onchain_leaderboard.json"))
+            ent = {}
+            for src in ("entries", "excluded"):
+                for k, e in (lb.get(src) or {}).items():
+                    if isinstance(e, dict):
+                        ent[k] = e
             db = sqlite3.connect(f"file:{base}/onchain_projects.db?mode=ro", uri=True)
-            for r in db.execute("SELECT token, symbol, status, score, mcap, rank, why FROM projects WHERE chain = 'layer' ORDER BY score DESC"):
-                print("db", *r)
+            db.row_factory = sqlite3.Row
+            stat, why_kind, out = {}, {}, []
+            for r in db.execute("SELECT key, chain, token, symbol, status, why, mcap, pillars, last_seen FROM projects "
+                                "WHERE last_seen > ? AND chain != 'layer'", (now - 30 * 86400,)):
+                stat[r["status"]] = stat.get(r["status"], 0) + 1
+                why = r["why"] or ""
+                kind = re.sub(r"[\d$.,%:+-]+", "#", why)[:40]
+                if r["status"] == "rejected":
+                    why_kind[kind] = why_kind.get(kind, 0) + 1
+                try:
+                    tok = (json.loads(r["pillars"] or "{}").get("tokenomics") or {})
+                except ValueError:
+                    tok = {}
+                facts = tok.get("facts") or {}
+                fatal = tok.get("fatal") or ""
+                t10 = facts.get("top10_pct")
+                if HOLD.search(why) or HOLD.search(fatal) or (t10 is not None and t10 >= 35):
+                    e = ent.get(r["key"]) or {}
+                    out.append({"chain": r["chain"], "token": r["token"], "symbol": r["symbol"], "status": r["status"],
+                                "why": why or fatal, "mcap": r["mcap"], "top10_now": t10,
+                                "pair": e.get("pair_address") or "",
+                                "skip": [x for x in (e.get("bonding_curve"), e.get("associated_bonding_curve"),
+                                                     e.get("pair_address")) if x]})
+            print("STATUS", json.dumps(stat))
+            print("REJECT_KINDS", json.dumps(sorted(why_kind.items(), key=lambda kv: -kv[1])[:25]))
+            print("CANDIDATES", len(out))
+            for o in sorted(out, key=lambda o: -(o["mcap"] or 0))[:200]:
+                print("ROW " + json.dumps(o))
+            # the entry filter (radar, listings) keeps its own verdicts
+            n = 0
+            for f in ("onchain_listings.json", "onchain_radar.json"):
+                try:
+                    raw = json.load(open(f"{base}/{f}"))
+                except (OSError, ValueError):
+                    continue
+                def walk(x):
+                    global n
+                    if isinstance(x, dict):
+                        reason = json.dumps(x)[:4000] if "token_address" in x else ""
+                        if reason and n < 80 and HOLD.search(reason) and x.get("chain") and x.get("token_address"):
+                            n += 1
+                            print("ROW " + json.dumps({"chain": x["chain"], "token": x["token_address"],
+                                                       "symbol": x.get("symbol"), "status": "entry:" + f,
+                                                       "why": next((m.group(0) for m in [re.search(r"(top 10 wallets hold|a single wallet holds|one wallet holds)[^\"]{0,30}", reason)] if m), ""),
+                                                       "mcap": x.get("market_cap"), "pair": x.get("pair_address") or "", "skip": []}))
+                        for v in x.values():
+                            walk(v)
+                    elif isinstance(x, list):
+                        for v in x:
+                            walk(v)
+                walk(raw)
+            print("ENTRY_FILTER_ROWS", n)
             PY
-            docker logs deploy-app-1 --since 3h 2>&1 | grep -i -A12 "layers" | grep -v "^  File\|^    " | tail -40
+      - name: Label the holders (RugCheck / GoPlus)
+        env:
+          ROWS: ${{ steps.server.outputs.stdout }}
+        run: |
+          printf '%s\n' "$ROWS" | grep -v '^ROW ' | head -40
+          printf '%s\n' "$ROWS" | python3 scripts/holders_probe/label.py
