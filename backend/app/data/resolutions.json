@@ -3249,5 +3249,10 @@
     "status": "risolto",
     "at": 1792417489,
     "summary": "Corretti i quattro scarti ingiusti trovati misurando l'ultimo mese. Emissione: scarta solo se a poter creare nuovi token e' un wallet; se lo fa un contratto, un programma o una governance il progetto perde 10 punti e lo si vede nella scheda; se lo fa il bridge della catena, niente. GitHub: un repository molto attivo non viene piu' scambiato per uno fatto in un giorno (elizaOS), un repository con codice vero pubblicato in un giorno perde punti invece del progetto, e per un'organizzazione si legge il repository principale invece dell'ultimo modificato (Beefy, Badger). Siti: una pagina che il lettore vede vuota ma con un HTML sostanzioso conta come 'non leggibile', non come vuota. Il filtro dei nomi meme resta com'e'. I progetti scartati per questi motivi vengono riesaminati da soli. La sentinella ora scrive una riga nei log a ogni giro."
+  },
+  "seed-0354": {
+    "status": "risolto",
+    "at": 1792421777,
+    "summary": "Misurato sul server: GeckoTerminal gratuito oggi regge circa 8-10 richieste al minuto, non 30, e rifiutava il 36% delle nostre. Ora il sito impara il limite reale (scende quando arrivano rifiuti, risale piano quando va tutto bene) e chiede a GeckoTerminal solo quello che le altre fonti gratuite non danno: le misure d'uso passano da 3 richieste a circa una per token (pool chieste a gruppi di 30, volumi a 7 e 30 giorni calcolati dalla nostra storia, holder condivisi con la scheda del token) e i prezzi delle monete native arrivano prima da Jupiter e DexScreener. Nessun servizio a pagamento."
   }
 }

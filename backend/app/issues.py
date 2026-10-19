@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0354", "GeckoTerminal: limiti e attese, solo con fonti gratuite",
+     "Lorenzo, 19/10: 'volevo sapere se possiamo aggirare i limiti di GeckoTerminal in qualche modo, anche affidandosi ad un'altra piattaforma', poi 'Nessun piano a pagamento, solo fonti gratuite. Cerca di ottimizzare al meglio il loro utilizzo per quello che dobbiamo fare'.",
+     "media"),
     ("seed-0353", "Gemme: progetti seri scartati per emissione, GitHub e sito letti male",
      "Lorenzo, 19/10: 'Vedi altre criticita' che potrebbero falsare i risultati delle gemme o escludere progetti che non lo meriterebbero?', poi 'procedi con la misura dei punti'.",
      "media"),
