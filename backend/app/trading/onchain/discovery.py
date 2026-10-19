@@ -525,9 +525,12 @@ def _iso_ts(v) -> float | None:
 
 
 def jupiter_candidates(rows: list[dict], now: float) -> list[dict]:
-    """In band, tradeable, with a website, mint authority renounced (bridged
-    copies of big tokens keep it), no meme/stock tag. No age floor since
-    29/09 (Lorenzo: "il limite di data non ha granche' senso")."""
+    """In band, tradeable, with a website, no meme/stock tag. No age floor
+    since 29/09 (Lorenzo: "il limite di data non ha granche' senso"). An
+    active mint authority no longer drops a token here (19/10): Jupiter
+    does not say who holds it, and the tokenomics pillar does (a program's
+    costs points, a wallet's rejects); bridged copies of big coins, the
+    reason for the old filter, are stopped by leaderboard's bridged check."""
     out = []
     for t in rows or []:
         cap = float(t.get("mcap") or 0)
@@ -535,8 +538,6 @@ def jupiter_candidates(rows: list[dict], now: float) -> list[dict]:
         if not (CAP_MIN <= cap <= CAP_MAX) or float(t.get("liquidity") or 0) < JUP_MIN_LIQUIDITY:
             continue
         if not t.get("website") or JUP_SKIP_TAGS & set(t.get("tags") or []):
-            continue
-        if not (t.get("audit") or {}).get("mintAuthorityDisabled"):
             continue
         if _looks_like_meme(t.get("symbol") or "", t.get("name") or ""):
             continue

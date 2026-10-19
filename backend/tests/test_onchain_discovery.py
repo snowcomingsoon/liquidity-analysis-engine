@@ -230,13 +230,13 @@ def test_jupiter_verified_list_keeps_real_projects_in_band():
             "audit": {"mintAuthorityDisabled": True}, "firstPool": {"createdAt": old}}
     rows = [{**base, "id": "R", "symbol": "ROUTER", "name": "Solrouter"},
             {**base, "id": "M", "symbol": "PEPE2", "name": "Pepe", "tags": ["verified", "meme"]},
-            {**base, "id": "B", "symbol": "ZAMA", "name": "Zama", "audit": {}},          # bridged: mint kept
+            {**base, "id": "B", "symbol": "ZAMA", "name": "Zama", "audit": {}},          # mint on: judged later
             {**base, "id": "Y", "symbol": "NEW", "name": "New", "firstPool": {"createdAt": _t.strftime(
                 "%Y-%m-%dT%H:%M:%SZ", _t.gmtime(now - 86400))}},
             {**base, "id": "C", "symbol": "BIG", "name": "Big", "mcap": 30_000_000}]
     out = dv.jupiter_candidates(rows, now)
     # A pool of one day is not a reason (29/09: "il limite di data non ha granche' senso").
-    assert [x["token_address"] for x in out] == ["R", "Y"] and out[0]["website"] == "https://solrouter.com"
+    assert [x["token_address"] for x in out] == ["R", "B", "Y"] and out[0]["website"] == "https://solrouter.com"
 
 
 def test_base_is_searched_like_the_other_chains():
