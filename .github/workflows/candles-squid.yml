@@ -1,0 +1,87 @@
+name: Candles squid
+
+# Build, unit tests, migration and API smoke for services/candles-squid on
+# every change to it; on the chat branch also a real pilot: one day of the
+# Ethereum Uniswap V3 pools the app follows, compared with GeckoTerminal.
+# Nothing here touches the server or production.
+
+on:
+  pull_request:
+    paths: [services/candles-squid/**, .github/workflows/candles-squid.yml]
+  push:
+    branches: [claude/elegant-galileo-rgatl1]
+    paths: [services/candles-squid/**, .github/workflows/candles-squid.yml]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_PASSWORD: ci, POSTGRES_DB: squid}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/candles-squid
+    env: {DB_HOST: localhost, DB_PORT: "5432", DB_NAME: squid, DB_USER: postgres, DB_PASS: ci, GQL_PORT: "4350"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npx squid-typeorm-migration apply
+      - name: The model and the migrations agree
+        run: |
+          npx squid-typeorm-migration generate 2>&1 | tail -3
+          test "$(ls db/migrations/*.js | wc -l)" -eq 1 || { echo "schema.graphql and db/migrations differ"; exit 1; }
+      - name: GraphQL smoke
+        run: |
+          (npx squid-graphql-server > gql.log 2>&1 &)
+          for i in $(seq 30); do curl -sf -X POST localhost:4350/graphql -H 'content-type: application/json' \
+            -d '{"query":"{ candles(limit:1){ id } syncStatuses { block } }"}' && break; sleep 2; done
+
+  pilot:
+    if: github.event_name == 'push'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_PASSWORD: ci, POSTGRES_DB: squid}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/candles-squid
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: squid
+      DB_USER: postgres
+      DB_PASS: ci
+      GQL_PORT: "4350"
+      RPC_ETH_HTTP: https://ethereum-rpc.publicnode.com
+      # The two Ethereum pools of the app's candle archive whose factory() is
+      # Uniswap V3's (scripts/candle_pools_report.py, 19/10).
+      POOLS: "0x54252a8124ef08a4db8edb530c0a153c33406c53,0xf10e8ccdb3f065bf24afa14d08cc6336d4a9a281"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: npm ci --no-audit --no-fund && npx tsc && npx squid-typeorm-migration apply
+      - name: Index the last ~day (7,200 blocks)
+        run: |
+          HEAD=$(curl -s -X POST "$RPC_ETH_HTTP" -H 'content-type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' | python3 -c "import json,sys;print(int(json.load(sys.stdin)['result'],16))")
+          export START_BLOCK=$((HEAD - 7200))
+          echo "head $HEAD start $START_BLOCK"
+          timeout 900 node lib/main.js > processor.log 2>&1 || true
+          tail -20 processor.log
+      - name: Compare with GeckoTerminal
+        run: |
+          (npx squid-graphql-server > gql.log 2>&1 &)
+          for i in $(seq 30); do curl -sf localhost:4350/graphql -o /dev/null -X POST -H 'content-type: application/json' -d '{"query":"{ syncStatuses { block } }"}' && break; sleep 2; done
+          python3 tools/compare_gecko.py http://localhost:4350/graphql "$POOLS"

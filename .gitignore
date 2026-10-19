@@ -27,6 +27,7 @@ backend/app/data/onchain_radar.json
 
 # Segreti del deploy self-hosted
 deploy/.env
+deploy/squid.env
 
 # Mai chiavi o dati personali nel repo pubblico (vedi .gitleaks.toml)
 .env

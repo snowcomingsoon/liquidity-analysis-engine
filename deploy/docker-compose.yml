@@ -60,7 +60,52 @@ services:
     depends_on:
       - app
 
+  # Candles squid (services/candles-squid): OFF unless started with
+  # `docker compose --profile squid up -d`. The normal deploy (`docker compose
+  # up -d --build`) never builds nor starts these three. No port is published:
+  # the app reads the API on the internal network (SQUID_URL). Settings and
+  # the database password in deploy/squid.env (never in git).
+  squid-db:
+    image: postgres:16-alpine
+    profiles: ["squid"]
+    restart: unless-stopped
+    env_file:
+      - path: squid.env
+        required: false
+    volumes:
+      - squid-db:/var/lib/postgresql/data
+    mem_limit: 512m
+    shm_size: 128m
+
+  squid-processor:
+    build:
+      context: ../services/candles-squid
+    profiles: ["squid"]
+    restart: unless-stopped
+    env_file:
+      - path: squid.env
+        required: false
+    depends_on:
+      - squid-db
+    mem_limit: 512m
+
+  squid-api:
+    build:
+      context: ../services/candles-squid
+    profiles: ["squid"]
+    restart: unless-stopped
+    command: ["npx", "squid-graphql-server"]
+    env_file:
+      - path: squid.env
+        required: false
+    expose:
+      - "4350"
+    depends_on:
+      - squid-db
+    mem_limit: 256m
+
 volumes:
   app-data:
   caddy-data:
   caddy-config:
+  squid-db:

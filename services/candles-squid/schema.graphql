@@ -1,0 +1,68 @@
+"An allowlisted Uniswap V3 pool, verified against the factory before indexing."
+type Pool @entity {
+  "pool address, lower case"
+  id: ID!
+  token0: String!
+  token1: String!
+  decimals0: Int!
+  decimals1: Int!
+  symbol0: String
+  symbol1: String
+  fee: Int!
+  "first block this indexer reads for the pool (START_BLOCK or later)"
+  fromBlock: Int!
+}
+
+"""
+One candle of one side of one pool. `token` is the side priced, `quote` the
+other token of the pool. Prices are decimal strings (exact fixed point, 36
+fractional digits before trimming): open/high/low/close in `quote` units, the
+*Usd ones in US dollars at the time of each swap (null when no swap of the
+bucket could be priced). Volumes: `volumeToken` in `token` units, `volumeUsd`
+in US dollars over the priced swaps only.
+"""
+type Candle @entity @index(fields: ["pool", "token", "timeframe", "start"], unique: true) {
+  "pool-token-timeframe-start"
+  id: ID!
+  pool: String! @index
+  token: String!
+  quote: String!
+  "seconds: 300, 900, 3600, 86400"
+  timeframe: Int!
+  "bucket start, unix seconds, aligned in UTC"
+  start: Int! @index
+  "block * 1e6 + logIndex of the first and last swap in the bucket"
+  openOrder: BigInt!
+  closeOrder: BigInt!
+  open: String!
+  high: String!
+  low: String!
+  close: String!
+  openUsd: String
+  highUsd: String
+  lowUsd: String
+  closeUsd: String
+  volumeToken: String!
+  volumeUsd: String!
+  swaps: Int!
+  pricedSwaps: Int!
+  "how USD was obtained: weth-ref (ETH/USD from the reference pool), stable-peg (quote is a USD stablecoin, taken at 1), none"
+  pricing: String!
+}
+
+"The last ETH/USD price seen on the reference pool, as of (block, logIndex)."
+type EthUsd @entity {
+  id: ID!
+  block: Int!
+  logIndex: Int!
+  price: String!
+}
+
+"Where indexing stands: the last block processed and an estimate of the finalized one."
+type SyncStatus @entity {
+  id: ID!
+  block: Int!
+  timestamp: Int!
+  finalizedBlock: Int!
+  updatedAt: DateTime!
+}
