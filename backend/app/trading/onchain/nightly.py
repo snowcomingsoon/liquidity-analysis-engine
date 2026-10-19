@@ -209,7 +209,8 @@ def status(now: float | None = None) -> dict:
     now = now or time.time()
     return {"enabled": settings.onchain_nightly_enabled, "running": _running,
             "last_run": _state.get("last_run"), "next_run": next_run(now),
-            "summary": _state.get("summary")}
+            "summary": _state.get("summary"),
+            "sentinel": {"enabled": settings.onchain_sentinel_enabled, **(_state.get("sentinel") or {})}}
 
 
 # --------------------------------------------------------------- the steps
@@ -561,17 +562,31 @@ async def sentinel_loop(*, clock: Callable[[], float] = time.time, sleep=asyncio
                         httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "Mozilla/5.0 (LiquidityEngine)"}) as client:
                     steps = steps_factory(client)
                     if steps.busy():
-                        logger.info("sentinel: skipped, an optimization is running")
+                        _sentinel_note(clock(), skipped="an optimization is running")
                     else:
                         start = clock()
                         ticks = await sentinel_once(steps, clock=clock, sleep=sleep)
-                        # One line per round: the only proof in the logs that it runs.
-                        logger.info("sentinel: round done, %d ticks in %.0f s", ticks, clock() - start)
+                        _sentinel_note(clock(), ticks=ticks, secs=clock() - start)
             elif settings.onchain_sentinel_enabled:
-                logger.info("sentinel: skipped, a research run is on")
-        except Exception:
+                _sentinel_note(clock(), skipped="a research run is on")
+        except Exception as exc:
             logger.exception("sentinel: round failed")
+            _sentinel_note(clock(), error=f"{type(exc).__name__}: {exc}"[:200])
         await sleep(SENTINEL_EVERY_S)
+
+
+def _sentinel_note(now: float, *, ticks: int | None = None, secs: float | None = None,
+                   skipped: str = "", error: str = "") -> None:
+    """The sentinel's last round, kept with the research state (the app logs
+    no INFO lines, so this is what shows it runs): GET /api/agent/activity."""
+    s = _state.setdefault("sentinel", {})
+    s["last_at"] = round(now)
+    if ticks is not None:
+        s.update(last_round_at=round(now), ticks=ticks, secs=round(secs or 0), rounds=int(s.get("rounds") or 0) + 1)
+    s["skipped"] = skipped or None
+    if error:
+        s.update(error=error, error_at=round(now))
+    _save()
 
 
 def loop_plan(radar_enabled: bool, nightly_enabled: bool) -> list[str]:

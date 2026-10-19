@@ -5244,7 +5244,8 @@ def agent_activity(user: User = Depends(auth.get_current_user)) -> dict:
     last = st.get("summary") or {}
     out["research"] = {"ai": settings.research_ai_enabled, "nightly": st["enabled"], "running": st["running"],
                        "last_run": st.get("last_run"), "next_run": st.get("next_run"),
-                       "examined": last.get("examined"), "entered": len(last.get("entered") or [])}
+                       "examined": last.get("examined"), "entered": len(last.get("entered") or []),
+                       "sentinel": st.get("sentinel")}
     return out
 
 

@@ -432,3 +432,26 @@ def test_the_sentinel_round_is_bounded():
     steps = _SentinelSteps(clock)              # always something new
     ticks = asyncio.run(nightly.sentinel_once(steps, clock=clock, sleep=sleep))
     assert clock.t <= nightly.SENTINEL_MAX_S + 20 and ticks < nightly.SENTINEL_MAX_S / 10 + 1
+
+
+def test_the_sentinel_leaves_a_trace_of_each_round(monkeypatch):
+    """19/10: the app logs no INFO lines, so the last round is kept in the
+    research state and shown by status() (Lorenzo: "controlla che la
+    sentinella si attiva e lavori senza problemi")."""
+    monkeypatch.setattr(nightly, "_state", {})
+    monkeypatch.setattr(settings, "onchain_sentinel_enabled", True)
+    clock = _Clock()
+
+    class Steps(_SentinelSteps):
+        def busy(self):
+            return False
+
+    async def sleep(s):
+        if s == nightly.SENTINEL_EVERY_S:
+            raise asyncio.CancelledError
+        clock.t += s
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(nightly.sentinel_loop(clock=clock, sleep=sleep, steps_factory=lambda c: Steps(clock, quiet_after=1)))
+    s = nightly.status(now=clock.t)["sentinel"]
+    assert s["enabled"] and s["rounds"] == 1 and s["ticks"] == nightly.SENTINEL_MIN_TICKS and not s["skipped"]
+    assert s["last_round_at"] == round(clock.t)
