@@ -142,7 +142,7 @@ async def _gecko_pools_multi(client, chain: str, net: str, pools: list[str]) -> 
 
 
 DAILY_REFRESH_S = 7 * 86400      # GeckoTerminal's daily candles at most once a week per token
-HISTORY_7D_MIN, HISTORY_30D_MIN = 6, 25
+HISTORY_7D_MIN, HISTORY_30D_MIN = 4, 25
 
 
 def _daily_from_history(chain: str, token: str, now: float) -> dict | None:
@@ -159,11 +159,15 @@ def _daily_from_history(chain: str, token: str, now: float) -> dict | None:
         return None
     last = read[-1]
     days = int(last["days"]) + int((now - last["at"]) // 86400)
-    out = {"days": days, "vol_7d_avg": sum(vols[7]) / len(vols[7]),
-           "vol_30d_avg": sum(vols[30]) / len(vols[30]) if len(vols[30]) >= min(HISTORY_30D_MIN, days) else None}
-    if out["vol_30d_avg"] is None:
+    # A month of snapshots is rare (a token is measured on the days it is a
+    # candidate): the 30-day average then stays the last weekly read's, at
+    # most 7 days old (19/10: with 25 snapshots required, no measure used
+    # the history in 3 hours).
+    v30 = (sum(vols[30]) / len(vols[30]) if len(vols[30]) >= min(HISTORY_30D_MIN, days)
+           else last.get("vol_30d_avg"))
+    if v30 is None:
         return None
-    return out
+    return {"days": days, "vol_7d_avg": sum(vols[7]) / len(vols[7]), "vol_30d_avg": v30}
 
 
 async def _gecko_daily(client, net: str, pool: str) -> dict:

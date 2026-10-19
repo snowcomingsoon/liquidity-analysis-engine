@@ -63,10 +63,14 @@ BACKGROUND_PER_MIN = round(GLOBAL_PER_MIN * BACKGROUND_SHARE)    # at the top of
 DEFAULT_COOLDOWN_S = 5.0     # a 429 without Retry-After
 MAX_COOLDOWN_S = 120.0       # a Retry-After beyond this is read as a mistake, not a two-hour ban
 MAX_WAIT_STEP_S = 5.0
+# GeckoTerminal's 429 asks for 60 s: 12 of them in 24 minutes (19/10) froze
+# every caller for half the time, a chart included. The background waits the
+# whole Retry-After; someone waiting on a chart only URGENT_COOLDOWN_S.
+URGENT_COOLDOWN_S = 3.0
 
 urgent: contextvars.ContextVar[bool] = contextvars.ContextVar("gecko_urgent", default=False)
 calls: deque[float] = deque()            # monotonic times of the requests in the window
-_state = {"cooldown_until": 0.0, "limit": float(START_PER_MIN), "changed_at": 0.0}
+_state = {"cooldown_until": 0.0, "cooldown_at": 0.0, "limit": float(START_PER_MIN), "changed_at": 0.0}
 answers: deque[tuple[float, bool]] = deque()     # (monotonic time, was a 429) of the last RATE_WINDOW_S
 _metrics: dict[str, dict[str, float]] = {}
 _started = time.time()
@@ -76,7 +80,7 @@ def reset_for_tests() -> None:
     _saved["at"] = 0.0
     calls.clear()
     answers.clear()
-    _state.update(cooldown_until=0.0, limit=float(START_PER_MIN), changed_at=0.0)
+    _state.update(cooldown_until=0.0, cooldown_at=0.0, limit=float(START_PER_MIN), changed_at=0.0)
     _metrics.clear()
 
 
@@ -98,7 +102,7 @@ def caps(now: float | None = None) -> tuple[int, int]:
     share, n = refused_share(now)
     since = now - _state["changed_at"]
     if n >= MIN_SAMPLE and share > LOWER_ABOVE and since >= LOWER_EVERY_S:
-        _state.update(limit=max(float(MIN_PER_MIN), _state["limit"] * 0.85), changed_at=now)
+        _state.update(limit=float(max(MIN_PER_MIN, int(_state["limit"] * 0.85))), changed_at=now)
     elif share < RAISE_BELOW and since >= RAISE_EVERY_S and _state["limit"] < GLOBAL_PER_MIN:
         _state.update(limit=min(float(GLOBAL_PER_MIN), _state["limit"] + 1), changed_at=now)
     limit = int(_state["limit"])
@@ -128,7 +132,10 @@ async def slot(caller: str = "other") -> float:
     t0 = time.monotonic()
     while True:
         now = time.monotonic()
-        cool = _state["cooldown_until"] - now
+        until = _state["cooldown_until"]
+        if urgent.get():
+            until = min(until, _state["cooldown_at"] + URGENT_COOLDOWN_S)
+        cool = until - now
         if cool > 0:
             await asyncio.sleep(min(cool, MAX_WAIT_STEP_S))
             continue
@@ -169,6 +176,7 @@ def note_response(resp: httpx.Response, caller: str) -> None:
         until = time.monotonic() + retry_after_s(resp)
         if until > _state["cooldown_until"]:
             _state["cooldown_until"] = until
+            _state["cooldown_at"] = time.monotonic()
             logger.info("GeckoTerminal 429 (%s): every caller waits %.0fs", caller, until - time.monotonic())
     elif resp.status_code >= 500:
         _m(caller)["errors"] += 1

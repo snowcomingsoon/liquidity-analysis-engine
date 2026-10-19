@@ -101,20 +101,20 @@ def test_the_limit_follows_the_share_of_429s():
     now = time.monotonic()
     g._state.update(limit=float(g.START_PER_MIN), changed_at=now)
     g.answers.extend([(now, False)] * 19 + [(now, True)])          # 5%: noise
-    assert g.caps(now + g.LOWER_EVERY_S)[1] == g.START_PER_MIN
+    assert g.caps(now + g.LOWER_EVERY_S + 1)[1] == g.START_PER_MIN
     g.answers.extend([(now, True)] * 10)                           # 37%: the limit
-    lowered = g.caps(now + g.LOWER_EVERY_S)[1]
+    lowered = g.caps(now + g.LOWER_EVERY_S + 1)[1]
     assert lowered < g.START_PER_MIN
-    assert g.caps(now + g.LOWER_EVERY_S + 1)[1] == lowered         # one step per LOWER_EVERY_S
+    assert g.caps(now + g.LOWER_EVERY_S + 2)[1] == lowered         # one step per LOWER_EVERY_S
     g.answers.clear()
-    t = now + g.LOWER_EVERY_S
+    t = now + g.LOWER_EVERY_S + 1
     for _ in range(3):
-        t += g.RAISE_EVERY_S
+        t += g.RAISE_EVERY_S + 1
         g.caps(t)
     assert g.caps(t)[1] == lowered + 3
     for _ in range(100):
         g.answers.extend([(t, True)] * 10)
-        t += g.LOWER_EVERY_S
+        t += g.LOWER_EVERY_S + 1
         g.caps(t)
     assert g.caps(t)[1] == g.MIN_PER_MIN
 
@@ -123,3 +123,20 @@ def test_a_429_is_counted_in_the_share():
     asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
     asyncio.run(g.request(_Client([200]), "https://x", caller="usage"))
     assert g.refused_share() == (0.5, 2)
+
+
+def test_a_person_waits_seconds_not_the_whole_retry_after():
+    """19/10: a 429's 60 s froze the charts too."""
+    asyncio.run(g.request(_Client([429], headers={"Retry-After": "60"}), "https://x", caller="usage"))
+
+    async def wait(urgent_on):
+        tok = g.urgent.set(urgent_on)
+        try:
+            await asyncio.wait_for(g.slot("chart"), g.URGENT_COOLDOWN_S + 3)
+            return "passed"
+        except asyncio.TimeoutError:
+            return "waited"
+        finally:
+            g.urgent.reset(tok)
+    assert asyncio.run(wait(True)) == "passed"
+    assert asyncio.run(wait(False)) == "waited"

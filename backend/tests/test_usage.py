@@ -219,3 +219,16 @@ def test_daily_averages_come_from_history_between_weekly_reads():
     fake = Fake(_full_routes([_pair(TOKEN, POOL, 22058.27)]))
     m = _run(fake, lambda c: usage.measure(c, "solana", TOKEN, POOL))
     assert "history" in m["sources"] and not any("/ohlcv/day" in u for u in fake.calls)
+
+
+def test_a_short_history_keeps_the_weekly_30_day_average():
+    """19/10: a month of snapshots is rare; the last weekly read's 30-day
+    average (at most 7 days old) stands in, the 7-day one is ours."""
+    now = time.time()
+    usage.record({"chain": "solana", "token": TOKEN, "at": now - 3 * 86400, "vol_24h": 80.0, "days": 90,
+                  "vol_30d_avg": 120.0, "sources": ["dexscreener", "geckoterminal_ohlcv"]}, save=False)
+    for d in (1, 2, 4, 5):
+        usage.record({"chain": "solana", "token": TOKEN, "at": now - d * 86400, "vol_24h": 60.0,
+                      "sources": ["dexscreener"]}, save=False)
+    got = usage._daily_from_history("solana", TOKEN, now)
+    assert got["vol_30d_avg"] == 120.0 and got["vol_7d_avg"] == (80 + 4 * 60) / 5 and got["days"] == 93
