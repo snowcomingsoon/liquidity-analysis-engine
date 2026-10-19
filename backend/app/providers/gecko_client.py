@@ -1,7 +1,8 @@
 """Every GeckoTerminal request of the app goes through here (Lorenzo, 19/10:
 "coordinando prima tutte le richieste GeckoTerminal").
 
-GeckoTerminal's free API answers 429 past ~30 requests a minute per IP, and
+GeckoTerminal's free API answers 429 past a limit it does not publish
+(about 10 a minute measured on 19/10, ~30 documented earlier), and
 the charts, the backtests, the usage measure, discovery, the scanners and
 the price fallbacks all ask it. Until 19/10 only part of them shared a
 limiter (providers/dexscreener.gecko_get, usage._gecko): the others paced
@@ -9,9 +10,9 @@ themselves with local sleeps, which are no limit when they run side by side.
 
 What this module owns, for the whole process:
 - one window of the requests sent in the last minute: background callers
-  stop at BACKGROUND_PER_MIN, urgent ones (someone waiting on a chart,
-  `urgent` context) at GLOBAL_PER_MIN, the same window: urgent capacity is
-  part of the ceiling, never added to it;
+  stop at BACKGROUND_SHARE of the learned limit, urgent ones (someone
+  waiting on a chart, `urgent` context) at the limit, the same window:
+  urgent capacity is part of the ceiling, never added to it (caps());
 - a cooldown after a 429, as long as its Retry-After (DEFAULT_COOLDOWN_S
   without one), that every caller waits out;
 - counters per caller: requests, 429s, other errors, time spent waiting,
@@ -42,15 +43,23 @@ import httpx
 logger = logging.getLogger(__name__)
 
 WINDOW_S = 60.0
-GLOBAL_PER_MIN = 28          # the ceiling, ~30 allowed by GeckoTerminal, a margin for clock skew
-BACKGROUND_PER_MIN = 14      # what the background may use: the rest waits for a person
+# The ceiling is learned, not assumed (19/10): at 13 requests a minute, under
+# the old fixed 28, GeckoTerminal refused 30 of 84 (36%), and every 429 cost a
+# request and a wait of up to a minute for all. The limit drops by a quarter
+# on a 429 and climbs by one after RAISE_EVERY_S without one.
+GLOBAL_PER_MIN = 28          # never above this
+MIN_PER_MIN = 5              # never below this
+START_PER_MIN = 10           # where a restart begins
+RAISE_EVERY_S = 300.0
+BACKGROUND_SHARE = 0.6       # of the limit the background may use: the rest waits for a person
+BACKGROUND_PER_MIN = round(GLOBAL_PER_MIN * BACKGROUND_SHARE)    # at the top of the range
 DEFAULT_COOLDOWN_S = 5.0     # a 429 without Retry-After
 MAX_COOLDOWN_S = 120.0       # a Retry-After beyond this is read as a mistake, not a two-hour ban
 MAX_WAIT_STEP_S = 5.0
 
 urgent: contextvars.ContextVar[bool] = contextvars.ContextVar("gecko_urgent", default=False)
 calls: deque[float] = deque()            # monotonic times of the requests in the window
-_state = {"cooldown_until": 0.0}
+_state = {"cooldown_until": 0.0, "limit": float(START_PER_MIN), "raised_at": 0.0}
 _metrics: dict[str, dict[str, float]] = {}
 _started = time.time()
 
@@ -58,8 +67,26 @@ _started = time.time()
 def reset_for_tests() -> None:
     _saved["at"] = 0.0
     calls.clear()
-    _state["cooldown_until"] = 0.0
+    _state.update(cooldown_until=0.0, limit=float(START_PER_MIN), raised_at=0.0)
     _metrics.clear()
+
+
+def caps(now: float | None = None) -> tuple[int, int]:
+    """(background, urgent) requests a minute allowed now; climbs back one
+    step per RAISE_EVERY_S since the last 429 or raise."""
+    now = time.monotonic() if now is None else now
+    if not _state["raised_at"]:
+        _state["raised_at"] = now
+    while now - _state["raised_at"] >= RAISE_EVERY_S and _state["limit"] < GLOBAL_PER_MIN:
+        _state["limit"] = min(GLOBAL_PER_MIN, _state["limit"] + 1)
+        _state["raised_at"] += RAISE_EVERY_S
+    limit = int(_state["limit"])
+    return max(1, round(limit * BACKGROUND_SHARE)), limit
+
+
+def _lower(now: float) -> None:
+    _state["limit"] = max(float(MIN_PER_MIN), _state["limit"] * 0.75)
+    _state["raised_at"] = now
 
 
 def load() -> int:
@@ -89,7 +116,8 @@ async def slot(caller: str = "other") -> float:
         if cool > 0:
             await asyncio.sleep(min(cool, MAX_WAIT_STEP_S))
             continue
-        cap = GLOBAL_PER_MIN if urgent.get() else BACKGROUND_PER_MIN
+        background, top = caps(now)
+        cap = top if urgent.get() else background
         while calls and now - calls[0] > WINDOW_S:
             calls.popleft()
         if len(calls) < cap:
@@ -122,6 +150,8 @@ def note_response(resp: httpx.Response, caller: str) -> None:
     if resp.status_code == 429:
         _m(caller)["http_429"] += 1
         until = time.monotonic() + retry_after_s(resp)
+        if time.monotonic() >= _state["cooldown_until"]:
+            _lower(time.monotonic())       # once per cooldown: the 429s of one burst are one signal
         if until > _state["cooldown_until"]:
             _state["cooldown_until"] = until
             logger.info("GeckoTerminal 429 (%s): every caller waits %.0fs", caller, until - time.monotonic())
@@ -157,8 +187,9 @@ def metrics() -> dict:
             for k, v in sorted(_metrics.items())}
     total = {f: sum(r[f] for r in _metrics.values()) for f in ("requests", "http_429", "errors", "cache_hits")}
     ohlcv = sum(v["requests"] for k, v in _metrics.items() if k.startswith("ohlcv"))
-    return {"since": _started, "window_now": load(), "global_per_min": GLOBAL_PER_MIN,
-            "background_per_min": BACKGROUND_PER_MIN,
+    background, top = caps()
+    return {"since": _started, "window_now": load(), "global_per_min": top,
+            "background_per_min": background, "ceiling_per_min": GLOBAL_PER_MIN,
             "cooldown_s": round(max(0.0, _state["cooldown_until"] - time.monotonic()), 1),
             "total": total, "ohlcv_requests": ohlcv, "other_requests": total["requests"] - ohlcv,
             "by_caller": rows}

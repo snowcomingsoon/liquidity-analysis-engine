@@ -20,7 +20,8 @@ class _Client:
 
 def test_background_and_urgent_share_one_ceiling():
     now = time.monotonic()
-    g.calls.extend([now] * g.BACKGROUND_PER_MIN)
+    background, top = g.caps()
+    g.calls.extend([now] * background)
 
     async def run():
         tok = g.urgent.set(True)
@@ -34,7 +35,7 @@ def test_background_and_urgent_share_one_ceiling():
         except asyncio.TimeoutError:
             return "waited"
     assert asyncio.run(run()) == "waited"
-    g.calls.extend([now] * (g.GLOBAL_PER_MIN - len(g.calls)))
+    g.calls.extend([now] * (top - len(g.calls)))
 
     async def urgent_full():
         tok = g.urgent.set(True)
@@ -92,3 +93,21 @@ def test_metrics_are_saved_for_a_look_from_outside(tmp_path):
     p = tmp_path / "gecko_metrics.json"
     assert g.save(p, now=1_000.0) and p.exists()
     assert not g.save(p, now=1_010.0)                              # every 5 minutes
+
+
+def test_the_limit_is_learned_from_the_429s():
+    """19/10: GeckoTerminal refused 36% at 13 a minute; the limit follows it."""
+    g._state["limit"] = float(g.START_PER_MIN)
+    start = g.caps()[1]
+    asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
+    lowered = g.caps()[1]
+    assert lowered < start
+    asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
+    assert g.caps()[1] < lowered
+    for _ in range(40):
+        g.calls.clear()
+        asyncio.run(g.request(_Client([429], headers={"Retry-After": "0"}), "https://x", caller="usage"))
+    assert g.caps()[1] == g.MIN_PER_MIN
+    now = time.monotonic()
+    assert g.caps(now + 3 * g.RAISE_EVERY_S + 1)[1] == g.MIN_PER_MIN + 3
+    assert g.caps(now + 1000 * g.RAISE_EVERY_S)[1] == g.GLOBAL_PER_MIN

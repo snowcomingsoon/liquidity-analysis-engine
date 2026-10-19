@@ -188,3 +188,34 @@ def test_a_token_no_source_answers_is_tried_once_a_day():
     n = len(calls)
     assert n and usage.tried_today("solana", TOKEN) and not usage.measured_today("solana", TOKEN)
     assert _run(Down, lambda c: usage.refresh(c, items)) == 0 and len(calls) == n
+
+
+def test_refresh_reads_every_pool_of_a_batch_in_one_call():
+    """19/10: one GeckoTerminal call per pool was a third of the measure."""
+    other = "Other111111111111111111111111111111111111111"
+    pairs = [_pair(TOKEN, POOL, 22058.27), _pair(other, "otherpool", 5000.0, vol=9.0)]
+    multi = {"data": [{"attributes": {"address": POOL, **_pool_payload(3, 4)["data"]["attributes"]}},
+                      {"attributes": {"address": "otherpool", **_pool_payload(1, 1)["data"]["attributes"]}}]}
+    fake = Fake([("/pools/multi/", multi)] + _full_routes(pairs))
+    items = [{"chain": "solana", "token_address": TOKEN, "pair_address": POOL},
+             {"chain": "solana", "token_address": other, "pair_address": "otherpool"}]
+    assert _run(fake, lambda c: usage.refresh(c, items)) == 2
+    assert len([u for u in fake.calls if "/pools/" in u and "/ohlcv/" not in u]) == 1
+    assert usage.latest("solana", TOKEN)["buyers_24h"] == 3 and usage.latest("solana", other)["sellers_24h"] == 1
+
+
+def test_daily_averages_come_from_history_between_weekly_reads():
+    now = time.time()
+    usage.record({"chain": "solana", "token": TOKEN, "at": now - 6 * 86400, "vol_24h": 100.0, "days": 40,
+                  "sources": ["dexscreener", "geckoterminal_ohlcv"]}, save=False)
+    for d in range(1, 30):
+        if d != 6:
+            usage.record({"chain": "solana", "token": TOKEN, "at": now - d * 86400, "vol_24h": 100.0 if d > 7 else 50.0,
+                          "sources": ["dexscreener"]}, save=False)
+    got = usage._daily_from_history("solana", TOKEN, now)
+    assert got["days"] == 46 and got["vol_7d_avg"] < got["vol_30d_avg"]
+    # no weekly read in the last 7 days: back to GeckoTerminal
+    assert usage._daily_from_history("solana", TOKEN, now + 2 * 86400) is None
+    fake = Fake(_full_routes([_pair(TOKEN, POOL, 22058.27)]))
+    m = _run(fake, lambda c: usage.measure(c, "solana", TOKEN, POOL))
+    assert "history" in m["sources"] and not any("/ohlcv/day" in u for u in fake.calls)

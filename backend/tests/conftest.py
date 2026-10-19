@@ -9,8 +9,12 @@ def _fresh_gecko_gate(monkeypatch):
     vedere le risposte finte di un altro, ne' aspettare il suo minuto (ne'
     i 5 s di pausa dopo un 429 finto senza Retry-After)."""
     monkeypatch.setattr(gecko_client, "DEFAULT_COOLDOWN_S", 0.01)
+    # Tests send bursts no real minute would: the learned limit starts high.
+    monkeypatch.setattr(gecko_client, "START_PER_MIN", gecko_client.GLOBAL_PER_MIN)
     dexscreener._gecko_seen.clear()
     gecko_client.reset_for_tests()
+    from app.trading.onchain import research
+    research._gecko.clear()            # token info, shared by the usage measure since 19/10
     yield
     dexscreener._gecko_seen.clear()
     gecko_client.reset_for_tests()

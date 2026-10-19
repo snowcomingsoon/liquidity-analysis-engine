@@ -41,17 +41,18 @@ async def native_price_usd(chain: OnchainChain) -> float | None:
         return cached[0]
 
     network, token_address = _NATIVE_TOKEN[chain]
-    price = await _gecko_price(network, token_address)
+    # The live price sources (Jupiter, DexScreener) first, GeckoTerminal only
+    # when they have nothing (19/10): its free limit, ~10 calls a minute, is
+    # better left to what only it has (candles, trades, holders).
+    from app.trading.onchain import live_prices
+    key = live_prices._key(chain, token_address)
+    try:
+        hit = (await live_prices.prices([key])).get(f"{key[0]}:{key[1]}")
+    except Exception:
+        hit = None
+    price = hit["p"] if hit else None
     if price is None:
-        # GeckoTerminal answers 429 often (30 calls a minute, shared IPs):
-        # the live price sources (Jupiter, DexScreener) before giving up.
-        from app.trading.onchain import live_prices
-        key = live_prices._key(chain, token_address)
-        try:
-            hit = (await live_prices.prices([key])).get(f"{key[0]}:{key[1]}")
-        except Exception:
-            hit = None
-        price = hit["p"] if hit else None
+        price = await _gecko_price(network, token_address)
     if price is None:
         return None
 

@@ -86,9 +86,10 @@ def test_native_price_usd_is_cached_within_ttl(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", _client_factory(handler))
     first = _run(prices.native_price_usd("solana"))
+    after_first = calls["count"]
     second = _run(prices.native_price_usd("solana"))
     assert first == second == 123.45
-    assert calls["count"] == 1
+    assert after_first >= 1 and calls["count"] == after_first     # the second read is the cache
 
 
 def _kraken(price: str):
