@@ -1,8 +1,9 @@
-"""The gem research in one run a night, at 22:00 Europe/Rome, plus a
-run at every whole hour (Lorenzo, 12/10: "aggiungi controllo ogni ora";
-shorter window, Telegram only when the Top changes) and one at 11:35 (Lorenzo, 08/10: "aggiungi un check oltre che alle 22,
-anche alle 11.35"). Both runs are the same; the times are
-`onchain_nightly_hour` plus `onchain_nightly_extra_times`.
+"""The gem research in runs at fixed times, Europe/Rome: since 19/10 a full
+run at 04:00 and a light one at 16:00 (Lorenzo: "procedi con 04:00 e 16:00
+e la ricerca leggera"); the times are `onchain_nightly_hour` plus
+`onchain_nightly_extra_times`, the light ones `onchain_nightly_light_times`.
+History: 22:00 and 11:35 (08/10), hourly runs (12/10, off), 03:00 (14/10),
+03:00 and 18:00 (17/10).
 
 Lorenzo, 07/10: "non lasciare sempre in ascolto il bot che scansiona
 costantemente [...] tutto in una tranche a fine serata". Until then five
@@ -126,7 +127,22 @@ def is_main_run(slot: float) -> bool:
     return (when.hour, when.minute) in set(run_times(hourly=False))
 
 
+def is_light_run(slot: float) -> bool:
+    """A run at one of onchain_nightly_light_times (16:00 since 19/10)."""
+    when = datetime.fromtimestamp(slot, ROME)
+    light = set()
+    for part in (settings.onchain_nightly_light_times or "").split(","):
+        h, _, m = part.strip().partition(":")
+        try:
+            light.add((int(h), int(m or 0)))
+        except ValueError:
+            continue
+    return (when.hour, when.minute) in light
+
+
 def window_s(slot: float) -> float:
+    if is_light_run(slot):
+        return settings.onchain_nightly_light_max_hours * 3600
     if not settings.onchain_nightly_hourly or is_main_run(slot):
         return settings.onchain_nightly_max_hours * 3600
     return settings.onchain_hourly_max_minutes * 60
@@ -340,10 +356,13 @@ async def _yield_to_optimizations(steps, clock, sleep) -> float:
 
 async def run_once(top: Callable[[], list[dict]], steps: Steps, deadline: float, *,
                    clock: Callable[[], float] = time.time, sleep=asyncio.sleep,
-                   top_before: dict[str, str] | None = None) -> dict:
+                   top_before: dict[str, str] | None = None, light: bool = False) -> dict:
     """One night. Returns the summary; stops at `deadline` at the latest
     (the studies, one bounded pass, run even after it). `top_before` is the
-    Top as the night found it, kept across a resume after a deploy."""
+    Top as the night found it, kept across a resume after a deploy.
+    `light` (the afternoon run, Lorenzo 19/10): the sentinel's ticks until
+    nothing new waits, then the alerts; the database queue, layers,
+    outcomes, the Top's re-check and the studies wait for the night."""
     from app.trading.onchain import leaderboard
     t0 = clock()
     before = steps.counters()
@@ -359,15 +378,27 @@ async def run_once(top: Callable[[], list[dict]], steps: Steps, deadline: float,
         if clock() >= research_end:
             stopped = "window"
             break
-        await _guard("tick", steps.tick())
+        await _guard("tick", steps.light_tick() if light else steps.tick())
         ticks += 1
         await sleep(leaderboard.TICK_S)
-        if ticks >= MIN_TICKS and steps.drained():
+        if ticks >= MIN_TICKS and (steps.quiet() if light else steps.drained()):
             break
     await _guard("settle", steps.settle(max(30.0, min(SETTLE_S, deadline - clock()))))
     # No tick from here on: what enters the Top now is sent by these calls.
     await _guard("alerts", steps.alerts())
     left = steps.backlog()
+    if light:
+        t1 = clock()
+        after, top_after = steps.counters(), _top_map(top)
+        return {
+            "started": t0, "ended": t1, "minutes": round((t1 - t0) / 60, 1), "stopped": stopped, "ticks": ticks,
+            **{k: after[k] - before.get(k, 0) for k in after},
+            "entered": [top_after[k] for k in top_after if k not in top_before],
+            "left": [top_before[k] for k in top_before if k not in top_after],
+            "top": len(top_after), "layers": 0, "rechecked": 0, "studies": 0, "duels": 0,
+            "deepseek_calls": steps.deepseek_calls(t0, t1), "backlog": left,
+            "paused_min": round(paused / 60, 1), "light": True,
+        }
     n_layers = await _guard("layers", steps.layers(), 0)
     await _guard("outcomes", steps.outcomes())
     rechecked = 0
@@ -411,7 +442,7 @@ def text_it(s: dict) -> str:
     def names(xs: list[str]) -> str:
         return ", ".join(xs[:15]) + (f" e altri {len(xs) - 15}" if len(xs) > 15 else "") if xs else "nessuno"
     when = datetime.fromtimestamp(s.get("slot") or s.get("started") or time.time(), ROME)
-    lines = [f"Ricerca delle {when:%H:%M} finita in {s.get('minutes', 0):g} min.",
+    lines = [f"Ricerca {'leggera ' if s.get('light') else ''}delle {when:%H:%M} finita in {s.get('minutes', 0):g} min.",
              f"Progetti visti dalla scoperta: {s.get('discovered', 0) + s.get('skipped', 0)} "
              f"(tenuti {s.get('discovered', 0)}), entrati in esame: {s.get('examined', 0)}, "
              f"analizzati: {s.get('analysed', 0)}.",
@@ -455,7 +486,7 @@ async def run_night(slot: float, top: Callable[[], list[dict]], *, steps_factory
         async with _research_lock, \
                 httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "Mozilla/5.0 (LiquidityEngine)"}) as client:
             summary = await run_once(top, steps_factory(client), deadline, clock=clock, sleep=sleep,
-                                     top_before=_state.get("top_before"))
+                                     top_before=_state.get("top_before"), light=is_light_run(slot))
     except asyncio.CancelledError:
         # A clean stop (a deploy) is not a failed try: only crashes count
         # towards MAX_ATTEMPTS, so evening deploys never drop the night.

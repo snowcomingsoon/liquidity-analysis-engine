@@ -3254,5 +3254,10 @@
     "status": "risolto",
     "at": 1792421777,
     "summary": "Misurato sul server: GeckoTerminal gratuito oggi regge circa 8-10 richieste al minuto, non 30, e rifiutava il 36% delle nostre. Ora il sito impara il limite reale (scende quando arrivano rifiuti, risale piano quando va tutto bene) e chiede a GeckoTerminal solo quello che le altre fonti gratuite non danno: le misure d'uso passano da 3 richieste a circa una per token (pool chieste a gruppi di 30, volumi a 7 e 30 giorni calcolati dalla nostra storia, holder condivisi con la scheda del token) e i prezzi delle monete native arrivano prima da Jupiter e DexScreener. Nessun servizio a pagamento."
+  },
+  "seed-0355": {
+    "status": "risolto",
+    "at": 1792431524,
+    "summary": "Le ricerche delle gemme ora partono alle 04:00 e alle 16:00, a 12 ore esatte (prima alle 03:00 e alle 18:00). Quella delle 04:00 e' completa come prima, fino a 6 ore: riesami, ricontrollo della Top, layer, esiti. Quella delle 16:00 e' leggera, al massimo 2 ore e mezza: solo progetti nuovi, aggiornamento della Top e notifiche, cosi' di pomeriggio lascia spazio ai grafici di chi usa il sito. La sentinella ogni 10 minuti resta com'e'. Il messaggio Telegram del pomeriggio dice 'Ricerca leggera delle 16:00'."
   }
 }

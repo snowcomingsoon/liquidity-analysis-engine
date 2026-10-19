@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0355", "Ricerche delle gemme a 12 ore di distanza, quella del pomeriggio leggera",
+     "Lorenzo, 19/10: 'Secondo te ha senso modificare gli orari delle ricerche, magari impostandoli a 12 ore di distanza? Hai consigli diversi sulle due ricerche?', poi 'Sì, procedi con 04:00 e 16:00 e la ricerca leggera'.",
+     "bassa"),
     ("seed-0354", "GeckoTerminal: limiti e attese, solo con fonti gratuite",
      "Lorenzo, 19/10: 'volevo sapere se possiamo aggirare i limiti di GeckoTerminal in qualche modo, anche affidandosi ad un'altra piattaforma', poi 'Nessun piano a pagamento, solo fonti gratuite. Cerca di ottimizzare al meglio il loro utilizzo per quello che dobbiamo fare'.",
      "media"),

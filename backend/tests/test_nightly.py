@@ -374,17 +374,44 @@ def test_the_research_waits_while_an_optimization_runs(monkeypatch):
     assert "In pausa" in nightly.text_it(s)
 
 
-def test_shipped_schedule_is_two_long_runs_at_3_and_18(monkeypatch):
-    # Lorenzo, 14/10: "La ricerca delle gemme falla solo di notte [...] alle tre";
-    # 17/10: "anche quella delle ore 18. Due ricerche al giorno".
+def test_shipped_schedule_is_a_full_run_at_4_and_a_light_one_at_16(monkeypatch):
+    # Lorenzo, 19/10: "procedi con 04:00 e 16:00 e la ricerca leggera".
     from app.config import Settings
     s = Settings()
-    assert (s.onchain_nightly_hour, s.onchain_nightly_extra_times, s.onchain_nightly_hourly) == (3, "18:00", False)
-    assert s.onchain_nightly_max_hours >= 6
-    for k in ("onchain_nightly_hour", "onchain_nightly_extra_times", "onchain_nightly_hourly"):
+    assert (s.onchain_nightly_hour, s.onchain_nightly_extra_times, s.onchain_nightly_hourly) == (4, "16:00", False)
+    assert s.onchain_nightly_max_hours >= 6 and s.onchain_nightly_light_times == "16:00"
+    for k in ("onchain_nightly_hour", "onchain_nightly_extra_times", "onchain_nightly_hourly",
+              "onchain_nightly_light_times", "onchain_nightly_light_max_hours", "onchain_nightly_max_hours"):
         monkeypatch.setattr(settings, k, getattr(s, k))
-    assert nightly.run_times() == [(3, 0), (18, 0)]
-    assert all(nightly.is_main_run(nightly._slot_on(date(2026, 10, 17), h)) for h in (3, 18))
+    assert nightly.run_times() == [(4, 0), (16, 0)]
+    night, afternoon = (nightly._slot_on(date(2026, 10, 20), h) for h in (4, 16))
+    assert not nightly.is_light_run(night) and nightly.is_light_run(afternoon)
+    assert nightly.window_s(night) == 6 * 3600 and nightly.window_s(afternoon) == 2.5 * 3600
+
+
+def test_the_light_run_ticks_light_and_skips_the_night_work():
+    clock = _Clock()
+
+    async def sleep(s):
+        clock.t += s
+
+    class Light(FakeSteps):
+        async def light_tick(self):
+            self.order.append("light")
+            await self.tick()
+
+        def quiet(self):
+            return self.ticks >= 3
+
+        def deepseek_calls(self, a, b):
+            return 0
+
+    steps = Light(clock)
+    s = asyncio.run(nightly.run_once(lambda: [], steps, clock.t + 9000, clock=clock, sleep=sleep, light=True))
+    assert s["light"] and s["stopped"] == "drained" and s["ticks"] == max(3, nightly.MIN_TICKS)
+    assert "light" in steps.order and "layers" not in steps.order and "outcomes" not in steps.order
+    assert steps.order[-1] == "alerts"
+    assert "leggera" in nightly.text_it({**s, "slot": nightly._slot_on(date(2026, 10, 20), 16)})
 
 
 class _Clock:

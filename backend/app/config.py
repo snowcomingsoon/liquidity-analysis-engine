@@ -84,13 +84,21 @@ class Settings(BaseSettings):
     onchain_nightly_enabled: bool = True
     # Lorenzo, 14/10: "La ricerca delle gemme falla solo di notte [...] alle
     # tre va bene [...] farne una bella grossa": one run at 03:00, long.
-    onchain_nightly_hour: int = 3
+    # Lorenzo, 19/10: twelve hours apart, "procedi con 04:00 e 16:00 e la
+    # ricerca leggera": 04:00 the full run, 16:00 a light one (below).
+    onchain_nightly_hour: int = 4
     # More daily runs, "HH:MM" comma-separated, same logic and window.
     # Lorenzo, 08/10: "aggiungi un check oltre che alle 22, anche alle 11.35".
     # Lorenzo, 17/10: "aggiungi per tutti gli account una nuova ricerca alle
     # ore 18 [...] Due ricerche al giorno": 03:00 and 18:00.
-    onchain_nightly_extra_times: str = "18:00"
-    onchain_nightly_max_hours: float = 6.0   # 03:00-09:00 at most
+    onchain_nightly_extra_times: str = "16:00"
+    onchain_nightly_max_hours: float = 6.0   # 04:00-10:00 at most
+    # Runs at these times are light (nightly.run_once(light=True)): new
+    # projects, the Top and its alerts only, no database re-check queue, no
+    # layers, outcomes, Top re-check or studies, at most light_max_hours: in
+    # the afternoon GeckoTerminal's free limit is the charts' too.
+    onchain_nightly_light_times: str = "16:00"
+    onchain_nightly_light_max_hours: float = 2.5
     # Lorenzo, 18/10: between the runs, a light round every 10 minutes on
     # the fast sources and the launchpads, alerts at once (nightly.sentinel_loop).
     onchain_sentinel_enabled: bool = True
