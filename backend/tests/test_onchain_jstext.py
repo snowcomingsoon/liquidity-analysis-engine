@@ -160,3 +160,19 @@ def test_unreadable_site_does_not_fail_the_floor(_board):
     assert lb.qualifies(lb._entries[k]) == ""
     lb._entries[k]["pillars"]["site"]["facts"] = {}
     assert lb.qualifies(lb._entries[k]).startswith("site too weak")
+
+
+def test_unreadable_site_with_an_empty_description_rejects():
+    """Spidey Show, 19/10: a script-built site took a neutral 50 while the
+    reader had found nothing in the description (substance 1)."""
+    raw = ('<html><head><script type="module" src="/assets/index.js"></script></head>'
+           '<body><div id="root"></div></body></html>')
+    page = depth.anatomy(raw, "https://spidey.example/")
+    page.update(url="https://spidey.example/", https=True, not_own=None, shell=True)
+    site = depth.judge_site(page, [], None)
+    thin = {"substance": 1, "verdict": "thin", "points": 10, "red_flags": ["nothing built, token has no role"]}
+    p = rs.judge_research([site], "Meet Spidey Show. A world of its own.", thin)
+    assert p["fatal"] and "nothing built" in p["fatal"]
+    real = {"substance": 6, "verdict": "promising", "points": 60}
+    assert not rs.judge_research([site], PFWA_DESC, real)["fatal"]
+    assert not rs.judge_research([site], PFWA_DESC, {**thin, "substance": 3})["fatal"]

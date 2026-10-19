@@ -3259,5 +3259,10 @@
     "status": "risolto",
     "at": 1792431524,
     "summary": "Le ricerche delle gemme ora partono alle 04:00 e alle 16:00, a 12 ore esatte (prima alle 03:00 e alle 18:00). Quella delle 04:00 e' completa come prima, fino a 6 ore: riesami, ricontrollo della Top, layer, esiti. Quella delle 16:00 e' leggera, al massimo 2 ore e mezza: solo progetti nuovi, aggiornamento della Top e notifiche, cosi' di pomeriggio lascia spazio ai grafici di chi usa il sito. La sentinella ogni 10 minuti resta com'e'. Il messaggio Telegram del pomeriggio dice 'Ricerca leggera delle 16:00'."
+  },
+  "seed-0356": {
+    "status": "risolto",
+    "at": 1792447004,
+    "summary": "Spidey Show era passato per due buchi. Il suo sito e' fatto in JavaScript e non si legge, e in quel caso il controllo del sito dava un voto neutro di 50 ignorando che la descrizione non diceva niente (nessun prodotto, il token senza un ruolo). Inoltre il 68% della supply era in 54 wallet collegati fra loro, un lancio coordinato, ma era solo una segnalazione. Ora un sito illeggibile con una descrizione vuota scarta il progetto, e lo scarta anche avere piu' della meta' della supply in wallet collegati. Dalla Top escono Spidey Show, ARGUS, GDAO e BASK, tutti nella stessa situazione."
   }
 }

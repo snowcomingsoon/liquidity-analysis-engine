@@ -62,13 +62,15 @@ LP_LOCKED_MIN_PCT = 80.0
 HOLDER_MAX_PCT = 15.0
 TOP10_MAX_PCT = 35.0
 PROGRAM_MAX_PCT = 50.0      # one program account (Solana), like depth.CONTRACT_MAX_PCT on EVM
+LINKED_REJECT_PCT = 50.0    # wallets linked to each other: a bundled launch (Spidey Show, 19/10)
 TAX_MAX_PCT = 10.0
 TOP_HOLDER_MAX_PCT = 30.0
 # Wallets RugCheck links by transfers or trades (funded by the same wallet,
 # sent tokens to each other): recorded, not blocking. Measured 29/09 on the
 # 51 Solana memes of the simulated book: linked wallets over 10% in 4 of 15
 # rugs and in 9 of 36 survivors (DREGG 39%) -- no separation. The rugs had
-# 100% LP locked: coordinated sells, not a liquidity pull.
+# 100% LP locked: coordinated sells, not a liquidity pull. A majority
+# (LINKED_REJECT_PCT) is another thing: the supply itself in one group.
 LINKED_MAX_PCT = 10.0
 MEME_RED_FLAGS = ("Creator history of rugged tokens", "High holder correlation")
 AI_SCORE_MIN = 6
@@ -343,6 +345,9 @@ def judge_rugcheck(report: dict | None, meme: bool = False) -> dict:
     # not waved through: it can be the team's own treasury (as on EVM).
     if biggest_program > PROGRAM_MAX_PCT:
         return _check("security", "RugCheck", False, f"one program account holds {biggest_program:.0f}% of supply",
+                      facts=holders)
+    if linked is not None and linked >= LINKED_REJECT_PCT:
+        return _check("security", "RugCheck", False, f"linked wallets hold {linked:.0f}% of supply",
                       facts=holders)
     if top > HOLDER_MAX_PCT:
         return _check("security", "RugCheck", False, f"a single wallet holds {top:.0f}% of supply",

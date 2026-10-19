@@ -716,6 +716,7 @@ def judge_tokenomics_evm(info: dict | None, pair_address: str = "", liquidity_us
 
 
 CONTRACT_MAX_PCT = 50.0
+LINKED_REJECT_PCT = 50.0   # of the supply in wallets linked to each other (Lorenzo, 19/10)
 
 GECKO_TOKENOMICS_BASE = 50
 GECKO_TOKENOMICS_MAX = 65
@@ -768,6 +769,10 @@ def _judge_tokenomics(*, top1: float, top10: float, creator: float, holders: int
              else f"a single wallet holds {top1:.0f}%" if top1 > TOP1_MAX_PCT
              else f"top 10 hold {top10:.0f}%" if top10 > TOP10_MAX_PCT
              else f"{tax:.0f}% tax" if tax > TAX_MAX_PCT
+             # A majority held by wallets linked to each other is a bundled
+             # launch (Spidey Show, 19/10: 68% in 54 linked wallets).
+             else f"linked wallets hold {linked_pct:.0f}% of supply"
+             if linked_pct is not None and linked_pct >= LINKED_REJECT_PCT
              else "")
     flags = []
     if linked_pct is not None:

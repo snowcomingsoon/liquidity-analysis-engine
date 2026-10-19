@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0356", "Spidey Show, una meme coin, entrato nelle gemme",
+     "Lorenzo, 19/10: 'Con le ultime modifiche ho visto passare un progetto che assolutamente non deve passare. Si tratta del progetto Spidey Show, che e' entrato nelle gemme e e' una meme coin a tutti gli effetti. Bisogna capire come ha fatto a entrare, perche', e risolvere il problema'.",
+     "alta"),
     ("seed-0355", "Ricerche delle gemme a 12 ore di distanza, quella del pomeriggio leggera",
      "Lorenzo, 19/10: 'Secondo te ha senso modificare gli orari delle ricerche, magari impostandoli a 12 ore di distanza? Hai consigli diversi sulle due ricerche?', poi 'Sì, procedi con 04:00 e 16:00 e la ricerca leggera'.",
      "bassa"),

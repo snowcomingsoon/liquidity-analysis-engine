@@ -331,6 +331,7 @@ async def _dossier_deepseek(prompt: str, subject: str | None = None) -> dict | N
 # project nor lifts it on the listing text alone; DeepSeek's judge decides.
 # A site that answers "not found" is gone, not unreadable: it still counts 0.
 UNREAD_SCORE = 50
+UNREAD_THIN_MAX = 2        # reader substance (0-10) at or under which an unreadable site rejects
 _GONE = re.compile(r"\bresponds (404|410)\b")
 
 
@@ -375,6 +376,13 @@ def judge_research(sites: list[dict], description: str, ai: dict | None) -> dict
     if not scored and not_read:
         facts.update(unreadable=not_read, site_score=None)
         flags.append(not_read)
+        # An unreadable site is not a weak one (29/09), but it is no free
+        # pass either: when the reader found nothing in the description, that
+        # is the verdict (Spidey Show, 19/10: substance 1, "nothing built,
+        # token has no role", entered at a neutral 50).
+        if ai and ai.get("verdict") == "thin" and (ai.get("substance") or 0) <= UNREAD_THIN_MAX:
+            return depth._pillar("site", 0, facts, flags,
+                                 "research: site not readable and the description shows nothing built")
         score = UNREAD_SCORE
     return depth._pillar("site", score, facts, flags)
 

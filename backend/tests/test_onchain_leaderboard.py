@@ -1138,3 +1138,17 @@ def test_a_script_built_page_is_unreadable_not_empty():
     assert not site["fatal"] and site["unreadable"]
     small = {**depth.anatomy("<html><body><p>Hi</p></body></html>", "https://x.io"), "url": "https://x.io"}
     assert depth.judge_site(small, [], None, now=NOW)["fatal"] == "empty page"
+
+
+def test_a_linked_majority_is_a_bundled_launch():
+    """Spidey Show, 19/10: 68% of the supply in 54 linked wallets."""
+    p = depth._judge_tokenomics(top1=2, top10=12, creator=0, holders=2430, insiders=54, lp_locked=100,
+                                mintable=False, freezable=False, tax=0, rugged=False, linked_pct=68.0)
+    assert "linked wallets hold 68%" in p["fatal"]
+    ok = depth._judge_tokenomics(top1=2, top10=12, creator=0, holders=2430, insiders=54, lp_locked=100,
+                                 mintable=False, freezable=False, tax=0, rugged=False, linked_pct=40.0)
+    assert not ok["fatal"]
+    bundled = {**_rug(), "risks": [], "insiderNetworks": [{"currentHolding": 680_000}]}   # supply 1M
+    check = legit.judge_rugcheck(bundled)
+    assert check["ok"] is False and "linked wallets hold 68%" in check["detail"]
+    assert legit.judge_rugcheck({**bundled, "insiderNetworks": [{"currentHolding": 400_000}]})["ok"] is not False
