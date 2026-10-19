@@ -1152,3 +1152,19 @@ def test_a_linked_majority_is_a_bundled_launch():
     check = legit.judge_rugcheck(bundled)
     assert check["ok"] is False and "linked wallets hold 68%" in check["detail"]
     assert legit.judge_rugcheck({**bundled, "insiderNetworks": [{"currentHolding": 400_000}]})["ok"] is not False
+
+
+def test_rules_15_apply_to_stored_pillars_at_once():
+    """19/10: the entries already in the Top (Spidey Show) are judged from
+    their own facts at the next start, not hours later."""
+    spidey = {"site": {"key": "site", "score": 50, "fatal": "", "flags": [],
+                       "facts": {"unreadable": depth.UNREADABLE_JS, "verdict": "thin", "ai_substance": 1}},
+              "tokenomics": {"key": "tokenomics", "score": 88, "fatal": "", "flags": [], "facts": {"linked_pct": 67.8}}}
+    lb.apply_rules_15(spidey)
+    assert "nothing built" in spidey["site"]["fatal"] and spidey["site"]["score"] == 0
+    assert "linked wallets hold 68%" in spidey["tokenomics"]["fatal"]
+    sudo = {"site": {"key": "site", "score": 50, "fatal": "", "flags": [],
+                     "facts": {"unreadable": depth.UNREADABLE_JS, "verdict": "thin", "ai_substance": 3}},
+            "tokenomics": {"key": "tokenomics", "score": 81, "fatal": "", "flags": [], "facts": {"linked_pct": 40.2}}}
+    lb.apply_rules_15(sudo)
+    assert not sudo["site"]["fatal"] and not sudo["tokenomics"]["fatal"]

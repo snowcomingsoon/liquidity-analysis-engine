@@ -211,7 +211,7 @@ NO_GITHUB_PENALTY = 10.0
 KOBRA_SCORE_WEIGHTS = {"usage": 0.25, "product": 0.35, "token": 0.20, "deepseek": 0.20}
 KOBRA_NO_GITHUB_PENALTY = 5.0
 KOBRA_GROWTH_WEIGHT = 20              # inside usage, next to volume/cap 45, volume 30, buyers 25
-RULES_VERSION = 15             # 2: "no GitHub" stopped being a ban; 3: radar launches out;
+RULES_VERSION = 16             # 2: "no GitHub" stopped being a ban; 3: radar launches out;
                                # 4: research read by reader.py, older bans and readings dropped;
                                # 5: reader recognises research-stage code and stated limits
                                # 6: no age limits, strict band from $100k to $2M, one rule chain
@@ -225,6 +225,7 @@ RULES_VERSION = 15             # 2: "no GitHub" stopped being a ban; 3: radar la
                                # 13: Solana program accounts leave the wallet limits like EVM contracts
                                # 14: minting by a contract/program, busy or code-drop repos, script-built sites
                                # 15: unreadable site + empty description rejects; linked wallets >= 50% reject
+                               # 16: rules 15 applied from the stored facts at load (no re-read)
 
 _entries: dict[str, dict] = {}     # chain:token
 _excluded: list[dict] = []
@@ -257,6 +258,22 @@ def _key(chain: str, token: str) -> str:
 
 # ------------------------------------------------------------------ memoria
 
+def apply_rules_15(pillars: dict) -> None:
+    """Rules 15 (Spidey Show, 19/10) on pillars scored before them, from
+    their own facts: no call, the same verdicts research.judge_research and
+    depth._judge_tokenomics give now."""
+    from app.trading.onchain import research
+    site = pillars.get("site") or {}
+    f = site.get("facts") or {}
+    if f.get("unreadable") and not site.get("fatal") and f.get("verdict") == "thin" \
+            and (f.get("ai_substance") or 0) <= research.UNREAD_THIN_MAX:
+        site.update(score=0, fatal="research: site not readable and the description shows nothing built")
+    tok = pillars.get("tokenomics") or {}
+    linked = (tok.get("facts") or {}).get("linked_pct")
+    if linked is not None and linked >= depth.LINKED_REJECT_PCT and not tok.get("fatal"):
+        tok.update(score=0, fatal=f"linked wallets hold {linked:.0f}% of supply")
+
+
 def _load() -> None:
     try:
         raw = json.loads(_STORE_FILE.read_text(encoding="utf-8"))
@@ -274,17 +291,13 @@ def _load() -> None:
         global _requeue_fatals, _reset_market, _recheck_programs, _recheck_misreads
         if rules < 12:
             _reset_market = True
-        if rules < 15:
+        if rules < 16:
             # Unreadable sites were a neutral 50 whatever the description said,
-            # and a linked majority only a flag: read both again.
+            # and a linked majority only a flag. Both verdicts are already in
+            # the stored facts: applied here, at once (the sentinel never
+            # re-reads an old entry, the night would have been hours away).
             for e in _entries.values():
-                p = e.get("pillars") or {}
-                if ((p.get("site") or {}).get("facts") or {}).get("unreadable"):
-                    p.pop("site", None)
-                    (e.get("checked_at") or {}).pop("site", None)
-                if (((p.get("tokenomics") or {}).get("facts") or {}).get("linked_pct") or 0) >= 50:
-                    p.pop("tokenomics", None)
-                    (e.get("checked_at") or {}).pop("tokenomics", None)
+                apply_rules_15(e.get("pillars") or {})
         if rules < 14:
             # Fatal verdicts that misread who can mint, a busy repository, an
             # account's profile repo or a script-built site: read again.
