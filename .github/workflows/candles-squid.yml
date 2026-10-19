@@ -66,7 +66,9 @@ jobs:
       RPC_ETH_HTTP: https://ethereum-rpc.publicnode.com
       # The two Ethereum pools of the app's candle archive whose factory() is
       # Uniswap V3's (scripts/candle_pools_report.py, 19/10).
-      POOLS: "0x54252a8124ef08a4db8edb530c0a153c33406c53,0xf10e8ccdb3f065bf24afa14d08cc6336d4a9a281"
+      # Plus two liquid controls, USDC/WETH 0.05% and WBTC/WETH 0.3%: the app's
+      # pools trade a few times a day, too few buckets to measure anything.
+      POOLS: "0x54252a8124ef08a4db8edb530c0a153c33406c53,0xf10e8ccdb3f065bf24afa14d08cc6336d4a9a281,0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640,0xcbcdf9626bc03e24f779434178a73a0b4bad62ed"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

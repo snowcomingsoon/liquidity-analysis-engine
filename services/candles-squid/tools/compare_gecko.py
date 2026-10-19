@@ -12,6 +12,7 @@ definition are its own): the differences are measured, not assumed zero,
 and a match with GeckoTerminal is not by itself proof of correctness.
 """
 import json
+import math
 import statistics
 import sys
 import time
@@ -52,10 +53,11 @@ def main():
     st = gql(api, "{ syncStatuses { block timestamp finalizedBlock } }")["syncStatuses"]
     indexed_ts = st[0]["timestamp"] if st else 0
     print("squid indexed to", st)
+    fees = {p["id"]: p["fee"] for p in gql(api, "{ pools { id fee } }")["pools"]}
     for pool in pools:
         info = get(GT.format(pool=pool) + "?include=base_token")
         base = info["data"]["relationships"]["base_token"]["data"]["id"].split("_", 1)[1].lower()
-        print(f"\npool {pool} base token {base}")
+        print(f"\npool {pool} base token {base} fee {fees.get(pool, 0) / 1e4:.2f}%")
         time.sleep(2.5)
         for tf, (unit, agg) in TFS.items():
             g = get(GT.format(pool=pool) + f"/ohlcv/{unit}?aggregate={agg}&limit=300&currency=usd&token={base}")
@@ -75,16 +77,22 @@ def main():
             sk = {s for s in srows if closed(s) and srows[s]["closeUsd"] is not None}
             both = sorted(gk & sk)
             diffs = {k: [] for k in ("open", "high", "low", "close", "volume")}
+            ratio = []      # squid / gecko - 1 on close, signed: a constant offset is a method difference
             for s in both:
                 gr, sr = grows[s], srows[s]
                 for i, k in enumerate(("open", "high", "low", "close"), start=1):
                     diffs[k].append(rel(float(sr[k + "Usd"]), float(gr[i])))
                 diffs["volume"].append(rel(float(sr["volumeUsd"]), float(gr[5])))
+                if float(gr[4]):
+                    ratio.append(float(sr["closeUsd"]) / float(gr[4]) - 1)
             print(f"  tf {tf}s: gecko {len(gk)} buckets, squid {len(sk)}, both {len(both)}, "
                   f"only gecko {len(gk - sk)}, only squid {len(sk - gk)}")
             for k, v in diffs.items():
                 if v:
-                    print(f"    {k:6s} median {statistics.median(v):.4%}  p95 {sorted(v)[int(0.95 * (len(v) - 1))]:.4%}  max {max(v):.4%}")
+                    p95 = sorted(v)[max(0, math.ceil(0.95 * len(v)) - 1)]      # nearest rank
+                    print(f"    {k:6s} median {statistics.median(v):.4%}  p95 {p95:.4%}  max {max(v):.4%}")
+            if ratio:
+                print(f"    close squid/gecko-1 signed median {statistics.median(ratio):+.4%}")
             pricing = {srows[s]["pricing"] for s in sk}
             print("    pricing", sorted(pricing))
 
