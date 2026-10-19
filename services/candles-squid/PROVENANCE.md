@@ -27,5 +27,8 @@ machinery and its pricing anyway.
 
 Not copied: the upstream `.env` (it carries a project RPC URL), its
 `docker-compose.yml` (default password, published port), `assets/pools.json`.
-`@subsquid/big-decimal` (GPL-3.0-or-later) is not used: prices are bigint
-fixed point.
+Licences: the copied files are MIT (above). The Subsquid SDK packages this
+service depends on (`@subsquid/*`, installed from npm, not modified, not
+vendored) are GPL-3.0-or-later, as they are for the upstream squid; the
+service is a separate program talking to the app over GraphQL. Prices are
+bigint fixed point, so `@subsquid/big-decimal` is not needed.

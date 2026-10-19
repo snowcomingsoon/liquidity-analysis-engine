@@ -41,4 +41,10 @@ export class Pool {
      */
     @IntColumn_({nullable: false})
     fromBlock!: number
+
+    /**
+     * timestamp (s) of fromBlock: a bucket starting earlier is incomplete here
+     */
+    @IntColumn_({nullable: false})
+    fromTimestamp!: number
 }

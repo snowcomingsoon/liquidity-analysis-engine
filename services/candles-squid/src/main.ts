@@ -67,7 +67,8 @@ const FINALITY_BLOCKS = Number(process.env.FINALITY_BLOCKS || 64)
 assert(POOLS.length > 0 && POOLS.length <= 1000, 'POOLS: between 1 and 1000 addresses')
 assert(Number.isInteger(START_BLOCK) && START_BLOCK > 0, 'START_BLOCK: a block number')
 
-const rpc = new RpcClient({url: env('RPC_ETH_HTTP'), capacity: 5, rateLimit: 5, retryAttempts: 3})
+const rpc = new RpcClient({url: env('RPC_ETH_HTTP'), capacity: 5, rateLimit: 5, retryAttempts: 3,
+    headers: {'user-agent': 'candles-squid'}})   // some public RPCs refuse an empty agent
 
 async function call<T>(fn: {encode(a: {}): string; decodeResult(o: string): T}, to: string, block: number | 'latest'): Promise<T> {
     const tag = block === 'latest' ? 'latest' : '0x' + block.toString(16)
@@ -78,6 +79,9 @@ async function call<T>(fn: {encode(a: {}): string; decodeResult(o: string): T}, 
 /** Reads and checks every pool before the first block: factory, tokens, decimals. */
 async function describePools(): Promise<Pool[]> {
     const out: Pool[] = []
+    const startBlock: {timestamp: string} | null = await rpc.call('eth_getBlockByNumber', ['0x' + START_BLOCK.toString(16), false])
+    assert(startBlock != null, `START_BLOCK ${START_BLOCK} not found on the RPC`)
+    const fromTimestamp = Number(BigInt(startBlock.timestamp))
     const refused: string[] = []
     for (const address of new Set([...POOLS, ETH_USD_POOL])) {
         const factory = String(await call(poolAbi.functions.factory, address, 'latest')).toLowerCase()
@@ -100,7 +104,7 @@ async function describePools(): Promise<Pool[]> {
             decimals1: Number(await call(erc20.functions.decimals, token1, 'latest')),
             symbol0: await symbol(token0), symbol1: await symbol(token1),
             fee: Number(await call(poolAbi.functions.fee, address, 'latest')),
-            fromBlock: START_BLOCK,
+            fromBlock: START_BLOCK, fromTimestamp,
         }))
     }
     assert(refused.length === 0, `not Uniswap V3 pools of ${FACTORY_ADDRESS}: ${refused.join(', ')}`)

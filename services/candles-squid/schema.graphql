@@ -11,6 +11,8 @@ type Pool @entity {
   fee: Int!
   "first block this indexer reads for the pool (START_BLOCK or later)"
   fromBlock: Int!
+  "timestamp (s) of fromBlock: a bucket starting earlier is incomplete here"
+  fromTimestamp: Int!
 }
 
 """
