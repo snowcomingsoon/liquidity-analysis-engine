@@ -372,6 +372,8 @@ def _load() -> None:
             _excluded.extend(x for x in raw.get("excluded") or [] if isinstance(x, dict))
             _gone.update(raw.get("gone") or {})
         _merge_spellings()
+        for e in _entries.values():
+            _resume_from_database(e)
         _state["examined"] = int(raw.get("examined") or 0)
         _state["rescored_rules"] = raw.get("rescored_rules")
         _alerted.update(raw.get("alerted") or [])
@@ -432,6 +434,25 @@ def merge_narratives(hint: list[str] | None, site: list[str] | None, more: list[
     return list(dict.fromkeys([*(hint or []), *(site or []), *(more or [])]))
 
 
+def _resume_from_database(e: dict) -> bool:
+    """A blank entry that left the board once (a full set, 20/10) starts from
+    its last analysis in the database, not from nothing: a blank entry hid
+    DREGG's whole row from the Top. Stale pillars are read again on their
+    usual schedule."""
+    if e.get("pillars"):
+        return False
+    try:
+        row = projects_db.get(e["chain"], e["token_address"])
+    except Exception:
+        return False
+    pillars = (row or {}).get("pillars")
+    if not (isinstance(pillars, dict) and pillars and row.get("status") in ("studied", "ranked")):
+        return False
+    at = float(row.get("analyzed_at") or 0)
+    e.update(pillars=pillars, checked_at={n: at for n in pillars}, overall=row.get("overall"))
+    return True
+
+
 def add(item: dict, source: str, now: float | None = None) -> bool:
     """Un progetto da esaminare. False se c'e' gia' o e' gia' stato bocciato."""
     chain, token = item.get("chain"), projects_db.norm_token(item.get("token_address") or "")
@@ -468,18 +489,7 @@ def add(item: dict, source: str, now: float | None = None) -> bool:
         "bonding_curve": item.get("bonding_curve"), "associated_bonding_curve": item.get("associated_bonding_curve"),
         "pillars": {}, "checked_at": {}, "rank": None, **fresh,
     }
-    # Back on the board after leaving it (a full set, a restart): it starts
-    # from its last analysis in the database, not blank. A blank entry hid
-    # DREGG's whole row from the Top (20/10); stale pillars are read again
-    # on their usual schedule.
-    try:
-        row = projects_db.get(chain, token)
-    except Exception:
-        row = None
-    pillars = (row or {}).get("pillars")
-    if isinstance(pillars, dict) and pillars and (row or {}).get("status") in ("studied", "ranked"):
-        at = float(row.get("analyzed_at") or 0)
-        _entries[k].update(pillars=pillars, checked_at={n: at for n in pillars}, overall=row.get("overall"))
+    _resume_from_database(_entries[k])
     _state["examined"] += 1
     _mark()
     return True
