@@ -11120,18 +11120,48 @@
   // conosco i nomi cosi non so cosa cercare".
   let indicatorLibraryFilter = null; // null = tutti; "__favorites"; oppure un id di categoria
 
+  // AbortSignal.timeout exists from Safari 16: older iPhones get the same
+  // limit from a controller.
+  function timeoutSignal(ms) {
+    if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) return AbortSignal.timeout(ms);
+    const ctl = new AbortController();
+    setTimeout(() => ctl.abort(), ms);
+    return ctl.signal;
+  }
+
   // A failed load is not remembered: an empty library stayed empty until
   // a reload (a server restart during a deploy was enough). Next open retries.
-  async function ensureIndicatorCatalog() {
-    if (state.indicatorCatalog && state.indicatorCatalog.length) return state.indicatorCatalog;
-    try {
-      const resp = await fetch("/api/indicators/catalog", { signal: AbortSignal.timeout(15000) });
-      const list = resp.ok ? await resp.json() : [];
-      state.indicatorCatalog = Array.isArray(list) && list.length ? list : null;
-    } catch {
-      state.indicatorCatalog = null;
-    }
-    return state.indicatorCatalog || [];
+  // The list is fetched at start-up and kept in the browser: typing before
+  // it arrived answered "No indicator found" to every letter, which read as
+  // a frozen search (Lorenzo, 20/10).
+  const CATALOG_CACHE_KEY = "indicatorCatalogCache";
+  let indicatorCatalogLoading = null;
+  try {
+    const cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null");
+    if (Array.isArray(cached) && cached.length) state.indicatorCatalog = cached;
+  } catch { /* no cache */ }
+
+  function ensureIndicatorCatalog({ refresh = false } = {}) {
+    if (state.indicatorCatalog && state.indicatorCatalog.length && !refresh) return Promise.resolve(state.indicatorCatalog);
+    if (indicatorCatalogLoading) return indicatorCatalogLoading;
+    indicatorCatalogLoading = (async () => {
+      try {
+        const resp = await fetch("/api/indicators/catalog", { signal: timeoutSignal(15000) });
+        const list = resp.ok ? await resp.json() : [];
+        if (Array.isArray(list) && list.length) {
+          state.indicatorCatalog = list;
+          try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(list)); } catch { /* full */ }
+        }
+      } catch { /* keep what we have; the next open retries */ }
+      indicatorCatalogLoading = null;
+      // An open library shows the fresh list, filtered by what is already typed.
+      if (!el("indicator-library-modal")?.classList.contains("hidden")) {
+        renderIndicatorModalNav();
+        renderIndicatorLibraryList(el("indicator-library-search")?.value || "");
+      }
+      return state.indicatorCatalog || [];
+    })();
+    return indicatorCatalogLoading;
   }
 
   function toggleFavoriteIndicator(id) {
@@ -11194,6 +11224,10 @@
           s.category_label.toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q))
       : base;
 
+    if (!catalog.length) {
+      box.innerHTML = `<div class="icl-empty">${indicatorCatalogLoading ? "Loading indicators…" : "The list did not load. Close and open again to retry."}</div>`;
+      return;
+    }
     if (!filtered.length) {
       const msg = indicatorLibraryFilter === "__favorites"
         ? "No favorites yet — click the star on an indicator to add it here."
@@ -11346,17 +11380,10 @@
   // chiamano tutti la stessa apertura diretta — senza il giro di click
   // sintetico che serviva quando era un cassetto (e senza il bug di
   // richiusura che quel giro portava con se').
-  async function openIndicatorLibraryModal() {
-    if (!(state.indicatorCatalog && state.indicatorCatalog.length)) {
-      el("indicator-library-modal")?.classList.remove("hidden");
-      const box = el("indicator-library-list");
-      if (box) box.innerHTML = `<div class="icl-empty">Loading indicators…</div>`;
-      await ensureIndicatorCatalog();
-      if (!(state.indicatorCatalog && state.indicatorCatalog.length) && box) {
-        box.innerHTML = `<div class="icl-empty">The list did not load. Close and open again to retry.</div>`;
-        return;
-      }
-    }
+  function openIndicatorLibraryModal() {
+    // Never waits: the list shows at once (cache or "Loading…") and the
+    // search stays usable; the fetch re-renders when it lands.
+    if (!(state.indicatorCatalog && state.indicatorCatalog.length)) ensureIndicatorCatalog();
     renderIndicatorModalNav();
     renderIndicatorLibraryList(el("indicator-library-search")?.value || "");
     el("indicator-library-modal")?.classList.remove("hidden");
@@ -11382,6 +11409,9 @@
 
     el("open-indicator-library-btn")?.addEventListener("click", () => openIndicatorLibraryModal());
     el("toolbar-indicators-btn")?.addEventListener("click", () => openIndicatorLibraryModal());
+    // Fetched in the background at start-up (and refreshed over the cache),
+    // so the library is ready before anyone opens it.
+    setTimeout(() => ensureIndicatorCatalog({ refresh: true }), 1500);
 
     renderActiveIndicatorChips();
     renderChartIndicatorLegend();
@@ -11432,7 +11462,7 @@
     const requests = state.customIndicators.map((ind) => fetch("/api/indicators/compute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(30000),
+      signal: timeoutSignal(30000),
       body: JSON.stringify({
         symbol,
         asset_type: state.assetType,
