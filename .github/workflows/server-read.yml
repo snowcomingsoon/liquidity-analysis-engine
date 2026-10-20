@@ -1,38 +1,68 @@
-name: Server read (layers)
+name: Server read (gems flow)
 
-# Read-only look at what the layer engine found on the server (Lorenzo,
-# 01/10: "vai con l'action"): the engine's own store and the layer rows of
-# the project database, opened read-only. Nothing is written. Run by hand.
+# One-off check (20/10): manual scans, holds and new rows of the gems, read-only.
+# Branch only, never merged.
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [claude/elegant-galileo-rgatl1]
+    paths: [.github/workflows/server-read.yml]
 
 jobs:
   read:
     runs-on: ubuntu-latest
     steps:
-      - name: Layer engine state
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            # Standard library only: importing the app in a second process
-            # is killed for memory (exit 137).
-            docker exec -i deploy-app-1 python - <<'PY'
-            import glob, json, sqlite3, time
-            base = next(d for d in ("/srv/backend/data", "/app/backend/data", "backend/data", "data")
-                        if glob.glob(d + "/onchain_projects.db"))
-            try:
-                s = json.load(open(base + "/onchain_layers.json"))
-            except OSError:
-                s = {"last_run": 0, "found": {}}
-            print("last_run", time.strftime("%Y-%m-%d %H:%M", time.gmtime(s["last_run"])) if s.get("last_run") else "never")
-            for gid, x in sorted((s.get("found") or {}).items(), key=lambda kv: -(kv[1].get("score") or 0)):
-                print("found", gid, x.get("type"), x.get("status"), x.get("score"), (x.get("cex") or {}).get("pair"), x.get("why") or "")
-            db = sqlite3.connect(f"file:{base}/onchain_projects.db?mode=ro", uri=True)
-            for r in db.execute("SELECT token, symbol, status, score, mcap, rank, why FROM projects WHERE chain = 'layer' ORDER BY score DESC"):
-                print("db", *r)
-            PY
-            docker logs deploy-app-1 --since 3h 2>&1 | grep -i -A12 "layers" | grep -v "^  File\|^    " | tail -40
+      - name: Gems flow (read-only)
+        env:
+          KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER_: ${{ secrets.HETZNER_USER }}
+        run: |
+          install -m 600 /dev/null ~/k && printf '%s\n' "$KEY" > ~/k
+          ssh -i ~/k -o StrictHostKeyChecking=no -o LogLevel=ERROR "$USER_@$HOST" bash -s <<'SSH'
+          docker exec -i deploy-app-1 python - <<'PY'
+          import glob, json, sqlite3, time
+          base = next(d for d in ("/srv/backend/data", "/app/backend/data") if glob.glob(d + "/onchain_leaderboard.json"))
+          now = time.time()
+          ts = lambda t: time.strftime("%d/%m %H:%M", time.gmtime(t)) if t else None
+          print("--- manual scans (jobs, last 36h)")
+          try:
+              jobs = json.load(open(base + "/app_jobs.json"))
+              jobs = jobs.get("jobs", jobs) if isinstance(jobs, dict) else jobs
+              items = jobs.values() if isinstance(jobs, dict) else jobs
+              for j in items:
+                  if j.get("kind") != "scan" or now - (j.get("created_at") or j.get("at") or 0) > 36 * 3600:
+                      continue
+                  r = j.get("result") or {}
+                  g = r.get("gem") or {}
+                  t = r.get("token") or {}
+                  print(ts(j.get("created_at") or j.get("at")), j.get("state"), j.get("title"), "|", t.get("chain"), t.get("symbol"), "| gem", g.get("status"), g.get("score"), "why:", g.get("why"), "added:", g.get("added"), "| kind", r.get("kind"), "| err", r.get("error"))
+          except Exception as exc:
+              print("jobs read", type(exc).__name__, exc)
+          lb = json.load(open(base + "/onchain_leaderboard.json"))
+          ents = lb.get("entries") or {}
+          print("--- board entries source=manual")
+          for k, e in ents.items():
+              if e.get("source") == "manual":
+                  o = e.get("overall") or {}
+                  print(ts(e.get("found_at")), e.get("chain"), e.get("symbol"), "rank", e.get("rank"), "overall", o.get("score"), "pending", o.get("pending"), "fatal", o.get("fatal"), "pillars", sorted((e.get("pillars") or {})))
+          print("--- board ranked")
+          for e in sorted((e for e in ents.values() if e.get("rank")), key=lambda e: e["rank"]):
+              print(e["rank"], e.get("chain"), e.get("symbol"), "found", ts(e.get("found_at")), "src", e.get("source"))
+          print("--- gem holds (whitekobra): failing members and since when")
+          try:
+              h = json.load(open(base + "/onchain_gem_hold.json"))
+              db = sqlite3.connect(f"file:{base}/onchain_projects.db?mode=ro", uri=True)
+              sym = lambda k: (db.execute("SELECT symbol FROM projects WHERE key = ?", (k,)).fetchone() or ["?"])[0]
+              for rule, since in (h.get("since") or {}).items():
+                  for k, t in sorted(since.items(), key=lambda kv: kv[1]):
+                      print(rule, sym(k), k.split(":")[0], "failing since", ts(t), f"({(now - t) / 3600:.0f}h)")
+          except Exception as exc:
+              print("hold read", exc)
+          print("--- database rows analysed in the last 24h with score >= 60")
+          db = sqlite3.connect(f"file:{base}/onchain_projects.db?mode=ro", uri=True)
+          for r in db.execute("SELECT chain, symbol, status, score, rank, why, sources, analyzed_at, first_seen FROM projects WHERE analyzed_at >= ? AND score >= 60 ORDER BY analyzed_at DESC LIMIT 40", (now - 86400,)):
+              print(ts(r[7]), r[0], r[1], r[2], round(r[3] or 0, 1), "rank", r[4], "why:", (r[5] or "")[:70], "src", r[6], "seen", ts(r[8]))
+          PY
+          SSH
+          rm -f ~/k
