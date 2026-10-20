@@ -3284,5 +3284,10 @@
     "status": "risolto",
     "at": 1792480092,
     "summary": "Il controllo dei nomi che copiano marchi famosi lo faceva solo DeepSeek, che per la ricerca e' spento dal 10/10: 'Apple' passava. Ora i token nati su un launchpad (pump.fun, letsbonk, bags, Pons) hanno regole proprie, senza DeepSeek: un nome o un ticker di un marchio famoso (Apple, Tesla, Nvidia, OpenAI, Trump...) li scarta. Valgono di nuovo anche le regole di prima del 18-19/10: sito illeggibile = fuori, serve codice vero su GitHub o un sito che mostri un prodotto, wallet collegati al massimo 30%, nessuno che possa emettere nuovi token, primi 10 conti (programmi compresi) al massimo 60%. Nessuna eta' minima, cosi' i progetti appena nati come Veil possono entrare. Per tutti gli altri token non cambia niente."
+  },
+  "seed-0361": {
+    "status": "risolto",
+    "at": 1792480436,
+    "summary": "Il podio non sceglie piu' i primi delle arene con il vantaggio maggiore: mostra i primi tre della Top per punteggio, il migliore primo. Sotto ogni token c'e' il suo punteggio. I token nascosti si saltano, quindi il podio ha sempre tre gradini finche' la Top ha tre token."
   }
 }

@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0361", "Podio: i primi tre della Top per punteggio",
+     "Lorenzo, 20/10: 'risistema anche il podio con una regola molto semplice [...] i primi tre della top 25 [...] finiscono nel podio in alto. Chi ha il miglior valore e' primo e poi tutti gli altri'.",
+     "bassa"),
     ("seed-0360", "Token truffa dai launchpad nelle gemme (un falso Apple su pump.fun)",
      "Lorenzo, 20/10: 'Stanno passando nelle gemme token che non vanno bene [...] PumpFun purtroppo ha molti token truffa [...] un token Apple che di fatto sembrerebbe quello ufficiale della Apple, ma non lo e' assolutamente', poi: 'implementerei il tuo suggerimento A completamente [...] le regole vecchie per i token dei Launchpad le applicherei tutte tranne l'eta' minima [...] come Veil'.",
      "alta"),
