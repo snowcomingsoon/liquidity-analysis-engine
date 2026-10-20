@@ -1839,7 +1839,7 @@ def db_entry(p: dict) -> dict:
         pillars = {x["key"]: x for x in pillars if isinstance(x, dict) and x.get("key")}
     overall = p.get("overall")
     # Today's GitHub formula on the stored reading (depth.rescore_github, 21/10).
-    if pillars and depth.rescore_github(pillars):
+    if pillars and p.get("chain") != "layer" and depth.rescore_github(pillars):
         overall = {**(overall or {}), **depth.overall(pillars)}
     return {**projects_db.as_item(p), "score": p.get("score"), "pillars": pillars,
             "overall": overall, "narratives": p.get("narratives") or [],

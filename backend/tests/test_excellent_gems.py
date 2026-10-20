@@ -50,3 +50,12 @@ def test_the_ai_never_takes_out_an_excellent_project(monkeypatch):
     weak["overall"] = depth.overall(weak["pillars"])
     ai_veto._verdicts["solana:weakpump"] = dict(ai_veto._verdicts["solana:xketpump"])
     assert "nothing real" in ai_veto.reason(weak)
+
+
+def test_a_layer_row_never_breaks_the_rescore():
+    """21/10: depth.overall raised on a layer row's own pillars, and every AI veto turn failed."""
+    pillars = {"github": {"score": 50, "facts": dict(DREGG_GH), "flags": []}, "cex": {"score": 70}}
+    assert depth.overall(pillars)["score"] == 50
+    row = {"chain": "layer", "token": "kas", "pillars": [{"key": "github", "score": 50, "facts": dict(DREGG_GH)},
+                                                         {"key": "cex", "score": 70}], "overall": {"score": 60}}
+    assert lb.db_entry(row)["overall"] == {"score": 60}

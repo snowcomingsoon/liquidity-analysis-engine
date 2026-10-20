@@ -886,7 +886,9 @@ def overall(pillars: dict[str, dict]) -> dict:
     uno in attesa lascia il progetto fuori finche' non arriva."""
     fatal = next((f"{k}: {p['fatal']}" for k, p in pillars.items() if p.get("fatal")), "")
     pending = next((f"{k}: {p['pending']}" for k, p in pillars.items() if p.get("pending")), "")
-    scored = {k: p["score"] for k, p in pillars.items() if p.get("score") is not None}
+    # Only the three weighted pillars score: a layer row's own pillars
+    # (layers.py) once crashed this on a database row (21/10).
+    scored = {k: p["score"] for k, p in pillars.items() if k in WEIGHTS and p.get("score") is not None}
     score = sum(WEIGHTS[k] * s for k, s in scored.items()) / sum(WEIGHTS[k] for k in scored) if scored else 0
     weakest = min(scored, key=scored.get) if scored else None
     return {"score": 0 if fatal else round(score, 1), "fatal": fatal, "pending": "" if fatal else pending,
