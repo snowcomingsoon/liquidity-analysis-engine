@@ -5495,6 +5495,43 @@ def _require_onchain_admin(user: User) -> None:
                                                       "can read /admin/status.")
 
 
+# ------------------------------------------------------- chiavi dei servizi
+
+class ServiceKeyRequest(BaseModel):
+    name: str
+    value: str = ""
+
+
+@app.get("/api/admin/service-keys")
+async def admin_service_keys(user: User = Depends(auth.get_current_user)) -> dict:
+    """Which outside-service keys are set (service_keys.py): never the key itself."""
+    from app import service_keys
+    _require_admin(user)
+    return service_keys.status()
+
+
+@app.post("/api/admin/service-keys")
+async def admin_set_service_key(req: ServiceKeyRequest, user: User = Depends(auth.get_current_user)) -> dict:
+    """Saves a key after the service accepted it; an empty value removes it.
+    Lorenzo, 20/10: the Groq key could reach the server from his phone only
+    through the site."""
+    from app import service_keys
+    _require_admin(user)
+    if req.name not in service_keys.SERVICES:
+        raise HTTPException(status_code=400, detail="Unknown service")
+    key = req.value.strip()
+    if not key:
+        service_keys.clear(req.name)
+        return service_keys.status()
+    if len(key) > 300 or any(c.isspace() for c in key):
+        raise HTTPException(status_code=400, detail="That does not look like a key: no spaces, at most 300 characters")
+    why = await service_keys.check(req.name, key)
+    if why:
+        raise HTTPException(status_code=400, detail=why)
+    service_keys.save(req.name, key)
+    return service_keys.status()
+
+
 # ---------------------------------------------------------------- link ospite
 
 

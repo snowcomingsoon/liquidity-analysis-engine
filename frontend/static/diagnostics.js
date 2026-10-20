@@ -141,10 +141,64 @@
             <div id="diag-order-result"></div>
             `}
           </div>
+
+          <div id="diag-service-keys"></div>
         </div>
       </div>
     `;
     bind();
+    fillServiceKeys();
+  }
+
+  // Keys of outside services (backend/app/service_keys.py), admins only: the
+  // section stays empty for anyone else (403). Lorenzo, 20/10: the Groq key
+  // could reach the server from his phone only through the site.
+  const SERVICES = [{ id: "groq", name: "Groq", hint: "Free key from console.groq.com/keys — checks the gems before they enter the Top." }];
+
+  async function fillServiceKeys(message) {
+    const box = document.getElementById("diag-service-keys");
+    if (!box) return;
+    let st;
+    try { st = await api("/api/admin/service-keys"); } catch (_e) { box.innerHTML = ""; return; }
+    box.innerHTML = `
+      <div class="diag-section">
+        <div class="section-title-row"><span class="section-eyebrow">3 · Service keys (admins)</span></div>
+        <p class="panel-hint">Saved encrypted on the server, never in the code. Only the last 4 characters are shown.</p>
+        ${SERVICES.map((sv) => {
+          const x = st[sv.id] || {};
+          const now = x.set
+            ? `<p class="diag-ok">✓ ${esc(sv.name)} key set (…${esc(x.last4)})${x.source === "env" ? " — from the server's .env" : ""}</p>`
+            : `<p class="panel-hint">No ${esc(sv.name)} key yet.</p>`;
+          return `${now}<p class="panel-hint">${esc(sv.hint)}</p>
+            <div class="mo-row"><input type="password" id="diag-sk-${sv.id}" class="mo-input" placeholder="${esc(sv.name)} API key" autocomplete="off" /></div>
+            <button type="button" class="wl-activate-btn" data-sk-save="${sv.id}">Check and save</button>
+            ${x.set && x.source === "site" ? `<button type="button" class="btn-quiet" data-sk-clear="${sv.id}">Remove</button>` : ""}`;
+        }).join("")}
+        <div id="diag-sk-result">${message || ""}</div>
+      </div>`;
+    box.querySelectorAll("[data-sk-save]").forEach((btn) => btn.addEventListener("click", async () => {
+      const id = btn.dataset.skSave;
+      const value = document.getElementById(`diag-sk-${id}`).value.trim();
+      const out = document.getElementById("diag-sk-result");
+      if (!value) { out.innerHTML = `<p class="diag-error">Paste the key first.</p>`; return; }
+      btn.disabled = true;
+      out.innerHTML = `<p class="panel-hint">Checking the key with the service…</p>`;
+      try {
+        await api("/api/admin/service-keys", { method: "POST", body: JSON.stringify({ name: id, value }) });
+        fillServiceKeys(`<p class="diag-ok">✓ Key accepted and saved.</p>`);
+      } catch (err) {
+        out.innerHTML = `<p class="diag-error">✕ ${esc(err.message)}</p>`;
+        btn.disabled = false;
+      }
+    }));
+    box.querySelectorAll("[data-sk-clear]").forEach((btn) => btn.addEventListener("click", async () => {
+      try {
+        await api("/api/admin/service-keys", { method: "POST", body: JSON.stringify({ name: btn.dataset.skClear, value: "" }) });
+        fillServiceKeys(`<p class="panel-hint">Key removed.</p>`);
+      } catch (err) {
+        document.getElementById("diag-sk-result").innerHTML = `<p class="diag-error">✕ ${esc(err.message)}</p>`;
+      }
+    }));
   }
 
   let orderSide = "BUY";

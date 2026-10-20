@@ -84,6 +84,20 @@ def _wallet_keys() -> tuple[dict[str, bytes], str]:
 
 _WALLET_KEYS, _WALLET_KID = _wallet_keys()
 _CRED_KEYS = {"c": _crypto.derive_key(_SECRET, b"exchange-credential-aead-v2")}
+_SERVICE_KEYS = {"k": _crypto.derive_key(_SECRET, b"service-key-aead-v1")}
+
+
+def seal_service_key(plaintext: str) -> str:
+    """An outside service's API key (service_keys.py), sealed like the exchange credentials."""
+    return _crypto.seal(plaintext, _SERVICE_KEYS["k"], "k", b"service-key")
+
+
+def unseal_service_key(token: str) -> str:
+    try:
+        return _crypto.unseal(token, _SERVICE_KEYS, b"service-key")
+    except _crypto.SealError:
+        logger.error("service key failed authentication: ignored")
+        return ""
 
 
 def _enc(plaintext: str, _secret: bytes = b"") -> str:
