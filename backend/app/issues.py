@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0362", "Cycle Bottom Index fra gli indicatori del sito classico",
+     "Lorenzo, 20/10: 'Vorrei provare a inserire [...] questo Cryptic Bottom Index [...] Prova a vedere se in qualche modo riesci ad aggiungerlo tra i nostri indicatori', poi 'Mettilo solo nel sito classico per tutti, prima pero' testane il corretto funzionamento'.",
+     "bassa"),
     ("seed-0361", "Podio: i primi tre della Top per punteggio",
      "Lorenzo, 20/10: 'risistema anche il podio con una regola molto semplice [...] i primi tre della top 25 [...] finiscono nel podio in alto. Chi ha il miglior valore e' primo e poi tutti gli altri'.",
      "bassa"),

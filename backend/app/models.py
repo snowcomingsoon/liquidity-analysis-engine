@@ -46,6 +46,8 @@ class LiquidityLevel(BaseModel):
 class IndicatorSeries(BaseModel):
     name: str
     values: list[float | None]
+    colors: list[str | None] | None = None   # per-point line colour (zones), when the indicator has them
+    levels: list[float] | None = None        # horizontal guide lines in its pane
 
 
 class FibZone(BaseModel):

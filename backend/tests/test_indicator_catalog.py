@@ -24,7 +24,8 @@ def test_catalog_covers_all_pandas_ta_functions():
     import pandas_ta
 
     total = sum(len(names) for names in pandas_ta.Category.values())
-    assert len(ic.CATALOG) == total
+    ours = {"cycle_bottom"}               # cycle_bottom.py, not pandas-ta's
+    assert len([s for s in ic.CATALOG if s.id not in ours]) == total
 
 
 def test_catalog_ids_are_unique():

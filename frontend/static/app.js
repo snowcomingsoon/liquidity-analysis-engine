@@ -11461,9 +11461,14 @@
         const chart = LightweightCharts.createChart(container, dynamicSubChartOptions());
         seriesList.forEach((s, i) => {
           const color = CUSTOM_IND_COLORS[i % CUSTOM_IND_COLORS.length];
-          const line = chart.addLineSeries({ color, lineWidth: 1.4 });
+          const line = chart.addLineSeries({ color, lineWidth: s.colors ? 2 : 1.4 });
           const points = pointsFromTimesValues(times, s.values);
+          // Zones drawn on the line itself (Cycle Bottom Index: red..green).
+          if (s.colors) points.forEach((p, k) => { if (p.value !== undefined && s.colors[k]) p.color = s.colors[k]; });
           line.setData(points);
+          (s.levels || []).forEach((price) => line.createPriceLine({
+            price, color: "rgba(148,163,184,0.6)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "",
+          }));
         });
         const range = mainChart.timeScale().getVisibleLogicalRange();
         if (range) chart.timeScale().setVisibleLogicalRange(range);

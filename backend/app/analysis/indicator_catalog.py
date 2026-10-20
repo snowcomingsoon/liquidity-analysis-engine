@@ -12,6 +12,7 @@ from __future__ import annotations
 import pandas as pd
 import pandas_ta  # noqa: F401  (registra l'accessor .ta)
 
+from app.analysis import cycle_bottom
 from app.models import IndicatorSeries
 
 Param = dict  # {"name": str, "label": str, "default": float, "min": float, "max": float}
@@ -106,6 +107,7 @@ _OSCILLATOR_CATEGORIES = {"momentum", "trend", "volatility", "volume", "cycle", 
 # questo la libreria sarebbe solo un elenco di sigle.
 DESCRIPTIONS: dict[str, str] = {
     # candle
+    "cycle_bottom": "0-100, high near a cycle bottom: Ehlers cycle filter, how far price sits under its long mean (Z-score) and in its long range. Yellow from 60; green from 80 only when volumes confirm (bullish A/D divergence or money flowing in).",
     "cdl_pattern": "Automatically spots classic candlestick patterns (doji, hammer, engulfing...) on the chart.",
     "cdl_z": "Normalizes candle bodies and wicks into statistical units, to compare candles of different sizes.",
     "ha": "Heikin-Ashi: redraws candles by averaging prices, to see the trend without single-bar noise.",
@@ -309,6 +311,10 @@ def build_catalog() -> list[IndicatorSpec]:
 
 
 CATALOG: list[IndicatorSpec] = build_catalog()
+# Ours, not pandas-ta's (cycle_bottom.py, Lorenzo 20/10).
+# Period 200 measured best (20/10: green +8.1% median at 60 days on six coins, every day +0.9%).
+CATALOG.append(IndicatorSpec("cycle_bottom", "Cycle Bottom Index", "cycle", "oscillator",
+                            [_p("length", "Period", 200, 60, 400)]))
 CATALOG_BY_ID: dict[str, IndicatorSpec] = {s.id: s for s in CATALOG}
 
 
@@ -347,6 +353,9 @@ def compute_indicator(df: pd.DataFrame, indicator_id: str, params: dict) -> list
     spec = CATALOG_BY_ID.get(indicator_id)
     if spec is None:
         raise ValueError(f"Unknown indicator: {indicator_id}")
+    if indicator_id == "cycle_bottom":
+        length = int((params or {}).get("length") or 200)
+        return [IndicatorSeries(name=spec.label, **cycle_bottom.series_payload(df, max(60, min(length, 400))))]
     fn = getattr(df.ta, indicator_id, None)
     if fn is None:
         raise ValueError(f"pandas-ta does not expose '{indicator_id}'")
