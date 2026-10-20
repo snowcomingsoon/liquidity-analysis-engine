@@ -27,6 +27,8 @@ _FILE = Path(__file__).resolve().parent.parent / "data" / "service_keys.json"
 # name -> (environment variable, a cheap authenticated call that proves the key works)
 SERVICES = {
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1/models"),
+    # Google's OpenAI-compatible endpoint takes the key as a bearer token too.
+    "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai/models"),
 }
 
 

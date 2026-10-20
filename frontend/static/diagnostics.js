@@ -153,7 +153,10 @@
   // Keys of outside services (backend/app/service_keys.py), admins only: the
   // section stays empty for anyone else (403). Lorenzo, 20/10: the Groq key
   // could reach the server from his phone only through the site.
-  const SERVICES = [{ id: "groq", name: "Groq", hint: "Free key from console.groq.com/keys — checks the gems before they enter the Top." }];
+  const SERVICES = [
+    { id: "groq", name: "Groq", hint: "Free key from console.groq.com/keys — checks the gems before they enter the Top." },
+    { id: "gemini", name: "Gemini", hint: "Free key from aistudio.google.com/apikey — the backup when Groq does not answer." },
+  ];
 
   async function fillServiceKeys(message) {
     const box = document.getElementById("diag-service-keys");

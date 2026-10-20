@@ -12,6 +12,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(auth, "_USERS_FILE", tmp_path / "users.json")
     monkeypatch.setattr(service_keys, "_FILE", tmp_path / "service_keys.json")
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     auth._users.clear()
     user = auth.create_user("admin@example.com", "correct-horse-battery-9")
     main.app.dependency_overrides[auth.get_current_user] = lambda: auth.get_user(user.id)
@@ -68,3 +69,13 @@ def test_the_key_keeper_account_is_not_an_admin_but_may_set_keys(client, monkeyp
     monkeypatch.setattr(config.settings, "admin_emails", "someone-else@example.com")
     monkeypatch.setattr(config.settings, "service_keys_emails", client.user_email)
     assert client.get("/api/admin/service-keys").status_code == 200
+
+
+def test_gemini_is_a_second_key(client, monkeypatch):
+    monkeypatch.setattr(config.settings, "service_keys_emails", client.user_email)
+
+    async def ok(name, key):
+        return ""
+    monkeypatch.setattr(service_keys, "check", ok)
+    r = client.post("/api/admin/service-keys", json={"name": "gemini", "value": "AIzaGemini5678"})
+    assert r.json()["gemini"]["last4"] == "5678" and r.json()["groq"]["set"] is False
