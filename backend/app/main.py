@@ -5335,6 +5335,9 @@ def agent_activity(user: User = Depends(auth.get_current_user)) -> dict:
                        "last_run": st.get("last_run"), "next_run": st.get("next_run"),
                        "examined": last.get("examined"), "entered": len(last.get("entered") or []),
                        "sentinel": st.get("sentinel")}
+    # The free AI doing DeepSeek's research work (free_ai.py, 20/10).
+    from app import free_ai
+    out["research"]["free_ai"] = free_ai.status()
     return out
 
 

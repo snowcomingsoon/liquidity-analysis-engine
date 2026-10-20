@@ -3,6 +3,7 @@ import json
 import time
 
 import httpx
+from app import free_ai
 from app.trading.onchain import ai_veto, leaderboard as lb
 
 PUMP = "So1aNaMint1111111111111111111111111111pump"
@@ -26,13 +27,13 @@ def test_no_key_means_no_wait_and_no_veto():
 
 
 def test_a_launchpad_token_waits_for_its_verdict_when_a_key_is_set(monkeypatch):
-    monkeypatch.setattr(ai_veto, "_keys", lambda: {"groq": "k"})
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     assert "waiting for the AI check" in ai_veto.reason(_e())
     assert ai_veto.reason(_e(token_address="Mint1111", source="jupiter")) == ""
 
 
 def test_a_confident_avoid_vetoes_and_reaches_qualifies(monkeypatch):
-    monkeypatch.setattr(ai_veto, "_keys", lambda: {"groq": "k"})
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
 
     async def run():
         async with _answer({"verdict": "avoid", "impersonates": None, "meme": False, "confidence": 0.9,
@@ -44,7 +45,7 @@ def test_a_confident_avoid_vetoes_and_reaches_qualifies(monkeypatch):
 
 
 def test_an_unsure_answer_vetoes_nothing_and_copies_are_named(monkeypatch):
-    monkeypatch.setattr(ai_veto, "_keys", lambda: {"groq": "k"})
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
 
     async def run():
         async with _answer({"verdict": "avoid", "confidence": 0.5, "reason": "thin"}) as c:
@@ -57,7 +58,7 @@ def test_an_unsure_answer_vetoes_nothing_and_copies_are_named(monkeypatch):
 
 
 def test_gemini_answers_when_groq_fails(monkeypatch):
-    monkeypatch.setattr(ai_veto, "_keys", lambda: {"groq": "k", "gemini": "g"})
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k", "gemini": "g"})
 
     async def run():
 
@@ -73,7 +74,7 @@ def test_gemini_answers_when_groq_fails(monkeypatch):
 
 
 def test_run_once_reads_each_candidate_once_within_the_turn(monkeypatch):
-    monkeypatch.setattr(ai_veto, "_keys", lambda: {"groq": "k"})
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
 
     async def run():
         calls = []

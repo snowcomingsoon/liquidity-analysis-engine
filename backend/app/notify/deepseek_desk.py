@@ -229,7 +229,22 @@ async def _post(body: dict, *, kind: str, purpose: str | None, subject: str | No
     journal (deepseek_calls, issue #358 I00), failures included."""
     from app.notify import deepseek_calls
     if not settings.research_ai_enabled and kind not in AI_OFF_KINDS:
-        raise BudgetExceeded(f"DeepSeek off for {kind} (research_ai_enabled)")
+        # DeepSeek off for the research since 10/10: the free AI does the
+        # same work (free_ai.py, Lorenzo 20/10), at no cost and off the ledger.
+        from app import free_ai
+        if not free_ai.available():
+            raise BudgetExceeded(f"DeepSeek off for {kind} (research_ai_enabled)")
+        t0 = time.monotonic()
+        try:
+            data = await free_ai.post(body, kind=kind, http=http)
+        except free_ai.Unavailable as exc:
+            deepseek_calls.log(kind=kind, purpose=purpose, subject=subject, body=body, content=None, usage=None,
+                               ms=(time.monotonic() - t0) * 1000, error=f"free AI: {exc}")
+            raise BudgetExceeded(f"free AI: {exc}") from exc
+        deepseek_calls.log(kind=kind, purpose=f"{purpose or kind} [{data['provider']}/{data['model']}]",
+                           subject=subject, body=body, content=free_ai.content(data), usage=data.get("usage"),
+                           ms=(time.monotonic() - t0) * 1000)
+        return data
     headers = {"Authorization": f"Bearer {settings.deepseek_api_key}", "Content-Type": "application/json"}
     url = settings.deepseek_base_url.rstrip("/") + "/chat/completions"
     need = _reserve(kind, body["messages"], body["max_tokens"])

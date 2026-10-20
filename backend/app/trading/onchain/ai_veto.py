@@ -36,11 +36,6 @@ PER_TURN = 8
 DAILY_MAX = 400               # far under Groq's free 1,000 a day
 SCAM_MIN, AVOID_MIN, COPY_MIN, MEME_MIN = 0.6, 0.75, 0.7, 0.8
 
-PROVIDERS = (
-    ("groq", "https://api.groq.com/openai/v1/chat/completions", ("openai/gpt-oss-120b", "llama-3.3-70b-versatile")),
-    ("gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-     ("gemini-2.5-flash", "gemini-2.0-flash")),
-)
 
 SYSTEM = (
     "You screen small crypto projects for a research list of real projects (not memecoins). "
@@ -82,19 +77,11 @@ def _save() -> None:
 def reset_for_tests() -> None:
     _verdicts.clear()
     _state.update(loaded=True, day="", calls=0, fails={})
-    _keys_cache.update(at=time.time(), keys={})
-
-
-_keys_cache: dict = {"at": 0.0, "keys": {}}
 
 
 def _keys() -> dict[str, str]:
-    """The providers with a key, read again at most once a minute (qualifies asks often)."""
-    now = time.time()
-    if now - _keys_cache["at"] > 60:
-        from app import service_keys
-        _keys_cache.update(at=now, keys={n: k for n in ("groq", "gemini") if (k := service_keys.get(n))})
-    return _keys_cache["keys"]
+    from app import free_ai
+    return free_ai.keys()
 
 
 def fresh(key: str, now: float | None = None) -> dict | None:
@@ -171,41 +158,25 @@ def _parse(text: str) -> dict | None:
 
 
 async def judge(e: dict, client: httpx.AsyncClient) -> dict | None:
-    """One verdict from the first provider that answers, stored; None if none did."""
-    keys = _keys()
+    """One verdict from the first free model that answers (free_ai.py), stored; None if none did."""
+    from app import free_ai
     data = json.dumps(_payload(e), ensure_ascii=False, default=str)
-    for name, url, models in PROVIDERS:
-        if name not in keys:
-            continue
-        for model in models:
-            try:
-                r = await client.post(url, timeout=40.0, headers={"Authorization": f"Bearer {keys[name]}"}, json={
-                    "model": model, "temperature": 0, "response_format": {"type": "json_object"},
-                    "messages": [{"role": "system", "content": SYSTEM},
-                                 {"role": "user", "content": f"Project data:\n{data}"}]})
-            except httpx.HTTPError as exc:
-                logger.info("ai veto: %s did not answer: %s", name, exc)
-                break                               # the next provider
-            if r.status_code in (400, 404) and "model" in r.text.lower():
-                continue                            # a model renamed or retired: the next one
-            if r.status_code != 200:
-                _state["fails"][name] = _state["fails"].get(name, 0) + 1
-                logger.info("ai veto: %s answered %s", name, r.status_code)
-                break
-            try:
-                text = r.json()["choices"][0]["message"]["content"] or ""
-            except (ValueError, KeyError, IndexError, TypeError):
-                break
-            v = _parse(text)
-            if v is None:
-                break
-            v.update(provider=name, model=model, at=time.time())
-            key = f"{e.get('chain')}:{e.get('token_address')}".lower()
-            _load()
-            _verdicts[key] = v
-            _save()
-            return v
-    return None
+    body = {"model": "", "temperature": 0, "max_tokens": 400, "response_format": {"type": "json_object"},
+            "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"Project data:\n{data}"}]}
+    try:
+        answer = await free_ai.post(body, kind="veto", http=client)
+    except free_ai.Unavailable as exc:
+        logger.info("ai veto: %s", exc)
+        return None
+    v = _parse(free_ai.content(answer))
+    if v is None:
+        return None
+    v.update(provider=answer["provider"], model=answer["model"], at=time.time())
+    key = f"{e.get('chain')}:{e.get('token_address')}".lower()
+    _load()
+    _verdicts[key] = v
+    _save()
+    return v
 
 
 async def run_once(candidates, client: httpx.AsyncClient, now: float | None = None) -> int:

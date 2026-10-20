@@ -3309,5 +3309,10 @@
     "status": "risolto",
     "at": 1792518913,
     "summary": "BORLY restava nella tua Top per la regola del 18/10 che tiene una gemma 7 giorni sotto la soglia dei 300 mila prima di farla uscire, e la parte della Top letta dal database non guardava la liquidita'. Ora un crollo o una liquidita' sotto la soglia minima tolgono la gemma subito, anche se e' trattenuta. Le altre 'uscite che non arrivano' sono la stessa regola: in questo momento ne trattiene 13 (7 giorni per capitalizzazione, soglia e FDV, 3 per il voto). La scansione manuale funziona: il token di stamattina, ZENO (voto 60), non e' entrato per la regola dei launchpad (niente codice e un sito che non mostra un prodotto), scritta nella scheda accanto al voto."
+  },
+  "seed-0366": {
+    "status": "risolto",
+    "at": 1792530214,
+    "summary": "Tutto quello che nella ricerca delle gemme chiedeva a DeepSeek ora lo chiede a Groq e, se Groq non risponde o finisce la quota, a Gemini, con le chiavi gratuite salvate in Diagnostics: scansione manuale e 'Study again', giudizio della classifica, lettura del codice, lettura dei siti, revisione della bacheca, incongruenze, narrative. Ogni servizio ha piu' modelli in fila, e uno che esaurisce la quota del giorno passa la mano al successivo. Ogni tipo di lavoro ha un tetto al giorno (per esempio 120 giudizi, 40 letture di codice), cosi' le scansioni manuali e il veto hanno sempre spazio: le scansioni manuali non hanno tetto. Il voto non cambia: con DeepSeek a pagamento spento i giudizi dell'AI possono solo escludere un progetto, mai alzarne il voto o farlo entrare scavalcando le regole. La chat di Telegram resta su DeepSeek."
   }
 }

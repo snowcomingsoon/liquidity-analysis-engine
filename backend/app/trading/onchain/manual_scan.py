@@ -179,7 +179,9 @@ def add(chain: str, token: str, now: float | None = None) -> dict:
     projects_db.recheck(chain, token)
     if settings.onchain_nightly_enabled:
         # No tick until 22:00 (nightly.py): the project is studied now.
-        leaderboard.analyze_now(chain, token)
+        from app import free_ai
+        with free_ai.manual():      # the task copies this context: its AI calls skip the caps
+            leaderboard.analyze_now(chain, token)
     deepseek_desk.note("manual", f"Added {item.get('symbol')} to the Gem Finder by hand",
                        symbol=item.get("symbol"), chain=chain)
     return {"added": True, "new": fresh, "gem": gem_view(item, now)}
@@ -391,6 +393,14 @@ class Steps:
 
 
 async def scan(query: str, emit=None, kobra: bool = False) -> dict:
+    """The whole scan, its AI calls first in line on the free AI's daily caps
+    (free_ai.manual): asked for by hand, never left waiting (20/10)."""
+    from app import free_ai
+    with free_ai.manual():
+        return await _scan(query, emit, kobra)
+
+
+async def _scan(query: str, emit=None, kobra: bool = False) -> dict:
     query = (query or "").strip()
     if not query:
         return {"error": "Write a ticker or an address."}

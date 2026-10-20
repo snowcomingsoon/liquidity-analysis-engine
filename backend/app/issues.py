@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0366", "Le funzioni di DeepSeek delle gemme rifatte con Groq e Gemini",
+     "Lorenzo, 20/10: 'le opzioni che avevamo per analizzare le gemme dove era attivo DeepSeek, come ad esempio la scansione manuale o la rescansione con DeepSeek, vanno tutte risistemate e fatte fare a Grok oppure a Gemini'.",
+     "media"),
     ("seed-0365", "BORLY ancora nella Top dopo il rug; scansione manuale e Top che non si aggiornano",
      "Lorenzo, 20/10: 'Borli sia rimasto nella top e tuttora figuri nella top [...] le nostre arene, la nostra top non si aggiornano bene. [...] avevo analizzato un altro token che aveva raggiunto un punteggio da classifica, ma non e' stato inserito in automatico [...] non risulta correttamente aggiornato il sito delle gemme con nuovi ingressi e nuove uscite'.",
      "alta"),

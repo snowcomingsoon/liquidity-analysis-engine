@@ -177,7 +177,14 @@ class Settings(BaseSettings):
         (Lorenzo, 19/10: "impedire direttamente che chiamino DeepSeek che
         comunque e' spento"), instead of reading GitHub or X for a call
         deepseek_desk refuses anyway."""
-        return bool(self.deepseek_api_key) and self.research_ai_enabled
+        if self.deepseek_api_key and self.research_ai_enabled:
+            return True
+        # The free AI (free_ai.py: Groq, Gemini) does the same work when a key is set.
+        try:
+            from app import free_ai
+            return free_ai.available()
+        except Exception:
+            return False
     # USDC contract on Robinhood Chain for the autotrader's cash; empty = found
     # from the most liquid USDC/USDG pool (autotrader.find_usdc).
     robinhood_usdc_address: str = ""

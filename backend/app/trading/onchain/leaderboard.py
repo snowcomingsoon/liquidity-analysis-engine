@@ -834,7 +834,8 @@ def qualifies(e: dict, now: float | None = None, cap_floor: bool = True) -> str:
         return f"DeepSeek: {(j.get('problems') or [j['verdict']])[0]}"
     # Admitting past the quality bars needs the same certainty as a veto
     # (audit 29/09, M05); fatal and pending were already checked above.
-    if j.get("verdict") in ("gem", "watch") and (j.get("score") or 0) >= judge.ADMIT_MIN \
+    # Only paid DeepSeek may admit past the bars: the free AI only vetoes (20/10).
+    if _ai_in_score() and j.get("verdict") in ("gem", "watch") and (j.get("score") or 0) >= judge.ADMIT_MIN \
             and (j.get("confidence") or 0) >= judge.VETO_MIN_CONF and _fresh(j, judge.TTL_S, now):
         return ""
     # A site we could not read (JS shell, down) is unknown, not weak: no floor.
@@ -944,13 +945,23 @@ def product_score(e: dict) -> float | None:
     parts = [pillars[k]["score"] for k in ("site", "github")
              if (pillars.get(k) or {}).get("score") is not None and not (k == "github" and no_github(e))]
     c = e.get("code") or {}
-    if c.get("complexity") is not None and c.get("innovation") is not None and _fresh(c, code_review.TTL_S):
+    if _ai_in_score() and c.get("complexity") is not None and c.get("innovation") is not None \
+            and _fresh(c, code_review.TTL_S):
         parts.append((c["complexity"] + c["innovation"]) / 2)
     return round(sum(parts) / len(parts), 1) if parts else None
 
 
+def _ai_in_score() -> bool:
+    """AI readings (report, review, code) count in the score only with paid
+    DeepSeek on. The free AI (free_ai.py) judges and vetoes but never moves a
+    score (Lorenzo, 20/10: the veto "non torna nel voto")."""
+    return bool(settings.research_ai_enabled)
+
+
 def deepseek_score(e: dict) -> float | None:
     """0-100: DeepSeek's report and its board review, when fresh."""
+    if not _ai_in_score():
+        return None
     parts = []
     j = e.get("judge") or {}
     if j.get("score") is not None and _fresh(j, judge.TTL_S):
@@ -1615,6 +1626,8 @@ def pool_status(now: float | None = None) -> dict:
             continue
         # With the research's DeepSeek off (settings.research_ai_enabled) no
         # report is coming: waiting for one paused discovery for good (18/10).
+        # The free AI (free_ai.py) has daily caps: its reports may lag, and a
+        # lag must not pause discovery either. Only paid DeepSeek is waited for.
         miss_report = settings.research_ai_enabled and not e.get("judge")
         has_repo = bool((((e.get("pillars") or {}).get("github") or {}).get("facts") or {}).get("repo"))
         miss_code = has_repo and not e.get("code")

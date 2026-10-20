@@ -159,3 +159,12 @@ def _private_ai_veto(monkeypatch, tmp_path):
     ai_veto.reset_for_tests()
     yield
     ai_veto.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _private_free_ai():
+    """The free AI (free_ai.py) starts with no key, no counts, no cooling."""
+    from app import free_ai
+    free_ai.reset_for_tests()
+    yield
+    free_ai.reset_for_tests()
