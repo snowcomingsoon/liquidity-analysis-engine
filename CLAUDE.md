@@ -72,6 +72,10 @@ le sezioni nuove e simili** solo per l'account whitekobra (Lorenzo) (`static/onc
 Gli altri account (`settings.onchain_v1_emails`) hanno la copia congelata
 `static/onchain-v1/` + `onchain-app-v1.html` (HANDOVER 16/10 `seed-0325`).
 Per la sezione gemme **chiedi sempre conferma** prima di applicare.
+**Chiedi anche per quali account** (Lorenzo, 20/10: "il podio va cambiato
+solo per whitekobra. Chiedilo sempre prima di modificare"): nelle gemme e
+in Discover non decidere da solo se una modifica e' "di funzionamento" e
+quindi per tutti; prima di toccare `static/onchain-v1/` chiedi.
 Il codice sta in `backend/app`, il frontend in `frontend/`.
 
 **Python 3.12 obbligatorio** — `pandas-ta` non si installa su 3.11. Se la shell

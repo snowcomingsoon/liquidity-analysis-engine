@@ -3287,7 +3287,7 @@
   },
   "seed-0361": {
     "status": "risolto",
-    "at": 1792480436,
-    "summary": "Il podio non sceglie piu' i primi delle arene con il vantaggio maggiore: mostra i primi tre della Top per punteggio, il migliore primo. Sotto ogni token c'e' il suo punteggio. I token nascosti si saltano, quindi il podio ha sempre tre gradini finche' la Top ha tre token."
+    "at": 1792481531,
+    "summary": "Per l'account whitekobra il podio non sceglie piu' i primi delle arene con il vantaggio maggiore: mostra i primi tre della Top per punteggio, il migliore primo, con il punteggio sotto ogni token. Gli altri account hanno il podio di prima (un primo passaggio l'aveva cambiato per tutti, poi corretto)."
   }
 }
