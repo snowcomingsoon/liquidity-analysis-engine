@@ -39,7 +39,9 @@ def test_research_kinds_never_reach_deepseek(monkeypatch):
 
 
 def test_chat_still_answers(monkeypatch):
+    from app import free_ai
     monkeypatch.setattr(settings, "research_ai_enabled", False)
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     http = _Http()
     assert asyncio.run(deepseek_desk.ask([{"role": "user", "content": "x"}], kind="chat", http=http)) == "ok"
     assert http.calls == 1

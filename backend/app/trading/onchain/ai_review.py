@@ -75,6 +75,12 @@ SYSTEM = (
 _state: dict = {"reviews": [], "usage": {}, "last_at": 0.0, "error": ""}
 
 
+
+def _free_ai_on() -> bool:
+    """DeepSeek is gone (20/10): the free AI (free_ai.py: Groq, Gemini) answers instead."""
+    from app import free_ai
+    return free_ai.available()
+
 def _load() -> None:
     try:
         raw = json.loads(_STORE_FILE.read_text(encoding="utf-8"))
@@ -117,7 +123,7 @@ def budget_left(now: float | None = None) -> int:
 def provider() -> str | None:
     """Which model writes the review: DeepSeek or Claude, whichever has a key."""
     want = settings.ai_review_provider
-    if want in ("auto", "deepseek") and settings.deepseek_api_key:
+    if want in ("auto", "deepseek") and _free_ai_on():
         return "deepseek"
     if want in ("auto", "claude") and settings.anthropic_api_key:
         return "claude"

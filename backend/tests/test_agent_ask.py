@@ -7,6 +7,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from app import free_ai
 from app import auth, main
 
 
@@ -14,7 +15,7 @@ from app import auth, main
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(auth, "_USERS_FILE", tmp_path / "users.json")
     auth._users.clear()
-    monkeypatch.setattr(main.settings, "deepseek_api_key", "test")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     main._ask_log.clear()
     seen = {}
 

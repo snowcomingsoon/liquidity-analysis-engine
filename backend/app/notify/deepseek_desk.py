@@ -28,7 +28,6 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from app import http_client
 
 from app.config import settings
 from app.trading.onchain.storage import data_file
@@ -151,8 +150,13 @@ def activity(now: float | None = None) -> dict:
             "cap_usd": float(settings.deepseek_daily_usd or 0),
             "tokens": sum(int(v.get("in", 0)) + int(v.get("out", 0)) for v in today.values()),
             "distinct": {k: len(v) for k, v in ((_state.get("seen") or {}).get(day_of(now)) or {}).items()},
-            "active": bool(settings.deepseek_api_key),
+            "active": _free_ai_on(),
             "priority": prio}
+
+
+def _free_ai_on() -> bool:
+    from app import free_ai
+    return free_ai.available()
 
 
 def day_of(ts: float) -> str:
@@ -228,49 +232,22 @@ async def _post(body: dict, *, kind: str, purpose: str | None, subject: str | No
     """One call to the chat API: counted in the ledger and in the call
     journal (deepseek_calls, issue #358 I00), failures included."""
     from app.notify import deepseek_calls
-    if not settings.research_ai_enabled and kind not in AI_OFF_KINDS:
-        # DeepSeek off for the research since 10/10: the free AI does the
-        # same work (free_ai.py, Lorenzo 20/10), at no cost and off the ledger.
-        from app import free_ai
-        if not free_ai.available():
-            raise BudgetExceeded(f"DeepSeek off for {kind} (research_ai_enabled)")
-        t0 = time.monotonic()
-        try:
-            data = await free_ai.post(body, kind=kind, http=http)
-        except free_ai.Unavailable as exc:
-            deepseek_calls.log(kind=kind, purpose=purpose, subject=subject, body=body, content=None, usage=None,
-                               ms=(time.monotonic() - t0) * 1000, error=f"free AI: {exc}")
-            raise BudgetExceeded(f"free AI: {exc}") from exc
-        deepseek_calls.log(kind=kind, purpose=f"{purpose or kind} [{data['provider']}/{data['model']}]",
-                           subject=subject, body=body, content=free_ai.content(data), usage=data.get("usage"),
-                           ms=(time.monotonic() - t0) * 1000)
-        return data
-    headers = {"Authorization": f"Bearer {settings.deepseek_api_key}", "Content-Type": "application/json"}
-    url = settings.deepseek_base_url.rstrip("/") + "/chat/completions"
-    need = _reserve(kind, body["messages"], body["max_tokens"])
+    # DeepSeek is gone (Lorenzo, 20/10: "considera DeepSeek ad oggi come se
+    # non esistesse"): every call, the chat included, goes to the free AI
+    # (free_ai.py: Groq, then Gemini), at no cost and off the ledger.
+    from app import free_ai
+    if not free_ai.available():
+        raise BudgetExceeded(f"no free AI key set for {kind} (Diagnostics)")
     t0 = time.monotonic()
     try:
-        if http is None:
-            async with http_client.pooled(timeout=120.0) as c:
-                r = await c.post(url, json=body, headers=headers)
-        else:
-            r = await http.post(url, json=body, headers=headers)
-        r.raise_for_status()
-        data = r.json()
-    except Exception as exc:
+        data = await free_ai.post(body, kind=kind, http=http)
+    except free_ai.Unavailable as exc:
         deepseek_calls.log(kind=kind, purpose=purpose, subject=subject, body=body, content=None, usage=None,
-                           ms=(time.monotonic() - t0) * 1000, error=type(exc).__name__ + ": " + str(exc))
-        raise
-    else:
-        usage = data.get("usage") or {}
-        record(kind, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0))
-    finally:
-        _release(need)
-    message = ((data.get("choices") or [{}])[0].get("message") or {})
-    content = message.get("content") or ""
-    if message.get("tool_calls"):
-        content += json.dumps(message["tool_calls"], sort_keys=True)
-    deepseek_calls.log(kind=kind, purpose=purpose, subject=subject, body=body, content=content, usage=usage,
+                           ms=(time.monotonic() - t0) * 1000, error=f"free AI: {exc}")
+        raise BudgetExceeded(f"free AI: {exc}") from exc
+    logger.info("free ai: %s answered %s", f"{data['provider']}/{data['model']}", kind)
+    deepseek_calls.log(kind=kind, purpose=purpose, subject=subject, body=body, content=free_ai.content(data),
+                       usage=data.get("usage"),
                        ms=(time.monotonic() - t0) * 1000)
     return data
 

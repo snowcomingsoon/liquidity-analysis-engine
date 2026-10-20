@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from app import free_ai
 from app.notify import deepseek_desk
 from app.trading.onchain import ai_scan
 from app.trading.onchain import alert_track as tr
@@ -15,7 +16,7 @@ def _clean(tmp_path, monkeypatch):
     monkeypatch.setattr(deepseek_desk, "_STORE_FILE", tmp_path / "u.json")
     tr.reset_for_tests()
     deepseek_desk.reset_for_tests()
-    monkeypatch.setattr(ai_scan.settings, "deepseek_api_key", "k")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     yield
     tr.reset_for_tests()
 
@@ -115,7 +116,7 @@ def test_the_risk_is_measured_by_the_memory_but_not_used_by_its_model():
 def test_paid_deep_reading_runs_on_deepseek_without_an_anthropic_key(monkeypatch):
     from app.trading.onchain import legit, plans, research
     monkeypatch.setattr(legit.settings, "anthropic_api_key", "")
-    monkeypatch.setattr(legit.settings, "deepseek_api_key", "k")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
 
     async def fake(messages, *, kind, max_tokens, json_mode, **_):
         assert kind == "research" and '"verdict"' in messages[0]["content"]
@@ -131,7 +132,7 @@ def test_paid_deep_reading_runs_on_deepseek_without_an_anthropic_key(monkeypatch
 def test_deepseek_has_half_the_say_on_a_gem_finalist(monkeypatch):
     from app.trading.onchain import legit, research
     monkeypatch.setattr(legit.settings, "anthropic_api_key", "")
-    monkeypatch.setattr(legit.settings, "deepseek_api_key", "k")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     reader = {"points": 80, "substance": 8, "red_flags": ["thin docs"], "original": True}
     out = research.blend(reader, {"substance": 4, "verdict": "thin", "red_flags": ["no product"]})
     assert out["points"] == 60 and out["red_flags"] == ["thin docs", "DeepSeek: no product"]

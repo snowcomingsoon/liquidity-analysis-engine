@@ -192,63 +192,28 @@ con la difficolta'. Regole che Lorenzo ha chiesto esplicitamente:
 - Risposte sintetiche: dire cosa e' cambiato e cosa resta, senza riepiloghi
   lunghi ne' ripetizioni di quanto gia' detto.
 
-## DeepSeek scrive, Claude rivede
+## DeepSeek non esiste piu' (20/10)
 
-**Aggiornato 01/10.** Lorenzo: "fagli fare soltanto delle cose banali,
-semplici [...] la mente devi essere tu e l'intelligenza ce la devi mettere
-te [...] non vale la pena far scrivere codice con troppa libertà a lui" e
-"revisiona in modo meticoloso tutto il codice scritto da DeepSeek [...] fai
-in modo che apprenda da ogni errore". Quindi a DeepSeek solo compiti
-banali e ripetitivi, gia' decisi fin nel dettaglio (nomi, firme, dove va
-ogni riga); progetto, logica, prompt, regole e tutto cio' che e' delicato
-li scrive Claude. Ogni riga di DeepSeek si rilegge, e ogni errore diventa
-una lezione in `LESSONS.md`. Quanto segue vale per quei compiti banali.
+Lorenzo, 20/10: "l'idea di fondo e' rimuovere del tutto DeepSeek perche' a
+pagamento e in sostituzione usare fonti gratuite come Grok e Gemini per
+tutto quello che fa DeepSeek attualmente. Quindi considera DeepSeek ad
+oggi come se non esistesse."
 
-Lorenzo, 27/09: "devi usare deepseek assiduamente, voglio ridurre
-drasticamente il consumo di token con te [...] comunicarci tramite github".
-Ribadito in apertura di chat nuova: "usa sempre deepseek e tu revisiona il
-suo lavoro da github". Quindi **sempre**, non solo per le modifiche grosse:
-ogni modifica al codice che non tocchi soldi, chiavi, firme o esecuzione
-reale passa da DeepSeek. Claude scrive a mano solo quelle, i ritocchi al
-diff di DeepSeek in revisione, e i file di memoria (CLAUDE.md, HANDOVER.md,
-resolutions.json):
-
-**Limite (Lorenzo, 01/10):** "fagli fare soltanto delle cose banali, semplici
-[...] la mente devi essere tu e l'intelligenza ce la devi mettere te". A
-DeepSeek solo codice ripetitivo e semplice; progetto, scelte, filtri,
-integrazioni fra moduli e regole li scrive Claude. Ogni riga di DeepSeek si
-rivede (il 01/10, #474 e #478: entrambi falliti, e #478 aveva mancato il
-filtro che bloccava ogni backtest dei layer).
-
-1. apri una issue con etichetta `deepseek` (corpo: il compito in poche righe,
-   poi `Files:` con i file o `file:inizio-fine`, poi `Tests:`);
-2. l'Action `deepseek-task.yml` fa scrivere il codice a DeepSeek, fa girare
-   ruff e i test indicati e apre una PR `deepseek/issue-N`;
-3. leggi solo il diff della PR, correggi quello che non va, verifica, fai il
-   merge. Niente si mergia da solo; se DeepSeek fallisce, lo dice nella issue.
-
-`scripts/ds.py` fa lo stesso da locale, se l'ambiente ha la chiave e la rete.
-
-Come scrivere e gestire le issue (imparato il 27-28/09):
-
-- `Files:` e `Tests:` una sola volta, in fondo; righe `- percorso` o
-  `- percorso:inizio-fine`. Un file nuovo va elencato in `Files:` e detto
-  nel testo ("crea"); per aggiungere in fondo a un file (CSS) di' "APPEND".
-- Il compito deve nominare il comportamento da cambiare **e** cosa va
-  ricalcolato o migrato (versioni, dati gia' salvati): DeepSeek non lo vede.
-- Rilanciare una issue = togliere e rimettere l'etichetta `deepseek`
-  (il branch viene sovrascritto).
-- Se l'Action non puo' aprire la PR (403), il branch c'e' comunque: la apre
-  Claude da `deepseek/issue-N`, corregge sul branch, poi merge.
-- **Ogni volta che correggi una PR di DeepSeek, aggiungi la lezione** in
-  `.github/deepseek/LESSONS.md` (una riga: l'errore, la regola, il numero
-  della issue), nello stesso commit della correzione. Il lavoratore la passa
-  a DeepSeek in ogni compito. Lorenzo, 28/09: "istruisci deepseek per
-  migliorarlo nei suoi compiti ogni volta che sbaglia". Se una lezione non
-  basta (lo stesso errore torna), il controllo va messo nel lavoratore.
-- Il lavoratore fa girare anche i test che importano i moduli toccati,
-  controlla la sintassi JS e che gli import `@onchain/` esistano: se uno di
-  questi fallisce, DeepSeek riprova una volta e poi lo scrive nella issue.
+- Sul server ogni chiamata che andava a DeepSeek (ricerca delle gemme,
+  scansione manuale, chat di Telegram, agente dell'app) va a `app/free_ai.py`:
+  Groq, poi Gemini, chiavi gratuite salvate da Lorenzo in Diagnostics
+  (`service_keys.py`, mai nel repo). `deepseek_desk` resta solo come nome
+  del punto unico delle chiamate.
+- I limiti sono quelli dei piani gratuiti: tetti al giorno per tipo di
+  lavoro in `free_ai.DAILY`; scansioni manuali e chat senza tetto.
+- I giudizi dell'AI gratuita non muovono il voto e non fanno entrare
+  nessuno oltre le soglie: escludono soltanto (`leaderboard._ai_in_score`).
+- Le Action `deepseek-task.yml` e `deepseek-review.yml` sono spente (solo
+  avvio a mano). Il lavoro "DeepSeek scrive, Claude rivede" del 27/09-01/10
+  non vale piu': il codice lo scrive Claude. `.github/deepseek/LESSONS.md`
+  resta come archivio.
+- Le segnalazioni con autore "DeepSeek (Telegram)" ora le scrive la chat
+  con Groq/Gemini: valgono le stesse regole (leggerle, verificarle sul codice).
 
 ## Lingua
 

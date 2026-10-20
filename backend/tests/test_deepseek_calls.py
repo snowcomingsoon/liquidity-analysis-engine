@@ -10,6 +10,8 @@ from app.notify import deepseek_desk as dd
 
 @pytest.fixture(autouse=True)
 def _ledger(tmp_path, monkeypatch):
+    from app import free_ai
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     monkeypatch.setattr(dd, "_STORE_FILE", tmp_path / "u.json")
     dd.reset_for_tests()
 
@@ -19,6 +21,8 @@ class _Resp:
         self._data = {"choices": [{"message": {"content": content}}],
                       "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20, "prompt_cache_hit_tokens": 60}}
         self._fail = fail
+        self.status_code = 503 if fail else 200
+        self.text = "HTTP 503" if fail else ""
 
     def raise_for_status(self):
         if self._fail:
@@ -66,7 +70,9 @@ def test_no_prompt_text_is_kept():
 
 def test_failures_and_unparsable_answers_are_counted():
     with pytest.raises(RuntimeError):
-        _ask(_Http(_Resp("", fail=True)))
+        _ask(_Http(*[_Resp("", fail=True) for _ in range(8)]))   # every free model in turn
+    from app import free_ai
+    free_ai._cool.clear()                                         # they cooled down: back after a minute
     _ask(_Http(_Resp("not json")))
     j = dc.stats()["by_purpose"]["judge"]
     assert j["errors"] == 1 and j["json_bad"] == 1

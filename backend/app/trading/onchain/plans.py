@@ -35,6 +35,12 @@ _STORE = storage.data_file("onchain_plans.json")
 _state: dict = {"users": {}, "usage": {}}   # email -> plan; "YYYY-MM-DD" -> email -> {reads, deep}
 
 
+
+def _free_ai() -> bool:
+    """DeepSeek is gone (20/10): the free AI (free_ai.py) does the deep reading."""
+    from app import free_ai
+    return free_ai.available()
+
 def _load() -> None:
     try:
         raw = json.loads(_STORE.read_text(encoding="utf-8"))
@@ -75,14 +81,14 @@ def usage(email: str) -> dict:
 def status(email: str, admin: bool = False) -> dict:
     plan = plan_of(email, admin)
     return {"plan": plan, "limits": PLANS[plan], "used": usage(email), "plans": PLANS,
-            "deep_available": bool(legit.settings.anthropic_api_key or legit.settings.deepseek_api_key),
+            "deep_available": bool(legit.settings.anthropic_api_key or _free_ai()),
             "payment_address": legit.settings.payment_address or None}
 
 
 def allow(email: str, kind: str, admin: bool = False) -> str:
     """"" if the user may, else why not."""
     plan = plan_of(email, admin)
-    if kind == "deep" and not (legit.settings.anthropic_api_key or legit.settings.deepseek_api_key):
+    if kind == "deep" and not (legit.settings.anthropic_api_key or _free_ai()):
         return "deep reading is not available yet"
     limit = PLANS[plan][kind]
     if usage(email).get(kind, 0) >= limit:

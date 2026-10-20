@@ -4,6 +4,7 @@ import time
 
 import pytest
 
+from app import free_ai
 from app.trading.onchain import deep_recheck, leaderboard, projects_db, scout_recheck
 
 
@@ -11,7 +12,7 @@ from app.trading.onchain import deep_recheck, leaderboard, projects_db, scout_re
 def _tmp(tmp_path, monkeypatch):
     monkeypatch.setattr(deep_recheck, "_STORE", tmp_path / "deep.json")
     deep_recheck.reset_for_tests()
-    monkeypatch.setattr(deep_recheck.settings, "deepseek_api_key", "test-key")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     yield
     deep_recheck.reset_for_tests()
 

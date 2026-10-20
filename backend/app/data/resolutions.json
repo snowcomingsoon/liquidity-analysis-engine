@@ -3314,5 +3314,10 @@
     "status": "risolto",
     "at": 1792530214,
     "summary": "Tutto quello che nella ricerca delle gemme chiedeva a DeepSeek ora lo chiede a Groq e, se Groq non risponde o finisce la quota, a Gemini, con le chiavi gratuite salvate in Diagnostics: scansione manuale e 'Study again', giudizio della classifica, lettura del codice, lettura dei siti, revisione della bacheca, incongruenze, narrative. Ogni servizio ha piu' modelli in fila, e uno che esaurisce la quota del giorno passa la mano al successivo. Ogni tipo di lavoro ha un tetto al giorno (per esempio 120 giudizi, 40 letture di codice), cosi' le scansioni manuali e il veto hanno sempre spazio: le scansioni manuali non hanno tetto. Il voto non cambia: con DeepSeek a pagamento spento i giudizi dell'AI possono solo escludere un progetto, mai alzarne il voto o farlo entrare scavalcando le regole. La chat di Telegram resta su DeepSeek."
+  },
+  "seed-0367": {
+    "status": "risolto",
+    "at": 1792531330,
+    "summary": "DeepSeek non viene piu' chiamato da nessuna parte del sito. Anche la chat di Telegram e l'agente dell'app rispondono con Groq, o con Gemini se Groq non risponde, e le domande non hanno tetto giornaliero. Tutti i controlli che guardavano se c'era la chiave di DeepSeek ora guardano le chiavi gratuite. Le due automazioni di GitHub che usavano DeepSeek a pagamento (rilettura delle PR e scrittura di codice dalle issue) sono spente. Il costo di DeepSeek da oggi e' zero."
   }
 }

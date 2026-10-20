@@ -1204,8 +1204,12 @@ def _is_chatid_command(text: str, bot: str) -> bool:
 async def _telegram_chat_loop() -> None:
     """Lorenzo: "mettiamo possibilita' di parlare con deepseek su telegram?".
     Long polling (the bot has no webhook); only chats the site knows."""
-    if not settings.telegram_bot_token or not settings.deepseek_api_key:
+    if not settings.telegram_bot_token:
         return
+    # The free AI answers (free_ai.py, 20/10): wait for a key set in Diagnostics.
+    from app import free_ai
+    while not free_ai.available():
+        await asyncio.sleep(60)
     base = f"https://api.telegram.org/bot{settings.telegram_bot_token}"
     offset, bot = None, ""
     async with http_client.pooled(timeout=70.0) as client:
@@ -5087,7 +5091,8 @@ async def agent_ask(body: AskRequest, request: Request, user: User = Depends(aut
     (deepseek_desk) still applies, plus a per-account hourly limit."""
     if guest_links.is_guest(user):
         raise HTTPException(status_code=403, detail="Guest mode: sign in to ask the agent.")
-    if not settings.deepseek_api_key:
+    from app import free_ai
+    if not free_ai.available():
         raise HTTPException(status_code=503, detail="The agent is not configured on this server.")
     now = _time.time()
     recent = [t for t in _ask_log.get(user.id, []) if now - t < 3600]

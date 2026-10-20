@@ -70,7 +70,8 @@ DEEPSEEK_WEIGHT = 0.5
 
 
 def deepseek_mode() -> bool:
-    return not legit.settings.anthropic_api_key and bool(legit.settings.deepseek_api_key)
+    from app import free_ai
+    return not legit.settings.anthropic_api_key and free_ai.available()
 
 
 def blend(reader_ai: dict, ds: dict) -> dict:

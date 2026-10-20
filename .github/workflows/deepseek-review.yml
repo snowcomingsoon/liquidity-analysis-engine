@@ -2,9 +2,10 @@
 # push). Needs the repository secret DEEPSEEK_API_KEY; without it, it skips.
 name: DeepSeek review
 
+# Off since 20/10 (Lorenzo: "considera DeepSeek ad oggi come se non
+# esistesse"): DeepSeek is paid. Started by hand only.
 on:
-  pull_request:
-    types: [opened, reopened, ready_for_review]   # not on every push: ~1 min each
+  workflow_dispatch:
 
 permissions:
   contents: read

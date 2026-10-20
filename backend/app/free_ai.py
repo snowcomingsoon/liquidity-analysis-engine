@@ -94,8 +94,11 @@ def _next_day(now: float) -> float:
     return (int(now // 86400) + 1) * 86400 + 60
 
 
+UNCAPPED = {"chat"}            # questions people type: always answered
+
+
 def allowed(kind: str, now: float | None = None) -> bool:
-    if _manual.get():
+    if _manual.get() or kind in UNCAPPED:
         return True
     now = now or time.time()
     return (_calls.get(_day(now)) or {}).get(kind, 0) < DAILY.get(kind, DAILY_DEFAULT)
@@ -120,8 +123,8 @@ def _body_for(body: dict, provider: str, model: str) -> dict:
     return out
 
 
-def _daily_quota(r: httpx.Response) -> bool:
-    text = r.text.lower()
+def _daily_quota(r) -> bool:
+    text = (getattr(r, "text", "") or "").lower()
     return any(w in text for w in ("per day", "tokens per day", "requests per day", "(tpd)", "(rpd)", "daily"))
 
 
@@ -136,6 +139,7 @@ async def post(body: dict, *, kind: str, http: httpx.AsyncClient | None = None, 
         raise Unavailable(f"daily cap of {DAILY.get(kind, DAILY_DEFAULT)} reached for {kind}")
     day = _day(now)
     _calls.setdefault(day, {})[kind] = _calls.get(day, {}).get(kind, 0) + 1
+    last = ""
     own = http is None
     client = http or httpx.AsyncClient(timeout=60.0)
     try:
@@ -150,13 +154,17 @@ async def post(body: dict, *, kind: str, http: httpx.AsyncClient | None = None, 
                 for attempt in (1, 2):
                     try:
                         async with sem:
-                            r = await client.post(url, json=_body_for(body, provider, model), timeout=60.0,
+                            r = await client.post(url, json=_body_for(body, provider, model),
                                                   headers={"Authorization": f"Bearer {ks[provider]}"})
                     except httpx.HTTPError as exc:
                         logger.info("free ai: %s did not answer: %s", tag, exc)
                         _cool[tag] = time.time() + 60
                         break
-                    if r.status_code == 429:
+                    code = getattr(r, "status_code", 200)
+                    text = (getattr(r, "text", "") or "").lower() if code != 200 else ""
+                    if code != 200:
+                        last = f"{tag} answered {code}"
+                    if code == 429:
                         try:
                             wait = float(r.headers.get("retry-after") or 0)
                         except ValueError:
@@ -169,16 +177,16 @@ async def post(body: dict, *, kind: str, http: httpx.AsyncClient | None = None, 
                             continue
                         _cool[tag] = time.time() + max(wait, 60)
                         break
-                    gone = r.status_code == 404 or (r.status_code == 400 and "model" in r.text.lower() and any(
-                        w in r.text.lower() for w in ("decommission", "not found", "does not exist", "not supported")))
+                    gone = code == 404 or (code == 400 and "model" in text and any(
+                        w in text for w in ("decommission", "not found", "does not exist", "not supported")))
                     if gone:
                         _cool[tag] = _next_day(time.time())     # retired or unknown here: the next model
                         break
-                    if r.status_code >= 500:
+                    if code >= 500:
                         _cool[tag] = time.time() + 60
                         break
-                    if r.status_code != 200:
-                        logger.info("free ai: %s answered %s: %s", tag, r.status_code, r.text[:200])
+                    if code != 200:
+                        logger.info("free ai: %s answered %s: %s", tag, code, text[:200])
                         break
                     try:
                         data = r.json()
@@ -190,7 +198,7 @@ async def post(body: dict, *, kind: str, http: httpx.AsyncClient | None = None, 
     finally:
         if own:
             await client.aclose()
-    raise Unavailable("every free model refused or is cooling down")
+    raise Unavailable("every free model refused or is cooling down" + (f" (last: {last})" if last else ""))
 
 
 def content(data: dict) -> str:

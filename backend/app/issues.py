@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0367", "Togliere del tutto DeepSeek: tutto su Groq e Gemini",
+     "Lorenzo, 20/10: 'sposta tutto quello che faceva DeepSeek, perche' l'idea di fondo e' rimuovere del tutto DeepSeek perche' a pagamento e in sostituzione usare fonti gratuite come Grok e Gemini per tutto quello che fa DeepSeek attualmente. Quindi considera DeepSeek ad oggi come se non esistesse'.",
+     "media"),
     ("seed-0366", "Le funzioni di DeepSeek delle gemme rifatte con Groq e Gemini",
      "Lorenzo, 20/10: 'le opzioni che avevamo per analizzare le gemme dove era attivo DeepSeek, come ad esempio la scansione manuale o la rescansione con DeepSeek, vanno tutte risistemate e fatte fare a Grok oppure a Gemini'.",
      "media"),

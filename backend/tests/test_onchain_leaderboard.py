@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from app import free_ai
 from app.trading.onchain import depth, legit, leaderboard as lb
 
 NOW = 1_790_000_000.0
@@ -475,7 +476,7 @@ def test_deepseek_review_can_drop_and_reorder_the_board(monkeypatch):
     import json as _json
     from app.trading.onchain import judge
     monkeypatch.setattr(lb.settings, "research_ai_enabled", True)      # a faked DeepSeek, switched on
-    monkeypatch.setattr(lb.settings, "deepseek_api_key", "test")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     judge.reset_for_tests()
     monkeypatch.setattr(judge, "_save", lambda: None)
     _entry("CLAUPUMP", 90, 90, 90)
@@ -670,7 +671,7 @@ def _deepseek_off(tmp_path, monkeypatch):
 def test_top_fill_judges_a_database_row_even_with_the_daily_cap_spent(monkeypatch, _deepseek_off):
     import asyncio
     monkeypatch.setattr(lb.settings, "research_ai_enabled", True)
-    monkeypatch.setattr(lb.settings, "deepseek_api_key", "test")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
 
     from app.trading.onchain import code_review, judge
     now = time.time()
@@ -1003,7 +1004,7 @@ def test_with_deepseek_off_the_research_steps_do_nothing_else(monkeypatch):
     import asyncio
     from app.trading.onchain import code_review, judge, narrative_map
     monkeypatch.setattr(lb.settings, "research_ai_enabled", False)
-    monkeypatch.setattr(lb.settings, "deepseek_api_key", "test")
+    monkeypatch.setattr(free_ai, "keys", lambda: {})
     touched = []
 
     async def fetch(repo, client):

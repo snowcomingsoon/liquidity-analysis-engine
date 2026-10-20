@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app import free_ai
 from app.config import settings
 from app.trading.onchain import ai_review, alert_track as at
 from app.trading.onchain import leaderboard as lb
@@ -153,7 +154,7 @@ def test_deepseek_reviewer_reads_like_claude(monkeypatch):
 
     from app.config import settings
     from app.trading.onchain import ai_review
-    monkeypatch.setattr(settings, "deepseek_api_key", "k")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     monkeypatch.setattr(settings, "ai_review_provider", "auto")
     assert ai_review.provider() == "deepseek"
 
@@ -172,7 +173,7 @@ def test_deepseek_reviewer_reads_like_claude(monkeypatch):
             return R()
     reply = asyncio.run(ai_review._ask_deepseek("{}", http=H()))
     assert reply.usage.input_tokens + reply.usage.output_tokens == 1000 and reply.content[0].text.startswith("{")
-    monkeypatch.setattr(settings, "deepseek_api_key", "")
+    monkeypatch.setattr(free_ai, "keys", lambda: {})
     monkeypatch.setattr(settings, "anthropic_api_key", "")
     assert ai_review.provider() is None
 

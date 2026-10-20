@@ -68,6 +68,12 @@ SYSTEM = (
     '"note": "one short English sentence citing the evidence", "evidence": "exact quote from the evidence block"}]}.')
 
 
+
+def _free_ai_on() -> bool:
+    """DeepSeek is gone (20/10): the free AI (free_ai.py: Groq, Gemini) answers instead."""
+    from app import free_ai
+    return free_ai.available()
+
 def red_points(entry: dict) -> list[dict]:
     """The judge's problems and every pillar's flags, one per fact: a flag
     that says what a judge problem already says in other words is not a
@@ -946,7 +952,7 @@ async def recheck(entry: dict, item: dict, client: httpx.AsyncClient, ask=None) 
     text = evidence_text(entry, item, ev)
     if judged is not None:
         step("Red points already judged on this evidence", f"{len(points)} points, from the last 24 h")
-    if judged is None and settings.deepseek_api_key:
+    if judged is None and _free_ai_on():
         step("Asking DeepSeek about each red point", f"{len(points)} points")
         from app.notify import deepseek_desk
         if ask is None:

@@ -12,7 +12,6 @@ import json
 import logging
 import time
 
-from app.config import settings
 from app.trading.onchain import jstext, scout_recheck, storage
 from app.trading.onchain.judge import CHECK_RULES
 
@@ -363,8 +362,9 @@ async def _run(chain: str, token: str, client, now: float | None = None, ask=Non
     left = wait_s(chain, token, now, limited)
     if left > 0:
         raise TooSoon(left)
-    if not settings.deepseek_api_key:
-        raise RuntimeError("DeepSeek not configured")
+    from app import free_ai
+    if not free_ai.available():
+        raise RuntimeError("no free AI key set (Diagnostics)")
 
     key = _key(chain, token)
     scout_recheck.step("Loading the project and its last review")

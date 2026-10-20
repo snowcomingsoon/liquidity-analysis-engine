@@ -24,7 +24,6 @@ import json
 import logging
 import time
 
-from app.config import settings
 from app.notify import deepseek_desk
 from app.trading.onchain import alert_track, outcomes, rug_memory
 
@@ -47,6 +46,12 @@ SYSTEM = (
     '{"items": [{"i": index, "risk": 0-100, "flags": [up to 3 short strings], "theme": "2-3 words"}]} '
     "with one item per input line. Be terse.")
 
+
+
+def _free_ai_on() -> bool:
+    """DeepSeek is gone (20/10): the free AI (free_ai.py: Groq, Gemini) answers instead."""
+    from app import free_ai
+    return free_ai.available()
 
 def _pending(now: float) -> list[dict]:
     return [a for a in alert_track._alerts.values()
@@ -98,7 +103,7 @@ def parse(text: str, batch: list[dict], now: float) -> int:
 
 async def run_once(now: float | None = None) -> int:
     """Judge what is pending. Returns how many alerts got a judgement."""
-    if not settings.deepseek_api_key:
+    if not _free_ai_on():
         return 0
     now = now or time.time()
     done = 0
@@ -166,7 +171,7 @@ def recap_line(now: float | None = None) -> str:
 async def judge_one(item: dict, features: dict, pool: list[dict] | None = None, project: bool = False) -> dict | None:
     """DeepSeek's judgement on one token scanned by hand (manual_scan.py):
     the same prompt as the batches, one line."""
-    if not settings.deepseek_api_key:
+    if not _free_ai_on():
         return None
     a = {"symbol": item.get("symbol") or "?", "name": item.get("name") or "", "chain": item.get("chain"),
          "token_address": item.get("token_address"), "cap0": item.get("market_cap"), "liq0": item.get("liquidity_usd"),

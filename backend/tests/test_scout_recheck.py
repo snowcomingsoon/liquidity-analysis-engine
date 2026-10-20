@@ -2,6 +2,7 @@
 import asyncio
 import json
 
+from app import free_ai
 from app.trading.onchain import legit, scout_recheck as sr
 
 
@@ -76,8 +77,7 @@ def test_other_pages_guesses_docs_next_to_the_site():
 
 
 def test_recheck_uses_deepseek_on_the_evidence(monkeypatch):
-    from app.config import settings
-    monkeypatch.setattr(settings, "deepseek_api_key", "k")
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k"})
     monkeypatch.setattr(sr, "_cache", {})
 
     async def none(*a, **k):
@@ -358,8 +358,7 @@ def test_an_unreadable_site_is_opened_again_and_cleared_when_it_reads(monkeypatc
     monkeypatch.setattr(sr, "gecko_volume", none)
     monkeypatch.setattr(legit, "fetch_site", page)
     monkeypatch.setattr(sr, "_cache", {})
-    from app.config import settings
-    monkeypatch.setattr(settings, "deepseek_api_key", "")
+    monkeypatch.setattr(free_ai, "keys", lambda: {})
     e = {"pillars": {"github": {"score": 50}, "site": {"score": None, "flags": ["site built in JavaScript, not readable"],
                                                        "facts": {"url": "https://aureon.example/"}}}}
     rc = asyncio.run(sr.recheck(e, {"chain": "robinhood", "token_address": "0xA", "website": "https://aureon.example/"}, None))

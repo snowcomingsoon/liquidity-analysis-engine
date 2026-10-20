@@ -4,9 +4,11 @@
 # that pushes runs none of it. Nothing merges automatically.
 name: DeepSeek task
 
+# Off since 20/10 (Lorenzo: "considera DeepSeek ad oggi come se non
+# esistesse"): DeepSeek is paid. Started by hand only, and it needs the
+# DEEPSEEK_API_KEY secret.
 on:
-  issues:
-    types: [labeled]
+  workflow_dispatch:
 
 permissions:
   contents: write
