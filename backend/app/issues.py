@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0363", "La libreria degli indicatori va in blocco",
+     "Lorenzo, 20/10: 'La libreria degli indicatori va in blocco. Testa e risolvi il problema'.",
+     "media"),
     ("seed-0362", "Cycle Bottom Index fra gli indicatori del sito classico",
      "Lorenzo, 20/10: 'Vorrei provare a inserire [...] questo Cryptic Bottom Index [...] Prova a vedere se in qualche modo riesci ad aggiungerlo tra i nostri indicatori', poi 'Mettilo solo nel sito classico per tutti, prima pero' testane il corretto funzionamento'.",
      "bassa"),

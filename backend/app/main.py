@@ -2206,7 +2206,9 @@ async def compute_indicator_route(req: IndicatorComputeRequest) -> dict:
         raise HTTPException(status_code=502, detail=f"No data for {symbol} on {interval}")
 
     try:
-        series = indicator_catalog.compute_indicator(df, req.indicator, req.params)
+        # A worker thread: some pandas-ta indicators take seconds (exhc,
+        # coppock ~3 s on 3000 bars) and would freeze the whole server.
+        series = await asyncio.to_thread(indicator_catalog.compute_indicator, df, req.indicator, req.params)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -11120,15 +11120,18 @@
   // conosco i nomi cosi non so cosa cercare".
   let indicatorLibraryFilter = null; // null = tutti; "__favorites"; oppure un id di categoria
 
+  // A failed load is not remembered: an empty library stayed empty until
+  // a reload (a server restart during a deploy was enough). Next open retries.
   async function ensureIndicatorCatalog() {
-    if (state.indicatorCatalog) return state.indicatorCatalog;
+    if (state.indicatorCatalog && state.indicatorCatalog.length) return state.indicatorCatalog;
     try {
-      const resp = await fetch("/api/indicators/catalog");
-      state.indicatorCatalog = resp.ok ? await resp.json() : [];
+      const resp = await fetch("/api/indicators/catalog", { signal: AbortSignal.timeout(15000) });
+      const list = resp.ok ? await resp.json() : [];
+      state.indicatorCatalog = Array.isArray(list) && list.length ? list : null;
     } catch {
-      state.indicatorCatalog = [];
+      state.indicatorCatalog = null;
     }
-    return state.indicatorCatalog;
+    return state.indicatorCatalog || [];
   }
 
   function toggleFavoriteIndicator(id) {
@@ -11343,12 +11346,16 @@
   // chiamano tutti la stessa apertura diretta — senza il giro di click
   // sintetico che serviva quando era un cassetto (e senza il bug di
   // richiusura che quel giro portava con se').
-  let indicatorCatalogLoaded = false;
-
   async function openIndicatorLibraryModal() {
-    if (!indicatorCatalogLoaded) {
-      indicatorCatalogLoaded = true;
+    if (!(state.indicatorCatalog && state.indicatorCatalog.length)) {
+      el("indicator-library-modal")?.classList.remove("hidden");
+      const box = el("indicator-library-list");
+      if (box) box.innerHTML = `<div class="icl-empty">Loading indicators…</div>`;
       await ensureIndicatorCatalog();
+      if (!(state.indicatorCatalog && state.indicatorCatalog.length) && box) {
+        box.innerHTML = `<div class="icl-empty">The list did not load. Close and open again to retry.</div>`;
+        return;
+      }
     }
     renderIndicatorModalNav();
     renderIndicatorLibraryList(el("indicator-library-search")?.value || "");
@@ -11420,28 +11427,26 @@
     const interval = analysis && analysis.interval;
     if (!symbol || !interval) return;
 
-    for (const ind of state.customIndicators) {
-      let data;
-      try {
-        const resp = await fetch("/api/indicators/compute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            symbol,
-            asset_type: state.assetType,
-            exchange: state.cryptoExchange || "mexc",
-            timeframe: state.activeTimeframe,
-            interval,
-            indicator: ind.id,
-            params: {},
-          }),
-        });
-        if (!resp.ok) continue;
-        data = await resp.json();
-      } catch {
-        continue; // un indicatore che fallisce non deve bloccare gli altri
-      }
+    // All requests at once, each with a time limit: one slow indicator used
+    // to hold back every pane after it. Drawn in the list's order.
+    const requests = state.customIndicators.map((ind) => fetch("/api/indicators/compute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(30000),
+      body: JSON.stringify({
+        symbol,
+        asset_type: state.assetType,
+        exchange: state.cryptoExchange || "mexc",
+        timeframe: state.activeTimeframe,
+        interval,
+        indicator: ind.id,
+        params: {},
+      }),
+    }).then((resp) => (resp.ok ? resp.json() : null)).catch(() => null));
+    for (const [n, ind] of state.customIndicators.slice().entries()) {
+      const data = await requests[n];
       if (mySeq !== indicatorsRefreshSeq) return; // superata da un'esecuzione piu' recente
+      if (!data) continue; // un indicatore che fallisce non deve bloccare gli altri
       const times = data.times || [];
       const seriesList = data.series || [];
       if (data.kind === "overlay") {

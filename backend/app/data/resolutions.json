@@ -3294,5 +3294,10 @@
     "status": "risolto",
     "at": 1792490685,
     "summary": "Nella libreria indicatori del sito classico c'e' 'Cycle Bottom Index' (categoria Cycles): una nostra versione, perche' il codice originale e' privato. Va da 0 a 100, alto vicino a un minimo di ciclo. Unisce tre letture: il ciclo (filtro di Ehlers), quanto il prezzo e' sotto la sua media lunga (Z-score) e dove sta nel suo intervallo lungo. Giallo da 60; verde da 80 solo se i volumi confermano (divergenza rialzista dell'accumulazione o denaro in entrata). Provato su 6 anni di BTC, ETH, SOL, LTC, LINK, XRP giornalieri: dopo un ingresso in verde il prezzo a 60 giorni e' salito in mediana dell'8,1% (61% delle volte), contro +0,9% (51%) di un giorno qualsiasi; a 90 giorni nessun vantaggio, e nei mercati in caduta (maggio 2022, gennaio 2026) il verde e' arrivato troppo presto. Funziona sui grafici giornalieri con almeno 200 candele."
+  },
+  "seed-0363": {
+    "status": "risolto",
+    "at": 1792493224,
+    "summary": "Il blocco non si e' riprodotto (provata nel browser, su computer e telefono, anche con il file del sito in produzione), ma ho trovato e chiuso tre modi in cui la libreria poteva bloccarsi. 1) Se l'elenco non arrivava una volta (per esempio durante un riavvio del server per un aggiornamento), la libreria restava vuota fino a ricaricare la pagina: ora riprova alla riapertura e lo dice. 2) Gli indicatori si calcolavano uno dopo l'altro senza limite di tempo, e uno lento fermava tutti gli altri: ora partono insieme, con un limite di 30 secondi. 3) Alcuni indicatori impiegano 2-3 secondi a calcolare e intanto fermavano tutto il sito: ora il calcolo gira a parte."
   }
 }
