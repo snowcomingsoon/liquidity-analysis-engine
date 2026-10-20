@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     # whitekobra"). Everyone else keeps the lighter rows, and the Telegram
     # alerts and the nightly run read the Top as before.
     onchain_full_score_emails: str = "sha256:fdfcf4ae2f1823a2e1f24d0f48c3fcd8cf128541133709ad272f21f2e62f3f58"
+    # Accounts that may set outside-service keys in Diagnostics (service_keys.py)
+    # besides the admins: whitekobra (Lorenzo, 20/10, the Groq key).
+    service_keys_emails: str = "sha256:fdfcf4ae2f1823a2e1f24d0f48c3fcd8cf128541133709ad272f21f2e62f3f58"
     # Accounts with no cap on their Telegram alerts (gems, listings), their
     # chats paced instead (telegram.PACE_S between two messages), and gems
     # announced only on their first entry into any ranking (Lorenzo, 17/10:

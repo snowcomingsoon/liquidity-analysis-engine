@@ -23,6 +23,7 @@ def client(tmp_path, monkeypatch):
 
 def test_only_admins_see_or_set_keys(client, monkeypatch):
     monkeypatch.setattr(config.settings, "admin_emails", "someone-else@example.com")
+    monkeypatch.setattr(config.settings, "service_keys_emails", "someone-else@example.com")
     assert client.get("/api/admin/service-keys").status_code == 403
     assert client.post("/api/admin/service-keys", json={"name": "groq", "value": "gsk_x"}).status_code == 403
 
@@ -60,3 +61,10 @@ def test_the_environment_wins(client, monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "gsk_fromenv9999")
     assert service_keys.get("groq") == "gsk_fromenv9999"
     assert service_keys.status()["groq"]["source"] == "env"
+
+
+def test_the_key_keeper_account_is_not_an_admin_but_may_set_keys(client, monkeypatch):
+    """whitekobra holds full access, not the admin role (20/10)."""
+    monkeypatch.setattr(config.settings, "admin_emails", "someone-else@example.com")
+    monkeypatch.setattr(config.settings, "service_keys_emails", client.user_email)
+    assert client.get("/api/admin/service-keys").status_code == 200

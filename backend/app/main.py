@@ -5502,11 +5502,19 @@ class ServiceKeyRequest(BaseModel):
     value: str = ""
 
 
+def _require_key_keeper(user: User) -> None:
+    """Admins, and the accounts in settings.service_keys_emails (whitekobra)."""
+    if guest_links.is_guest(user):
+        raise HTTPException(status_code=403, detail="Not for guests.")
+    if user.email.lower() not in email_allowlist(settings.service_keys_emails):
+        _require_admin(user)
+
+
 @app.get("/api/admin/service-keys")
 async def admin_service_keys(user: User = Depends(auth.get_current_user)) -> dict:
     """Which outside-service keys are set (service_keys.py): never the key itself."""
     from app import service_keys
-    _require_admin(user)
+    _require_key_keeper(user)
     return service_keys.status()
 
 
@@ -5516,7 +5524,7 @@ async def admin_set_service_key(req: ServiceKeyRequest, user: User = Depends(aut
     Lorenzo, 20/10: the Groq key could reach the server from his phone only
     through the site."""
     from app import service_keys
-    _require_admin(user)
+    _require_key_keeper(user)
     if req.name not in service_keys.SERVICES:
         raise HTTPException(status_code=400, detail="Unknown service")
     key = req.value.strip()
