@@ -3279,5 +3279,10 @@
     "status": "risolto",
     "at": 1792449898,
     "summary": "Il podio prendeva solo il primo di ogni arena con almeno tre progetti e un vantaggio misurabile, poi tagliava a tre sul server: un token nascosto o un'arena piccola lasciavano due gradini. Ora arrivano fino a dieci candidati, il podio si riempie anche con i primi delle arene piccole (dopo quelli in netto vantaggio) e il primo di un'arena e' sempre un suo progetto, non una copia da un'altra narrativa. La Top resta le migliori 25 per punteggio: le arene sembrano piu' grandi perche' un progetto con piu' narrative compare in piu' arene."
+  },
+  "seed-0360": {
+    "status": "risolto",
+    "at": 1792480092,
+    "summary": "Il controllo dei nomi che copiano marchi famosi lo faceva solo DeepSeek, che per la ricerca e' spento dal 10/10: 'Apple' passava. Ora i token nati su un launchpad (pump.fun, letsbonk, bags, Pons) hanno regole proprie, senza DeepSeek: un nome o un ticker di un marchio famoso (Apple, Tesla, Nvidia, OpenAI, Trump...) li scarta. Valgono di nuovo anche le regole di prima del 18-19/10: sito illeggibile = fuori, serve codice vero su GitHub o un sito che mostri un prodotto, wallet collegati al massimo 30%, nessuno che possa emettere nuovi token, primi 10 conti (programmi compresi) al massimo 60%. Nessuna eta' minima, cosi' i progetti appena nati come Veil possono entrare. Per tutti gli altri token non cambia niente."
   }
 }

@@ -44,7 +44,7 @@ from app import http_client
 from app.config import settings
 
 from app.sniper.quality import _looks_like_meme
-from app.trading.onchain import (benchmark, big_coins, code_review, consistency, depth, discovery, gem_learn, gem_track, judge, legit, narrative_map,
+from app.trading.onchain import (benchmark, big_coins, code_review, consistency, depth, discovery, gem_learn, gem_track, judge, launchpad, legit, narrative_map,
                                   narratives, priority, projects_db, research, storage, traction, usage)
 from app.atomic_write import write_text_atomic
 
@@ -789,6 +789,10 @@ def qualifies(e: dict, now: float | None = None, cap_floor: bool = True) -> str:
     big = too_big(e)
     if big:
         return big
+    # Launchpad tokens: famous names out, the rules from before 18-19/10 (launchpad.py).
+    pad = launchpad.gate(e)
+    if pad:
+        return pad
     r = e.get("review") or {}
     if r.get("keep") is False and (now or time.time()) - (r.get("at") or 0) < judge.REVIEW_TTL_S:
         return f"DeepSeek review: {r.get('reason') or 'dropped'}"

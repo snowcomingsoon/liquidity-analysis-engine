@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0360", "Token truffa dai launchpad nelle gemme (un falso Apple su pump.fun)",
+     "Lorenzo, 20/10: 'Stanno passando nelle gemme token che non vanno bene [...] PumpFun purtroppo ha molti token truffa [...] un token Apple che di fatto sembrerebbe quello ufficiale della Apple, ma non lo e' assolutamente', poi: 'implementerei il tuo suggerimento A completamente [...] le regole vecchie per i token dei Launchpad le applicherei tutte tranne l'eta' minima [...] come Veil'.",
+     "alta"),
     ("seed-0359", "Podio con due soli token e Top che non si riempie",
      "Lorenzo, 19/10: 'il podio, che non si aggiorna sempre bene e a volte rimangono solo due token sul podio. Lo stesso vale per la sezione top [...] non riesca a riempirsi in modo diciamo corretto'.",
      "media"),

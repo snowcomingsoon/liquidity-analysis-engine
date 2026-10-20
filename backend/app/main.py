@@ -145,6 +145,7 @@ from app.trading.onchain import pilot as onchain_pilot
 from app.trading.onchain import listings as onchain_listings
 from app.trading.onchain import leaderboard as onchain_leaderboard
 from app.trading.onchain import projects_db as onchain_projects_db
+from app.trading.onchain import launchpad as onchain_launchpad
 from app.trading.onchain import ai_review as onchain_ai_review
 from app.trading.onchain import alert_track as onchain_alert_track
 from app.trading.onchain import plans as onchain_plans
@@ -3965,7 +3966,15 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
         blocks = None
         if row["chain"] != onchain_layers.CHAIN:
             # DeepSeek's reading too, so a token scores the same in both halves.
-            entry = {**onchain_leaderboard.db_entry(row), "global_cap": row.get("cg_mcap"), "judge": j}
+            entry = {**onchain_leaderboard.db_entry(row), "global_cap": row.get("cg_mcap"), "judge": j,
+                     "sources": row.get("sources")}
+            # Launchpad tokens: famous names out, the older rules (launchpad.py),
+            # read from the whole row when the list carried a light one.
+            if onchain_launchpad.is_launchpad(entry):
+                whole = entry if full else {**entry, "pillars": onchain_leaderboard.db_entry(
+                    onchain_projects_db.get(row["chain"], row["token"]) or row)["pillars"]}
+                if onchain_launchpad.gate(whole):
+                    continue
             gate = onchain_leaderboard.usage_gate(entry)
             if full and (not gate or not onchain_leaderboard.usage_gate(entry, False)):
                 # Only the $300k floor fails, or nothing: whitekobra's arena
