@@ -94,7 +94,6 @@ function listHtml() {
   const list = arenas.filter((a) => shownCount(a)).sort((a, b) => shownCount(b) - shownCount(a));
   return list.length ? `<div class="ar-grid">${list.map((a) => arenaHtml(a, true)).join("")}</div>` : "";
 }
-const sigma = (z) => `${z >= 0 ? "+" : "−"}${Math.abs(z).toFixed(1)}σ`;
 
 function row(e, a) {
   const id = idOf(e);
@@ -161,13 +160,12 @@ function paint() {
   delete root.dataset.loading;
   const firstPaint = !shown;
   root.querySelector(".top-wait")?.remove();
-  // The podium is pound for pound: the projects leading their own arena by
-  // the most. Fixed in the top bar (Lorenzo, 16/10).
+  // The podium: the Top's best three by score, fixed in the top bar (Lorenzo, 16/10 and 20/10).
   const top3 = p4p.filter((e) => !isHidden(e.chain, e.token_address)).slice(0, 3).map((e) => {
     register(idOf(e), { kind: "gem", symbol: e.symbol, name: e.name, chain: e.chain, token: e.token_address,
       pair: e.pair_address, fdv: e.fdv, pairUrl: e.pair_url, image: e.image, cap: e.market_cap,
       change: e.change_24h != null ? e.change_24h / 100 : null, ageTs: e.launched_at,
-      context: `Pound for pound · leads ${e.arena_label} by ${sigma(e.z)}` });
+      context: `Top 25 · score ${Math.round(e.score ?? 0)}` });
     return e;
   });
   paintTop3(top3);
@@ -229,18 +227,11 @@ function paintTop3(list) {
   }
   el.hidden = !list.length;
   el.innerHTML = list.map((e, i) => `<button type="button" class="t3" data-open="${escapeHtml(idOf(e))}"
-      title="${escapeHtml(`${e.name || e.symbol} · leads ${e.arena_label} by ${sigma(e.z)}`)}">
+      title="${escapeHtml(`${e.name || e.symbol} · score ${Math.round(e.score ?? 0)}`)}">
       <i class="t3-place">${i + 1}</i>${tile(e.symbol, e.image, e.chain, e.token_address)}
-      <span class="t3-main"><b>${escapeHtml(e.symbol ?? "")}</b><small>${escapeHtml(sigma(e.z))} ${escapeHtml(SHORT[e.arena_label] || e.arena_label || "")}</small></span>
+      <span class="t3-main"><b>${escapeHtml(e.symbol ?? "")}</b><small>score ${Math.round(e.score ?? 0)}</small></span>
     </button>`).join("");
 }
-const SHORT = {
-  "Perps & Derivatives": "Perps", "Chains L0/L1/L2": "Chains", "Stablecoin Payments": "Payments",
-  "Wallets & Account Abstraction": "Wallets", "NFT & Collectibles": "NFT", "Lending & Credit": "Lending",
-  "Music & Media": "Music", "Dev Tools & RPC": "Dev tools", "Yield & Vaults": "Yield",
-  "Robotics / Physical AI": "Robotics", "Identity / Personhood": "Identity", "AI Data / Oracles": "AI Data",
-  "Prediction Markets": "Predictions", "Chain Abstraction": "Chain Abstr.", "AI-Managed Money": "AI Money",
-};
 
 // Without trading: measured usage (usage.py), what put the project here.
 const compact = (n) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
@@ -334,7 +325,9 @@ async function load() {
     // A page served before the arenas: one arena holding the old list.
     arenas = top?.arenas ?? [{ key: "all", label: "All projects", heat: 0, size: (top?.entries ?? []).length, median: 0,
       entries: (top?.entries ?? []).map((e, i) => ({ ...e, arena_rank: i + 1, in: true })) }];
-    p4p = top?.p4p ?? [];
+    // The podium is the Top's first three by score (Lorenzo, 20/10: "i primi
+    // tre della top 25 [...] chi ha il miglior valore e' primo").
+    p4p = [...(top?.entries ?? [])].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     labStatus = top?.backtests ?? null;
     lastEarly = top?.early ?? [];
     lastEntries = top?.entries ?? [];

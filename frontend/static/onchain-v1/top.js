@@ -134,7 +134,6 @@ function mosaicHtml(width = 360) {
 // A tile opens its ranking right under the mosaic, same screen, no sub-menu
 // (Lorenzo, 10/10: the honeycomb was "orribile, ripristina un elenco").
 let hive = null;            // arena key whose ranking is open
-const sigma = (z) => `${z >= 0 ? "+" : "−"}${Math.abs(z).toFixed(1)}σ`;
 
 function row(e, a) {
   const id = idOf(e);
@@ -182,8 +181,8 @@ function paint() {
     register(idOf(e), { kind: "gem", symbol: e.symbol, name: e.name, chain: e.chain, token: e.token_address,
       pair: e.pair_address, pairUrl: e.pair_url, image: e.image, cap: e.market_cap,
       change: e.change_24h != null ? e.change_24h / 100 : null, ageTs: e.launched_at,
-      context: `Pound for pound · leads ${e.arena_label} by ${sigma(e.z)}` });
-    return { id: idOf(e), symbol: e.symbol, value: `${sigma(e.z)} ${e.arena_label}`,
+      context: `Top 25 · score ${Math.round(e.score ?? 0)}` });
+    return { id: idOf(e), symbol: e.symbol, value: `score ${Math.round(e.score ?? 0)}`,
       logoHtml: tile(e.symbol, e.image, e.chain, e.token_address) };
   });
   const sig = top3.map((x) => x.id).join("|");
@@ -289,7 +288,9 @@ async function load() {
     // A page served before the arenas: one arena holding the old list.
     arenas = top?.arenas ?? [{ key: "all", label: "All projects", heat: 0, size: (top?.entries ?? []).length, median: 0,
       entries: (top?.entries ?? []).map((e, i) => ({ ...e, arena_rank: i + 1, in: true })) }];
-    p4p = top?.p4p ?? [];
+    // The podium is the Top's first three by score (Lorenzo, 20/10: "i primi
+    // tre della top 25 [...] chi ha il miglior valore e' primo").
+    p4p = [...(top?.entries ?? [])].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     labStatus = top?.backtests ?? null;
     paint();
     paintEarly(top?.early ?? []);   // the board's own early list, never narrowed by narrative
