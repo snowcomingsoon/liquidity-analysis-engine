@@ -626,6 +626,7 @@ def loop_plan(radar_enabled: bool, nightly_enabled: bool) -> list[str]:
     no gem research, and the studies keep their own loop as before."""
     if not radar_enabled:
         return ["studies"]
+    # The free AI's veto (ai_veto.py) reads the Top's door around the clock.
     if nightly_enabled:
-        return ["nightly", "sentinel"]
-    return ["leaderboard", "sweep", "outcomes", "layers", "studies"]
+        return ["nightly", "sentinel", "ai_veto"]
+    return ["leaderboard", "sweep", "outcomes", "layers", "studies", "ai_veto"]

@@ -44,7 +44,7 @@ from app import http_client
 from app.config import settings
 
 from app.sniper.quality import _looks_like_meme
-from app.trading.onchain import (benchmark, big_coins, code_review, consistency, depth, discovery, gem_learn, gem_track, judge, launchpad, legit, market_peaks, narrative_map,
+from app.trading.onchain import (ai_veto, benchmark, big_coins, code_review, consistency, depth, discovery, gem_learn, gem_track, judge, launchpad, legit, market_peaks, narrative_map,
                                   narratives, priority, projects_db, research, storage, traction, usage)
 from app.atomic_write import write_text_atomic
 
@@ -804,6 +804,11 @@ def qualifies(e: dict, now: float | None = None, cap_floor: bool = True) -> str:
     pad = launchpad.gate(e, now, top=cap_floor)
     if pad:
         return pad
+    # The free AI's veto (ai_veto.py, 20/10): a scam, a copy or a meme coin
+    # out; a launchpad token waits for its verdict.
+    ai = ai_veto.reason(e, now)
+    if ai:
+        return ai
     r = e.get("review") or {}
     if r.get("keep") is False and (now or time.time()) - (r.get("at") or 0) < judge.REVIEW_TTL_S:
         return f"DeepSeek review: {r.get('reason') or 'dropped'}"

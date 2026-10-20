@@ -149,3 +149,13 @@ def _private_market_peaks(monkeypatch, tmp_path):
     market_peaks.reset_for_tests()
     yield
     market_peaks.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _private_ai_veto(monkeypatch, tmp_path):
+    """The free AI's verdicts (ai_veto.py) start empty, and no key is set."""
+    from app.trading.onchain import ai_veto
+    monkeypatch.setattr(ai_veto, "_FILE", tmp_path / "ai_veto.json")
+    ai_veto.reset_for_tests()
+    yield
+    ai_veto.reset_for_tests()

@@ -80,8 +80,8 @@ def test_boot_after_the_hour_runs_tonight_now():
 
 
 def test_loop_plan_follows_the_flag():
-    assert nightly.loop_plan(True, True) == ["nightly", "sentinel"]
-    assert nightly.loop_plan(True, False) == ["leaderboard", "sweep", "outcomes", "layers", "studies"]
+    assert nightly.loop_plan(True, True) == ["nightly", "sentinel", "ai_veto"]
+    assert nightly.loop_plan(True, False) == ["leaderboard", "sweep", "outcomes", "layers", "studies", "ai_veto"]
     assert nightly.loop_plan(False, True) == ["studies"]
     assert nightly.loop_plan(False, False) == ["studies"]
 

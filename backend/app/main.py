@@ -146,6 +146,7 @@ from app.trading.onchain import listings as onchain_listings
 from app.trading.onchain import leaderboard as onchain_leaderboard
 from app.trading.onchain import projects_db as onchain_projects_db
 from app.trading.onchain import launchpad as onchain_launchpad
+from app.trading.onchain import ai_veto as onchain_ai_veto
 from app.trading.onchain import ai_review as onchain_ai_review
 from app.trading.onchain import alert_track as onchain_alert_track
 from app.trading.onchain import plans as onchain_plans
@@ -1537,6 +1538,7 @@ async def lifespan(app: FastAPI):
         "layers": onchain_layers.layers_loop,
         "studies": deepseek_studies.studies_loop,
     }
+    research["ai_veto"] = lambda: onchain_ai_veto.loop(_ai_veto_candidates)
     radar_tasks = [asyncio.create_task(research[name]()) for name in
                    onchain_nightly.loop_plan(settings.onchain_radar_enabled, settings.onchain_nightly_enabled)]
     # The Top's market from DexScreener every minute, also when the research
@@ -3887,6 +3889,27 @@ def _gem_view(entries: list[dict], now: float | None = None) -> list[dict]:
     return [ok[i] for i in sorted(best.values())]
 
 
+def _ai_veto_candidates() -> list[dict]:
+    """What the AI check reads (ai_veto.py): the launchpad gems waiting at the
+    Top's door first, then the Top itself, best first, as whole entries."""
+    out: list[dict] = []
+    waiting = "launchpad token: waiting for the AI check"
+    for e in list(onchain_leaderboard._entries.values()):
+        if onchain_leaderboard.qualifies(e) == waiting:
+            out.append(e)
+    for st in ("studied", "ranked"):
+        for row in onchain_projects_db.search(status=st, sort="score", limit=200, full=True)["items"]:
+            if (row.get("score") or 0) >= 55 and onchain_launchpad.is_launchpad({**row, "token_address": row["token"]}):
+                out.append({**onchain_leaderboard.db_entry(row), "sources": row.get("sources")})
+    for t in _top_entries(ARENA_POOL, full=True):
+        e = onchain_leaderboard._entries.get(onchain_leaderboard._key(t["chain"], t["token_address"]))
+        if e is None:
+            row = onchain_projects_db.get(t["chain"], t["token_address"])
+            e = onchain_leaderboard.db_entry(row) if row else t
+        out.append(e)
+    return out
+
+
 def _drop_holds(key: str) -> None:
     for rule in onchain_gem_hold.DAYS:
         onchain_gem_hold.drop(key, rule)
@@ -3911,7 +3934,8 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
     if want:
         board = [e for e in board if _narr_now(e) & want]
     # E (BORLY, 20/10): a crash takes a gem out between two rankings too.
-    board = [e for e in board if not _crashed_out(e["chain"], e["token_address"])]
+    board = [e for e in board if not _crashed_out(e["chain"], e["token_address"])
+             and not onchain_ai_veto.veto(onchain_ai_veto.fresh(f"{e['chain']}:{e['token_address']}"))]
     out = [{**{k: e.get(k) for k in ("chain", "token_address", "pair_address", "pair_url", "symbol", "name", "image",
                                      "market_cap", "liquidity_usd", "change_24h", "launched_at", "score", "early", "usage", "hidden",
                                      "blocks")},
@@ -4003,6 +4027,8 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
                     onchain_projects_db.get(row["chain"], row["token"]) or row)["pillars"]}
                 if onchain_launchpad.gate(whole):
                     continue
+            if onchain_ai_veto.reason(entry):
+                continue
             gate = onchain_leaderboard.usage_gate(entry)
             if full and (not gate or not onchain_leaderboard.usage_gate(entry, False)):
                 # Only the $300k floor fails, or nothing: whitekobra's arena
