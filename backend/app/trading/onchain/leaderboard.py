@@ -374,6 +374,9 @@ def _load() -> None:
         _merge_spellings()
         for e in _entries.values():
             _resume_from_database(e)
+            # Today's GitHub formula on every stored reading (21/10, DREGG 89 -> 100).
+            if depth.rescore_github(e.get("pillars") or {}):
+                e["overall"] = depth.overall(e["pillars"])
         _state["examined"] = int(raw.get("examined") or 0)
         _state["rescored_rules"] = raw.get("rescored_rules")
         _alerted.update(raw.get("alerted") or [])
@@ -1022,6 +1025,10 @@ def score_blocks(e: dict, kobra: bool = False) -> dict:
             "token": tok, "deepseek": deepseek_score(e)}
 
 
+EXCELLENT_QUALITY = 80          # pillars' quality (overall.score) of an excellent project
+EXCELLENT_FLOOR_GAP = 10        # its final score never falls further below it
+
+
 def final_score(e: dict, kobra: bool = False) -> float:
     """The weights of SCORE_WEIGHTS (or KOBRA_SCORE_WEIGHTS) over the blocks
     that could be measured. Closed code costs NO_GITHUB_PENALTY (or
@@ -1036,6 +1043,13 @@ def final_score(e: dict, kobra: bool = False) -> float:
     base = sum(weights[k] * v for k, v in have.items()) / w
     if no_github(e):
         base -= KOBRA_NO_GITHUB_PENALTY if kobra else NO_GITHUB_PENALTY
+    # Lorenzo, 21/10: "progetti come Dregg che hanno una qualita' complessiva
+    # sopra 80 non possono ricevere un rank di solo 66". Excellent pillars set
+    # a floor: a project the market has not found yet loses a few points for
+    # it, never the place.
+    quality = (e.get("overall") or {}).get("score")
+    if quality is not None and not (e.get("overall") or {}).get("fatal") and quality >= EXCELLENT_QUALITY:
+        base = max(base, quality - EXCELLENT_FLOOR_GAP)
     rules = round(max(0.0, min(100.0, base)), 1)
     if gem_learn.approved():
         p = gem_learn.chance(score_parts(e, early=False))
@@ -1823,8 +1837,12 @@ def db_entry(p: dict) -> dict:
     pillars = p.get("pillars") or {}
     if isinstance(pillars, list):
         pillars = {x["key"]: x for x in pillars if isinstance(x, dict) and x.get("key")}
+    overall = p.get("overall")
+    # Today's GitHub formula on the stored reading (depth.rescore_github, 21/10).
+    if pillars and depth.rescore_github(pillars):
+        overall = {**(overall or {}), **depth.overall(pillars)}
     return {**projects_db.as_item(p), "score": p.get("score"), "pillars": pillars,
-            "overall": p.get("overall"), "narratives": p.get("narratives") or [],
+            "overall": overall, "narratives": p.get("narratives") or [],
             "traction": p.get("traction"), "rank": p.get("rank"), "status": p.get("status"),
             "why": p.get("why"), "on_board": False}
 

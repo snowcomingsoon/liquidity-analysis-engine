@@ -253,19 +253,54 @@ def judge_github(data: dict | None, launched_at: float | None = None, now: float
     if fatal:
         return _pillar("github", 0, facts, flags, fatal)
 
-    recency = 0 if last_days is None else 10 if last_days <= 7 else 6 if last_days <= 30 else 3 if last_days <= 90 else 0
-    score = (min(commits90, 60) / 60 * 25                       # attivita'
-             + min(len(weeks12), 12) / 12 * 20                  # costanza
-             + min(max(len(authors), contributors), 5) / 5 * 15 # squadra
+    return _pillar("github", github_score(facts, flags), facts, flags)
+
+
+# Lorenzo, 21/10: DREGG's repository (252 MB of Lean and Rust, 3,787 commits
+# in 90 days, tests, CI, 9 contributors) scored 89, "forse il miglior GitHub
+# pubblico in circolazione tra i piccoli progetti": it lost points only for
+# 8 active weeks out of 12 and a last commit 18 days old. Eight active weeks
+# in twelve is steady work, a commit within a month is a live project.
+GH_STEADY_WEEKS = 8
+GH_FRESH_DAYS = 30
+
+
+def github_score(facts: dict, flags: list[str]) -> float:
+    """The GitHub pillar's score from its own facts (the same ones stored),
+    so a change here reaches every stored reading at once (rescore_github)."""
+    last_days = facts.get("last_commit_days")
+    recency = 0 if last_days is None else 10 if last_days <= GH_FRESH_DAYS else 6 if last_days <= 60 \
+        else 3 if last_days <= 90 else 0
+    code = float(facts.get("code_kb") or 0) * 1024
+    team = max(int(facts.get("authors") or 0), int(facts.get("contributors") or 0))
+    score = (min(int(facts.get("commits_90d") or 0), 60) / 60 * 25                       # attivita'
+             + min(int(facts.get("active_weeks_12") or 0), GH_STEADY_WEEKS) / GH_STEADY_WEEKS * 20  # costanza
+             + min(team, 5) / 5 * 15                                                     # squadra
              + min(max(math.log10(max(code, 1)) - 4, 0) / 2, 1) * 15  # codice: 10 KB -> 0, 1 MB -> pieno
-             + 6 * has_tests + 5 * has_ci + 2 * has_readme + 2 * bool(facts["license"])
-             + recency)
-    score *= 1 - 0.5 * trivial_ratio
+             + 6 * bool(facts.get("tests")) + 5 * bool(facts.get("ci")) + 2 * bool(facts.get("readme"))
+             + 2 * bool(facts.get("license")) + recency)
+    score *= 1 - 0.5 * float(facts.get("trivial_pct") or 0) / 100
     if "repository born with the token" in flags:
         score *= 0.8
-    if one_day:
+    if "all commits on a single day" in flags:
         score *= 0.7
-    return _pillar("github", score, facts, flags)
+    return score
+
+
+def rescore_github(pillars: dict) -> bool:
+    """A stored GitHub pillar scored again from its facts under today's
+    formula; True if it changed. Fatal, missing and pending pillars stay."""
+    gh = pillars.get("github") if isinstance(pillars, dict) else None
+    if not isinstance(gh, dict) or gh.get("fatal") or gh.get("pending") or gh.get("score") is None:
+        return False
+    facts = gh.get("facts") or {}
+    if facts.get("missing") or facts.get("commits_90d") is None:
+        return False
+    new = int(max(0, min(100, round(github_score(facts, gh.get("flags") or [])))))
+    if new == gh.get("score"):
+        return False
+    gh["score"] = new
+    return True
 
 
 async def analyze_github(urls: list[str], client: httpx.AsyncClient, launched_at: float | None,

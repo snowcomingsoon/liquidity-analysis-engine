@@ -3939,7 +3939,7 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
         board = [e for e in board if _narr_now(e) & want]
     # E (BORLY, 20/10): a crash takes a gem out between two rankings too.
     board = [e for e in board if not _crashed_out(e["chain"], e["token_address"])
-             and not onchain_ai_veto.veto(onchain_ai_veto.fresh(f"{e['chain']}:{e['token_address']}"))]
+             and not onchain_ai_veto.reason(e)]
     out = [{**{k: e.get(k) for k in ("chain", "token_address", "pair_address", "pair_url", "symbol", "name", "image",
                                      "market_cap", "liquidity_usd", "change_24h", "launched_at", "score", "early", "usage", "hidden",
                                      "blocks")},

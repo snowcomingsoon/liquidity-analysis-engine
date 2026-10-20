@@ -107,12 +107,41 @@ def veto(v: dict | None) -> str:
     return ""
 
 
+# Lorenzo, 21/10: DREGG (quality 82.7, the best public code of the small
+# projects) was read "avoid" at 0.6 off a garbled site. An excellent project
+# with real code is never taken out by the AI: a confident "scam" reaches
+# Lorenzo on Telegram instead, for him to decide.
+EXCELLENT_QUALITY = 80
+EXCELLENT_GITHUB = 70
+ALERT_SCAM_MIN = 0.9
+
+
+def _whole(e: dict) -> dict:
+    """The entry with its pillars: the Top's rows come without them."""
+    if e.get("pillars"):
+        return e
+    from app.trading.onchain import leaderboard, projects_db
+    board = leaderboard._entries.get(leaderboard._key(e.get("chain") or "", e.get("token_address") or ""))
+    if board and board.get("pillars"):
+        return board
+    row = projects_db.get(e.get("chain") or "", e.get("token_address") or "")
+    return leaderboard.db_entry(row) if row else e
+
+
+def excellent(e: dict) -> bool:
+    w = _whole(e)
+    o = w.get("overall") or {}
+    gh = (w.get("pillars") or {}).get("github") or {}
+    return (o.get("score") or 0) >= EXCELLENT_QUALITY and not o.get("fatal") \
+        and (gh.get("score") or 0) >= EXCELLENT_GITHUB and not gh.get("fatal")
+
+
 def reason(e: dict, now: float | None = None) -> str:
     """For qualifies and the Top: a veto, a launchpad token still waiting, or ""."""
     key = f"{e.get('chain')}:{e.get('token_address')}"
     v = fresh(key, now)
     if v:
-        return veto(v)
+        return "" if excellent(e) else veto(v)
     if launchpad.is_launchpad(e) and _keys():
         return "launchpad token: waiting for the AI check"
     return ""
@@ -195,9 +224,23 @@ async def run_once(candidates, client: httpx.AsyncClient, now: float | None = No
             continue
         seen.add(key.lower())
         _state["calls"] += 1
-        if await judge(e, client) is not None:
+        v = await judge(e, client)
+        if v is not None:
             done += 1
+            await _alert_if_excellent_scam(e, v)
     return done
+
+
+async def _alert_if_excellent_scam(e: dict, v: dict) -> None:
+    """An excellent project the AI calls a scam with high confidence: not
+    excluded (excellent), told to Lorenzo once, in Italian."""
+    if v.get("verdict") != "scam" or float(v.get("confidence") or 0) < ALERT_SCAM_MIN or not excellent(e):
+        return
+    from app.notify import telegram
+    sym = e.get("symbol") or (e.get("token_address") or "")[:8]
+    await telegram.send_message(
+        f"⚠️ <b>Controllo AI</b>: {sym} ({e.get('chain')}) ha pilastri eccellenti ma l'AI lo giudica una truffa "
+        f"(sicurezza {float(v['confidence']):.0%}): resta in classifica, decidi tu.\n{v.get('reason') or ''}")
 
 
 async def loop(candidates_fn) -> None:
