@@ -47,3 +47,28 @@ def test_older_rules_hold_on_launchpads():
 
 def test_qualifies_applies_the_launchpad_gate():
     assert "famous name" in lb.qualifies(_e(symbol="TSLA", name="Tesla"))
+
+
+def test_first_day_trial_keeps_launchpad_tokens_out_of_the_top_not_early():
+    """BORLY (20/10): first 26 minutes after launch, a rug 12 hours later."""
+    import time
+    now = time.time()
+    young = _e(launched_at=now - 3600)
+    assert "first-day trial" in launchpad.gate(young, now)
+    assert launchpad.gate(young, now, top=False) == ""
+    assert launchpad.on_probation(young, now)
+    old = _e(launched_at=now - 2 * 86400)
+    assert launchpad.gate(old, now) == ""
+
+
+def test_young_domain_is_no_product_and_first_day_holders_wait():
+    import time
+    now = time.time()
+    e = _e(launched_at=now - 2 * 86400)
+    e["pillars"]["site"]["facts"]["domain_days"] = 0
+    assert "domain only a few days old" in launchpad.gate(e, now)
+    e["pillars"]["site"]["facts"]["domain_days"] = 30
+    e["checked_at"] = {"tokenomics": now - 2 * 86400 + 600}
+    assert "holders read in its first day" in launchpad.gate(e, now)
+    e["checked_at"] = {"tokenomics": now - 3600}
+    assert launchpad.gate(e, now) == ""

@@ -139,3 +139,13 @@ def _research_ai_on(monkeypatch):
     test (test_research_ai_off)."""
     from app.config import settings
     monkeypatch.setattr(settings, "research_ai_enabled", True)
+
+
+@pytest.fixture(autouse=True)
+def _private_market_peaks(monkeypatch, tmp_path):
+    """The 24h highs and crashes (market_peaks.py) start empty in every test."""
+    from app.trading.onchain import market_peaks
+    monkeypatch.setattr(market_peaks, "_FILE", tmp_path / "market_peaks.json")
+    market_peaks.reset_for_tests()
+    yield
+    market_peaks.reset_for_tests()

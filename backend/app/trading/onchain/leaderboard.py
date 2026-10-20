@@ -44,7 +44,7 @@ from app import http_client
 from app.config import settings
 
 from app.sniper.quality import _looks_like_meme
-from app.trading.onchain import (benchmark, big_coins, code_review, consistency, depth, discovery, gem_learn, gem_track, judge, launchpad, legit, narrative_map,
+from app.trading.onchain import (benchmark, big_coins, code_review, consistency, depth, discovery, gem_learn, gem_track, judge, launchpad, legit, market_peaks, narrative_map,
                                   narratives, priority, projects_db, research, storage, traction, usage)
 from app.atomic_write import write_text_atomic
 
@@ -254,6 +254,11 @@ MISREAD_FATALS = ("new tokens can be minted", "all commits on a single day", "al
 
 def _key(chain: str, token: str) -> str:
     return projects_db.key(chain, token)
+
+
+def crash_reason(chain: str, token: str) -> str:
+    """market_peaks' verdict for the token: "" unless it crashed in the last days."""
+    return market_peaks.crashed(_key(chain, token).lower())
 
 
 def _merge_spellings() -> None:
@@ -789,8 +794,14 @@ def qualifies(e: dict, now: float | None = None, cap_floor: bool = True) -> str:
     big = too_big(e)
     if big:
         return big
-    # Launchpad tokens: famous names out, the rules from before 18-19/10 (launchpad.py).
-    pad = launchpad.gate(e)
+    # E (BORLY, 20/10): half its price or its liquidity gone since the 24h
+    # high, and the token is out at once, whatever else it scores.
+    crash = crash_reason(e.get("chain") or "", e.get("token_address") or "")
+    if crash:
+        return crash
+    # Launchpad tokens: famous names out, the rules from before 18-19/10 and
+    # the first-day trial (launchpad.py); the trial is no bar for Early.
+    pad = launchpad.gate(e, now, top=cap_floor)
     if pad:
         return pad
     r = e.get("review") or {}
@@ -864,7 +875,11 @@ def is_early(e: dict, now: float | None = None) -> bool:
     """Under TOP_CAP_MIN_USD and passing every other bar, usage included
     (07/10: a list apart, never on the podium)."""
     cap = true_cap(e)
-    if not cap or cap >= TOP_CAP_MIN_USD or benchmark.is_benchmark(e["chain"], e["token_address"]):
+    if benchmark.is_benchmark(e["chain"], e["token_address"]):
+        return False
+    # A launchpad token on its first-day trial waits in Early whatever its
+    # cap: seen at once, in the Top only once the day is over (20/10).
+    if not launchpad.on_probation(e, now) and (not cap or cap >= TOP_CAP_MIN_USD):
         return False
     return not qualifies(e, now, cap_floor=False)
 
@@ -1287,6 +1302,19 @@ async def drain_alerts() -> int:
     while _outbox and sent < ALERTS_PER_TICK:
         kind, k = _outbox.pop(0)
         e = _entries.get(k)
+        if kind == "crash":
+            row = e or projects_db.as_item(projects_db.get(*k.split(":", 1)) or {"chain": k.split(":", 1)[0],
+                                                                              "token": k.split(":", 1)[1]})
+            item = _public(e) if e is not None else dict(row)
+            item["why"] = crash_reason(*k.split(":", 1))
+            item["first_seen"] = True
+            for fn in list(_alert_hooks):
+                try:
+                    await fn(kind, item)
+                except Exception:
+                    logger.exception("classifica: avviso %s fallito", k)
+            sent += 1
+            continue
         if kind in ("early", "pearl"):
             # Under the Top's floor by definition: never in the Top (07/10).
             if e is None or not (is_pearl(e) if kind == "pearl" else is_early(e)):
@@ -1977,6 +2005,7 @@ def apply_live(pairs: list[dict], now: float | None = None) -> int:
                     # Every token that will exist, at today's price: whitekobra's view
                     # weighs it against the cap (main._gem_view, 18/10).
                     "fdv": float(p["fdv"]) if p.get("fdv") else None, "at": now}
+        market_peaks.record(k, _live[k]["market_cap"], _live[k]["liquidity_usd"], now)
     return len(best)
 
 
@@ -1997,7 +2026,29 @@ async def poll_live(client: httpx.AsyncClient, now: float | None = None) -> int:
                 apply_market(r.json())
                 n += apply_live(r.json(), now)
             await asyncio.sleep(0.25)
+    queue_crash_news(now)
+    market_peaks.save(now)
     return n
+
+
+def queue_crash_news(now: float | None = None) -> int:
+    """A "crash" alert for each token announced in the Top whose crash was just
+    confirmed (E, 20/10): the followers hear it left, not only that it came."""
+    global _dirty
+    now = now or time.time()
+    since = _state.get("crash_news_at") or now - 3600
+    _state["crash_news_at"] = now
+    announced = {k[4:].lower(): k[4:] for k in _alerted if k.startswith("top:")}
+    queued = 0
+    for low in market_peaks.new_crashes(since):
+        k = announced.get(low)
+        if k is None or f"crash:{k}" in _alerted:
+            continue
+        _alerted.add(f"crash:{k}")
+        _dirty = True
+        _outbox.append(("crash", k))
+        queued += 1
+    return queued
 
 
 async def live_market_loop() -> None:

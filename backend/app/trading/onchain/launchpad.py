@@ -16,6 +16,7 @@ at the next ranking without a re-read.
 from __future__ import annotations
 
 import re
+import time
 
 from app.trading.onchain import depth
 
@@ -23,6 +24,10 @@ from app.trading.onchain import depth
 SUFFIXES = ("pump", "bonk", "BAGS")
 SOURCE = "launchpad"               # discovery.GT_LAUNCHPADS
 LINKED_MAX_PCT = 30.0              # linked wallets: 50% elsewhere (depth.LINKED_REJECT_PCT)
+# BORLY (20/10): first in the Top 26 minutes after its launch, a rug 12 hours
+# later. Lorenzo: "Imposta i punti per tutti gli account, tranne il punto C".
+PROBATION_S = 24 * 3600            # A: out of the Top (Early only) for its first day
+DOMAIN_MIN_DAYS = 7                # B: a site younger than this is not a product
 
 # A famous name on a launchpad is someone else's brand: nobody launches the
 # real Apple on pump.fun. Whole words of the name, or the ticker itself.
@@ -59,14 +64,38 @@ def brand_of(symbol: str | None, name: str | None) -> str | None:
     return hit[0] if hit else None
 
 
-def gate(e: dict) -> str:
-    """"" unless a launchpad token fails the stricter rules; the reason otherwise."""
+def born_at(e: dict) -> float | None:
+    t = e.get("launched_at") or e.get("found_at") or e.get("first_seen")
+    return float(t) if t else None
+
+
+def on_probation(e: dict, now: float | None = None) -> bool:
+    """A launchpad token in its first PROBATION_S: Early, never the Top or the podium."""
+    born = born_at(e)
+    return is_launchpad(e) and born is not None and (now or time.time()) - born < PROBATION_S
+
+
+def gate(e: dict, now: float | None = None, top: bool = True) -> str:
+    """"" unless a launchpad token fails the stricter rules; the reason
+    otherwise. top=False asks for the Early list, where the trial day is no bar."""
     if not is_launchpad(e):
         return ""
+    now = now or time.time()
     brand = brand_of(e.get("symbol"), e.get("name"))
     if brand:
         return f"launchpad token with a famous name ({brand}): not the real brand"
+    born = born_at(e)
+    if top and on_probation(e, now):
+        until = time.strftime("%d/%m %H:%M", time.gmtime(born + PROBATION_S))
+        return f"launchpad token on its first-day trial (until {until} UTC)"
+    # D: holders read in the first hours show a launch, not a distribution
+    # (RugCheck had not linked BORLY's wallets yet): a reading after the
+    # first day is needed.
     pillars = e.get("pillars") or {}
+    tok_at = (e.get("checked_at") or {}).get("tokenomics") or e.get("analyzed_at")
+    if top and born is not None and tok_at and float(tok_at) < born + PROBATION_S \
+            and now - born >= PROBATION_S and pillars.get("tokenomics"):
+        return "launchpad token: holders read in its first day, waiting for a new reading"
     site, gh, tok = (pillars.get(k) or {} for k in ("site", "github", "tokenomics"))
     sf, gf, tf = (p.get("facts") or {} for p in (site, gh, tok))
     if sf.get("unreadable"):
@@ -84,8 +113,11 @@ def gate(e: dict) -> str:
     code = (gh.get("score") is not None and not gh.get("fatal")
             and (gf.get("code_kb") or 0) * 1024 >= depth.GH_REAL_CODE_BYTES
             and "all commits on a single day" not in (gh.get("flags") or []))
-    product = (site.get("score") is not None and not site.get("fatal")
+    # B: a domain registered with the token (borly.fun: 0 days) is no product.
+    young_domain = sf.get("domain_days") is not None and sf["domain_days"] < DOMAIN_MIN_DAYS
+    product = (site.get("score") is not None and not site.get("fatal") and not young_domain
                and sf.get("verdict") not in ("thin", "scam") and site["score"] >= 50)
     if not code and not product:
-        return "launchpad token: neither real code on GitHub nor a site that shows a product"
+        return ("launchpad token: site domain only a few days old and no real code on GitHub" if young_domain
+                else "launchpad token: neither real code on GitHub nor a site that shows a product")
     return ""

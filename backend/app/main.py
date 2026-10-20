@@ -3887,6 +3887,19 @@ def _gem_view(entries: list[dict], now: float | None = None) -> list[dict]:
     return [ok[i] for i in sorted(best.values())]
 
 
+def _drop_holds(key: str) -> None:
+    for rule in onchain_gem_hold.DAYS:
+        onchain_gem_hold.drop(key, rule)
+
+
+def _crashed_out(chain: str, token: str) -> bool:
+    """market_peaks' crash rule (E): out of every view at once, holds dropped."""
+    if not onchain_leaderboard.crash_reason(chain, token):
+        return False
+    _drop_holds(f"{chain}:{token}")
+    return True
+
+
 def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[dict]:
     """La Top della schermata Strategie: la bacheca delle gemme piu' le
     righe studiate migliori del database, per punteggio. `narrative`
@@ -3897,6 +3910,8 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
     board = sorted(onchain_leaderboard.board().get("entries") or [], key=lambda e: -(e.get("score") or 0))
     if want:
         board = [e for e in board if _narr_now(e) & want]
+    # E (BORLY, 20/10): a crash takes a gem out between two rankings too.
+    board = [e for e in board if not _crashed_out(e["chain"], e["token_address"])]
     out = [{**{k: e.get(k) for k in ("chain", "token_address", "pair_address", "pair_url", "symbol", "name", "image",
                                      "market_cap", "liquidity_usd", "change_24h", "launched_at", "score", "early", "usage", "hidden",
                                      "blocks")},
@@ -3934,6 +3949,17 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
         if (row.get("overall") or {}).get("fatal") or onchain_leaderboard.no_name(row.get("symbol")):
             continue
         key = f"{row['chain']}:{row['token']}"
+        # A crash, or a pool nobody can trade any more, is out at once: no
+        # 7-day hold keeps it (BORLY sat in whitekobra's Top at $3k, 20/10).
+        if _crashed_out(row["chain"], row["token"]):
+            continue
+        lv_now = onchain_leaderboard.live(row["chain"], row["token"]) or {}
+        liq_now = lv_now.get("liquidity_usd") if lv_now.get("liquidity_usd") is not None else row.get("liq")
+        if row["chain"] != onchain_layers.CHAIN and onchain_leaderboard.research_floor(
+                {"symbol": row.get("symbol"), "liquidity_usd": liq_now,
+                 "market_cap": lv_now.get("market_cap") or row.get("mcap")}):
+            _drop_holds(key)
+            continue
         # The board's ceiling holds here too: bridged AAVE sat first (Lorenzo, 28/09).
         # Layer chains have their own band (LAYER_CAP_MIN-MAX), checked below.
         if row["chain"] != onchain_layers.CHAIN:
@@ -3969,7 +3995,7 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
         if row["chain"] != onchain_layers.CHAIN:
             # DeepSeek's reading too, so a token scores the same in both halves.
             entry = {**onchain_leaderboard.db_entry(row), "global_cap": row.get("cg_mcap"), "judge": j,
-                     "sources": row.get("sources")}
+                     "sources": row.get("sources"), "analyzed_at": row.get("analyzed_at")}
             # Launchpad tokens: famous names out, the older rules (launchpad.py),
             # read from the whole row when the list carried a light one.
             if onchain_launchpad.is_launchpad(entry):
@@ -4302,6 +4328,16 @@ _gem_notified: dict[str, list[float]] = {}
 _gem_overflow: dict[str, list[dict]] = {}
 
 
+def _crash_italian(why: str) -> str:
+    """market_peaks' reason, in the Italian Lorenzo reads."""
+    import re as _re
+    m = _re.search(r"(price|liquidity) down (\d+)%", why or "")
+    if not m:
+        return why
+    what = "prezzo" if m.group(1) == "price" else "liquidita'"
+    return f"{what} -{m.group(2)}% dal massimo delle ultime 24 ore: uscita subito dalla Top"
+
+
 def _gem_telegram_text(kind: str, e: dict) -> str:
     """Italian, like every message Lorenzo reads."""
     import html as _html
@@ -4311,6 +4347,7 @@ def _gem_telegram_text(kind: str, e: dict) -> str:
     head = {"early": f"💎 <b>Gemma early</b>: sotto i ${onchain_leaderboard.TOP_CAP_MIN_USD // 1000}k e oltre tutti gli "
                      "altri controlli della Top: piccola e piu' rischiosa",
             "pearl": f"🦪 <b>Nuova Pearl</b>: gemma early con punteggio da {onchain_leaderboard.PEARL_MIN} in su",
+            "crash": "🔻 <b>Uscita dalle gemme</b>: prezzo o liquidita' dimezzati rispetto al massimo delle 24 ore",
             }.get(kind, "💎 <b>Nuova gemma in classifica</b>")
     view = "pearl" if kind == "pearl" else "gems"
     pillars = e.get("pillars") or {}
@@ -4323,6 +4360,8 @@ def _gem_telegram_text(kind: str, e: dict) -> str:
              f"cap {cap} · punteggio {round(e.get('score') or 0)} · posto {e.get('rank') or '—'}"]
     if scores:
         lines.append(scores)
+    if kind == "crash" and e.get("why"):
+        lines.append("⚠️ " + esc(_crash_italian(e["why"])))
     tr = e.get("traction") or {}
     if tr.get("reasons"):
         lines.append("📈 " + esc(" · ".join(tr["reasons"][:3])))
@@ -4365,10 +4404,12 @@ async def _notify_gem(kind: str, e: dict) -> None:
             # account's gem view shows (no duplicate, old or weak project).
             if kind != "pearl" and not e.get("first_seen", True):
                 continue
-            if view is None:
-                view = _gem_view_keys(kind)
-            if (e.get("chain"), e.get("token_address")) not in view:
-                continue
+            # A crash is news for whoever heard of the gem: no view to match.
+            if kind != "crash":
+                if view is None:
+                    view = _gem_view_keys(kind)
+                if (e.get("chain"), e.get("token_address")) not in view:
+                    continue
         sent = [t for t in _gem_notified.get(user.id, []) if now - t < 3600]
         if len(sent) >= _GEM_NOTIFY_PER_HOUR and not _unlimited(user):
             _gem_overflow.setdefault(user.id, []).append(

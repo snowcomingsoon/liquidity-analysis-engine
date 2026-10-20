@@ -165,6 +165,12 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0365", "BORLY ancora nella Top dopo il rug; scansione manuale e Top che non si aggiornano",
+     "Lorenzo, 20/10: 'Borli sia rimasto nella top e tuttora figuri nella top [...] le nostre arene, la nostra top non si aggiornano bene. [...] avevo analizzato un altro token che aveva raggiunto un punteggio da classifica, ma non e' stato inserito in automatico [...] non risulta correttamente aggiornato il sito delle gemme con nuovi ingressi e nuove uscite'.",
+     "alta"),
+    ("seed-0364", "BORLY, la gemma col voto piu' alto, e' stato un rug pull in poche ore",
+     "Lorenzo, 20/10: 'Grave problema nelle gemme, Borli, che risultava tra l'altro la gemma con il voto piu' alto, e' stato un rug pull nel giro di poche ore. Noi dobbiamo assolutamente evitare queste situazioni', poi 'Imposta i punti per tutti gli account, tranne il punto C'.",
+     "alta"),
     ("seed-0363", "La libreria degli indicatori va in blocco",
      "Lorenzo, 20/10: 'La libreria degli indicatori va in blocco. Testa e risolvi il problema'.",
      "media"),

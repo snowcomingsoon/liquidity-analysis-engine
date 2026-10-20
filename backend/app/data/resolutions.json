@@ -3299,5 +3299,15 @@
     "status": "risolto",
     "at": 1792494777,
     "summary": "Il blocco non si e' riprodotto (provata nel browser, su computer e telefono, anche con il file del sito in produzione), ma ho trovato e chiuso tre modi in cui la libreria poteva bloccarsi. 1) Se l'elenco non arrivava una volta (per esempio durante un riavvio del server per un aggiornamento), la libreria restava vuota fino a ricaricare la pagina: ora riprova alla riapertura e lo dice. 2) Gli indicatori si calcolavano uno dopo l'altro senza limite di tempo, e uno lento fermava tutti gli altri: ora partono insieme, con un limite di 30 secondi. 3) Alcuni indicatori impiegano 2-3 secondi a calcolare e intanto fermavano tutto il sito: ora il calcolo gira a parte. Poi Lorenzo: 'se scrivo il nome dell'indicatore nella ricerca rimane tutto bloccato'. Causa trovata provando con il motore di Safari: l'elenco degli indicatori si scaricava solo all'apertura della libreria, e finche' non arrivava ogni lettera scritta rispondeva 'nessun indicatore trovato'. Ora l'elenco si scarica all'avvio del sito e resta salvato nel browser; se manca ancora la libreria scrive 'Loading...' e mostra i risultati di quello che e' gia' scritto appena arriva. Provato su Safari (iPhone, iPad, Mac): 5-35 ms per lettera."
+  },
+  "seed-0364": {
+    "status": "risolto",
+    "at": 1792518913,
+    "summary": "BORLY e' nato su pump.fun alle 05:00 del 20/10 ed e' entrato primo alle 05:26, dopo 26 minuti, con voto 84,5: holder puliti in quel momento (primi 10 al 13,4%), liquidita' bloccata, sito letto bene ma con un dominio registrato il giorno stesso e nessun codice. Alle 17:04 valeva $3.200. Nuove regole per tutti gli account: (A) un token da launchpad nelle prime 24 ore resta in Early e non entra in Top ne' sul podio; (B) un sito con dominio di meno di 7 giorni non vale come prodotto, serve codice vero; (D) servono holder letti dopo il primo giorno, non quelli dei primi minuti; (E) qualunque gemma che perde meta' del prezzo o della liquidita' rispetto al massimo delle 24 ore esce subito dalla Top per 7 giorni, e chi ne aveva ricevuto l'avviso d'ingresso riceve l'avviso d'uscita. Il punto C (tetto al voto senza codice) non e' stato applicato, come deciso."
+  },
+  "seed-0365": {
+    "status": "risolto",
+    "at": 1792518913,
+    "summary": "BORLY restava nella tua Top per la regola del 18/10 che tiene una gemma 7 giorni sotto la soglia dei 300 mila prima di farla uscire, e la parte della Top letta dal database non guardava la liquidita'. Ora un crollo o una liquidita' sotto la soglia minima tolgono la gemma subito, anche se e' trattenuta. Le altre 'uscite che non arrivano' sono la stessa regola: in questo momento ne trattiene 13 (7 giorni per capitalizzazione, soglia e FDV, 3 per il voto). La scansione manuale funziona: il token di stamattina, ZENO (voto 60), non e' entrato per la regola dei launchpad (niente codice e un sito che non mostra un prodotto), scritta nella scheda accanto al voto."
   }
 }
