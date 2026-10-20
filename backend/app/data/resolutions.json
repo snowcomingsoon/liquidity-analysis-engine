@@ -3319,5 +3319,10 @@
     "status": "risolto",
     "at": 1792531330,
     "summary": "DeepSeek non viene piu' chiamato da nessuna parte del sito. Anche la chat di Telegram e l'agente dell'app rispondono con Groq, o con Gemini se Groq non risponde, e le domande non hanno tetto giornaliero. Tutti i controlli che guardavano se c'era la chiave di DeepSeek ora guardano le chiavi gratuite. Le due automazioni di GitHub che usavano DeepSeek a pagamento (rilettura delle PR e scrittura di codice dalle issue) sono spente. Il costo di DeepSeek da oggi e' zero."
+  },
+  "seed-0368": {
+    "status": "risolto",
+    "at": 1792533816,
+    "summary": "DREGG spariva dalle classifiche per un difetto della bacheca: quando si riempie (400 progetti) faceva uscire i piu' vecchi per data di arrivo, anche quelli in classifica e lo stesso DREGG. Il 20/10 oltre 300 lanci nuovi in poche ore hanno spinto fuori quasi tutta la classifica (ne erano rimasti 9) e DREGG e' rientrato con l'analisi vuota, che ne nascondeva la riga completa. Ora i progetti in classifica, DREGG, i riferimenti e quelli aggiunti a mano non escono mai cosi', e chi rientra riparte dalla sua ultima analisi. Il 66 invece e' il calcolo vero: i suoi pilastri sono alti (sito 76, GitHub 89, token 81, qualita' 82,7), ma il voto finale pesa anche quanto e' usato oggi (circa 44 mila dollari al giorno di volume e 148 compratori su 1,6 milioni di capitalizzazione), e quella parte lo tira giu'."
   }
 }

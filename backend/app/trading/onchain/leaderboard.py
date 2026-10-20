@@ -468,6 +468,18 @@ def add(item: dict, source: str, now: float | None = None) -> bool:
         "bonding_curve": item.get("bonding_curve"), "associated_bonding_curve": item.get("associated_bonding_curve"),
         "pillars": {}, "checked_at": {}, "rank": None, **fresh,
     }
+    # Back on the board after leaving it (a full set, a restart): it starts
+    # from its last analysis in the database, not blank. A blank entry hid
+    # DREGG's whole row from the Top (20/10); stale pillars are read again
+    # on their usual schedule.
+    try:
+        row = projects_db.get(chain, token)
+    except Exception:
+        row = None
+    pillars = (row or {}).get("pillars")
+    if isinstance(pillars, dict) and pillars and (row or {}).get("status") in ("studied", "ranked"):
+        at = float(row.get("analyzed_at") or 0)
+        _entries[k].update(pillars=pillars, checked_at={n: at for n in pillars}, overall=row.get("overall"))
     _state["examined"] += 1
     _mark()
     return True
@@ -709,7 +721,18 @@ def _prune(now: float) -> None:
             # fault: drop it from the queue, but let it come back.
             _entries.pop(k)
     if len(_entries) > MAX_ENTRIES:
-        for k in sorted(_entries, key=lambda k: _entries[k].get("found_at", 0))[:len(_entries) - MAX_ENTRIES]:
+        # The oldest by arrival used to leave first, whatever they were: on
+        # 20/10 three hundred fresh launches pushed out the board's own ranked
+        # gems and DREGG (9 ranked left of ~30). Now the ranked, the yardstick,
+        # the references and the hand-added never leave this way; the first to
+        # go are the analysed ones off the board (the database keeps them and
+        # feeds them back), then the oldest waiting ones.
+        def keep_order(k: str) -> tuple:
+            e = _entries[k]
+            kept = bool(e.get("rank")) or benchmark.is_benchmark(e["chain"], e["token_address"]) \
+                or e.get("source") in ("reference", "riferimento", "manual")
+            return (kept, not e.get("pillars"), e.get("found_at", 0))
+        for k in sorted(_entries, key=keep_order)[:len(_entries) - MAX_ENTRIES]:
             _entries.pop(k)
     for k, at in list(_gone.items()):
         if now - at > 30 * 86400:

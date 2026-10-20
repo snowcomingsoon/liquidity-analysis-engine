@@ -1169,3 +1169,34 @@ def test_rules_15_apply_to_stored_pillars_at_once():
             "tokenomics": {"key": "tokenomics", "score": 81, "fatal": "", "flags": [], "facts": {"linked_pct": 40.2}}}
     lb.apply_rules_15(sudo)
     assert not sudo["site"]["fatal"] and not sudo["tokenomics"]["fatal"]
+
+
+def test_a_full_set_never_pushes_out_the_ranked_nor_the_yardstick():
+    """20/10: 300 fresh launches pushed out the ranked gems and DREGG."""
+    import time
+    now = time.time()
+    lb._entries.clear()
+    lb._entries["solana:RANKED"] = {"chain": "solana", "token_address": "RANKED", "found_at": 1, "rank": 1, "pillars": {"x": {}}}
+    lb._entries["solana:OLDSTUDIED"] = {"chain": "solana", "token_address": "OLDSTUDIED", "found_at": 2, "rank": None, "pillars": {"x": {}}}
+    for i in range(lb.MAX_ENTRIES):
+        lb._entries[f"solana:NEW{i}"] = {"chain": "solana", "token_address": f"NEW{i}", "found_at": now + i, "pillars": {}}
+    lb._prune(now)
+    assert "solana:RANKED" in lb._entries and "solana:OLDSTUDIED" not in lb._entries
+    assert len(lb._entries) == lb.MAX_ENTRIES
+    lb._entries.clear()
+
+
+def test_back_on_the_board_it_starts_from_its_last_analysis():
+    import time
+    from app.trading.onchain import projects_db
+    now = time.time()
+    item = {"chain": "solana", "token_address": "BACKpump", "symbol": "BACK", "name": "Back"}
+    projects_db.upsert(item, "jupiter", now)
+    e = {**item, "pillars": {"site": {"score": 80, "facts": {}}}, "overall": {"score": 80}, "narratives": []}
+    projects_db.record(e, "studied", "", score=70, now=now)
+    lb._entries.clear()
+    lb._gone.clear()
+    assert lb.add(dict(item), "dexscreener", now)
+    back = lb._entries[lb._key("solana", "BACKpump")]
+    assert back["pillars"]["site"]["score"] == 80 and back["checked_at"]["site"] > 0
+    lb._entries.clear()

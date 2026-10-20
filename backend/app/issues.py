@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0368", "DREGG, il progetto modello, con voto 66 e assente dalle classifiche",
+     "Lorenzo, 21/10: 'Ho appena scansionato manualmente Dregg [...] E' uno dei migliori progetti per potenzialita', tecnologia, narrativa e complessita'. Ha ricevuto un rank di 66 e non lo vedo nelle classifiche. Perche'? Deve rappresentare una sorta di modello della gemma ideale da cercare'.",
+     "alta"),
     ("seed-0367", "Togliere del tutto DeepSeek: tutto su Groq e Gemini",
      "Lorenzo, 20/10: 'sposta tutto quello che faceva DeepSeek, perche' l'idea di fondo e' rimuovere del tutto DeepSeek perche' a pagamento e in sostituzione usare fonti gratuite come Grok e Gemini per tutto quello che fa DeepSeek attualmente. Quindi considera DeepSeek ad oggi come se non esistesse'.",
      "media"),
