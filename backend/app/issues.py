@@ -165,6 +165,15 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0371", "Sezione Quality: progetti di qualita' da 80 in su, accettati o scartati a mano",
+     "Lorenzo, 21/10: 'soltanto per l'account White Cobra inserirei una nuova sezione che si potrebbe chiamare quality [...] progetti di alta qualita', quelli che magari raggiungono una quota di 80% o piu' [...] decidere poi con un pulsante se [...] accettarli all'interno delle gemme oppure no, oppure scartarli', poi 'compaiono solo progetti attualmente non in top 25 [...] se poi non dovessero rispettare [...] i parametri che caratterizzano tutte le gemme [...] escono'.",
+     "media"),
+    ("seed-0370", "Uscita per crollo: soglia del prezzo dal 50% al 75%",
+     "Lorenzo, 21/10: 'alzerei il tetto per il ribasso del 50% per l'uscita di un progetto per quanto riguarda liquidita' o prezzo nel giro di 24 ore rispetto al massimo [...] intorno al 75% [...] aspetto anche una tua valutazione'.",
+     "media"),
+    ("seed-0369", "Lavori in coda dopo la ricerca: 230 rimasti per il giorno dopo",
+     "Lorenzo, 21/10: 'i lavori rimasti in coda [...] vanno fatti smaltire dopo la ricerca. Attualmente ce ne sono 230. Io li farei smaltire via via dopo ogni ricerca'.",
+     "media"),
     ("seed-0368", "DREGG, il progetto modello, con voto 66 e assente dalle classifiche",
      "Lorenzo, 21/10: 'Ho appena scansionato manualmente Dregg [...] E' uno dei migliori progetti per potenzialita', tecnologia, narrativa e complessita'. Ha ricevuto un rank di 66 e non lo vedo nelle classifiche. Perche'? Deve rappresentare una sorta di modello della gemma ideale da cercare'.",
      "alta"),

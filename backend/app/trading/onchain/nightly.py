@@ -72,6 +72,14 @@ SENTINEL_EVERY_S = 600
 SENTINEL_MAX_S = 300
 SENTINEL_MIN_TICKS = 3
 SENTINEL_SETTLE_S = 60
+# The drain (Lorenzo, 21/10: "i lavori rimasti in coda [...] vanno fatti
+# smaltire dopo la ricerca. Attualmente ce ne sono 230"): while a run left a
+# backlog, a sentinel round becomes the night's full ticks for up to
+# DRAIN_MAX_S, never closer than DRAIN_GAP_S to the next run. A round that
+# leaves as much as it found stops the drain until the next day, so a job
+# that cannot be done never keeps the server busy around the clock.
+DRAIN_MAX_S = 20 * 60
+DRAIN_GAP_S = 30 * 60
 
 _state: dict = {}
 _running = False
@@ -226,7 +234,8 @@ def status(now: float | None = None) -> dict:
     return {"enabled": settings.onchain_nightly_enabled, "running": _running,
             "last_run": _state.get("last_run"), "next_run": next_run(now),
             "summary": _state.get("summary"),
-            "sentinel": {"enabled": settings.onchain_sentinel_enabled, **(_state.get("sentinel") or {})}}
+            "sentinel": {"enabled": settings.onchain_sentinel_enabled, **(_state.get("sentinel") or {})},
+            "drain": _state.get("drain")}
 
 
 # --------------------------------------------------------------- the steps
@@ -460,7 +469,7 @@ def text_it(s: dict) -> str:
         left = sum((s.get("backlog") or {}).values())
         win = s.get("window_min") or settings.onchain_nightly_max_hours * 60
         lines.append((f"Fermata al limite di {win / 60:g} ore" if win >= 60 else f"Fermata al limite di {win:g} minuti")
-                     + (f": restano {left} lavori in coda per domani." if left else "."))
+                     + (f": restano {left} lavori in coda, li smaltisco nelle prossime ore." if left else "."))
     return "\n".join(lines)
 
 
@@ -581,6 +590,49 @@ async def sentinel_once(steps, *, clock: Callable[[], float] = time.time, sleep=
     return ticks
 
 
+def _left(steps) -> int:
+    backlog = getattr(steps, "backlog", None)
+    return sum((backlog() or {}).values()) if backlog else 0
+
+
+def _rome_day(now: float) -> str:
+    return datetime.fromtimestamp(now, ROME).strftime("%Y-%m-%d")
+
+
+def drain_due(steps, now: float) -> bool:
+    """A backlog to drain, the drain not stalled today, the next run far enough."""
+    if (_state.get("drain") or {}).get("stalled_day") == _rome_day(now):
+        return False
+    return next_run(now) - now > DRAIN_GAP_S + 60 and _left(steps) > 0
+
+
+async def drain_once(steps, *, clock: Callable[[], float] = time.time, sleep=asyncio.sleep) -> int:
+    """One drain round: full ticks until the backlog is empty (at least
+    SENTINEL_MIN_TICKS), DRAIN_MAX_S or DRAIN_GAP_S before the next run;
+    then the alerts. Returns the ticks."""
+    from app.trading.onchain import leaderboard
+    start = clock()
+    end = min(start + DRAIN_MAX_S, next_run(start) - DRAIN_GAP_S)
+    before = _left(steps)
+    ticks = 0
+    while clock() < end:
+        await _guard("drain", steps.tick())
+        ticks += 1
+        await sleep(leaderboard.TICK_S)
+        if ticks >= SENTINEL_MIN_TICKS and steps.drained():
+            break
+    await _guard("settle", steps.settle(SENTINEL_SETTLE_S))
+    await _guard("alerts", steps.alerts())
+    after = _left(steps)
+    d = _state.setdefault("drain", {})
+    d.update(last_at=round(clock()), before=before, after=after, ticks=ticks,
+             rounds=int(d.get("rounds") or 0) + 1)
+    if after >= before:
+        d["stalled_day"] = _rome_day(clock())
+    _save()
+    return ticks
+
+
 async def sentinel_loop(*, clock: Callable[[], float] = time.time, sleep=asyncio.sleep,
                         steps_factory=Steps) -> None:
     """A sentinel round every SENTINEL_EVERY_S, skipped while a research
@@ -594,6 +646,8 @@ async def sentinel_loop(*, clock: Callable[[], float] = time.time, sleep=asyncio
                     steps = steps_factory(client)
                     if steps.busy():
                         _sentinel_note(clock(), skipped="an optimization is running")
+                    elif drain_due(steps, clock()):
+                        await drain_once(steps, clock=clock, sleep=sleep)
                     else:
                         start = clock()
                         ticks = await sentinel_once(steps, clock=clock, sleep=sleep)

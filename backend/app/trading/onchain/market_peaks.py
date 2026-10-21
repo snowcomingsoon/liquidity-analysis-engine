@@ -3,8 +3,8 @@ the crash rule built on them.
 
 Lorenzo, 20/10, after BORLY (first in the Top, a rug within hours, still in
 his Top when it was worth $3k): "Noi dobbiamo assolutamente evitare queste
-situazioni". A token whose price fell by half from its high of the last 24
-hours, or whose liquidity halved, leaves at once - whatever hold or band
+situazioni". A token whose price fell by three quarters from its high of the last
+24 hours (by half until 21/10), or whose liquidity halved, leaves at once - whatever hold or band
 would keep it - and the Top's followers are told.
 
 Hourly buckets of the highest market cap and liquidity seen (from
@@ -26,7 +26,12 @@ logger = logging.getLogger(__name__)
 _FILE = storage.data_file("onchain_market_peaks.json")
 HOUR = 3600
 WINDOW_H = 24
-DROP = 0.5                  # price (cap) or liquidity at half its 24h high, or under
+# Lorenzo, 21/10: the price threshold up from -50% to -75% ("l'alzerei intorno
+# al 75%"). Liquidity stays at -50%: an AMM pool's value moves with the square
+# root of the price, so -50% of liquidity is a -75% price move already, and a
+# rug (liquidity pulled) goes far past both.
+PRICE_DROP = 0.25           # price (cap) at a quarter of its 24h high, or under
+LIQ_DROP = 0.5              # liquidity at half its 24h high, or under
 CONFIRM_S = 120             # two readings this far apart, both crashed
 SAVE_EVERY_S = 300
 BLOCK_S = 7 * 86400         # a crashed token stays out this long, even once its highs roll off
@@ -107,9 +112,9 @@ def _crash_now(key: str) -> str:
     if not last:
         return ""
     cap_hi, liq_hi = _highs(key)
-    if cap_hi > 0 and last["cap"] > 0 and last["cap"] <= cap_hi * DROP:
+    if cap_hi > 0 and last["cap"] > 0 and last["cap"] <= cap_hi * PRICE_DROP:
         return f"price down {1 - last['cap'] / cap_hi:.0%} from its 24h high"
-    if liq_hi > 0 and last["liq"] <= liq_hi * DROP:
+    if liq_hi > 0 and last["liq"] <= liq_hi * LIQ_DROP:
         return f"liquidity down {1 - last['liq'] / liq_hi:.0%} from its 24h high"
     return ""
 

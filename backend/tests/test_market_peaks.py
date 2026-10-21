@@ -18,9 +18,9 @@ def test_a_crash_needs_two_readings_and_then_stays():
     mp.record(K, 1_500_000, 110_000, T0)
     mp.record(K, 1_400_000, 105_000, T0 + 3600)
     assert mp.crashed(K, T0 + 3600) == ""
-    mp.record(K, 600_000, 90_000, T0 + 7200)            # first crashed reading
+    mp.record(K, 350_000, 90_000, T0 + 7200)            # first crashed reading
     assert mp.crashed(K, T0 + 7200) == ""
-    mp.record(K, 500_000, 80_000, T0 + 7200 + 180)      # confirmed
+    mp.record(K, 300_000, 80_000, T0 + 7200 + 180)      # confirmed
     assert "price down" in mp.crashed(K, T0 + 7300)
     assert K in mp.new_crashes(T0 + 7000)
     # The highs roll off after a day, the block does not.
@@ -35,6 +35,17 @@ def test_one_bad_reading_moves_nothing():
     mp.record(K, 990_000, 100_000, T0 + 120)
     mp.record(K, 1_000_000, 100_000, T0 + 300)
     assert mp.crashed(K, T0 + 300) == ""
+
+
+def test_a_price_down_by_half_is_no_longer_a_crash():
+    """Lorenzo, 21/10: the price threshold from -50% to -75%."""
+    mp.record(K, 1_000_000, 100_000, T0)
+    mp.record(K, 400_000, 70_000, T0 + 600)
+    mp.record(K, 400_000, 70_000, T0 + 800)
+    assert mp.crashed(K, T0 + 800) == ""
+    mp.record(K, 240_000, 60_000, T0 + 1000)
+    mp.record(K, 240_000, 60_000, T0 + 1200)
+    assert "price down 76%" in mp.crashed(K, T0 + 1200)
 
 
 def test_liquidity_halved_is_a_crash_too():

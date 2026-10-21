@@ -482,3 +482,77 @@ def test_the_sentinel_leaves_a_trace_of_each_round(monkeypatch):
     s = nightly.status(now=clock.t)["sentinel"]
     assert s["enabled"] and s["rounds"] == 1 and s["ticks"] == nightly.SENTINEL_MIN_TICKS and not s["skipped"]
     assert s["last_round_at"] == round(clock.t)
+
+
+class _DrainSteps(_SentinelSteps):
+    """A backlog of `left` jobs, `per_tick` done by each full tick."""
+
+    def __init__(self, clock, left, per_tick):
+        super().__init__(clock)
+        self.left, self.per_tick, self.full = left, per_tick, 0
+
+    async def tick(self):
+        self.full += 1
+        self.left = max(0, self.left - self.per_tick)
+        self.clock.t += 5
+
+    def drained(self):
+        return self.left == 0
+
+    def backlog(self):
+        return {"database": self.left}
+
+    def busy(self):
+        return False
+
+
+def test_the_backlog_drains_after_the_run(monkeypatch):
+    """Lorenzo, 21/10: "i lavori rimasti in coda [...] vanno fatti smaltire dopo la ricerca"."""
+    monkeypatch.setattr(nightly, "_state", {})
+    monkeypatch.setattr(nightly, "_save", lambda: None)
+    clock = _Clock()
+
+    async def sleep(s):
+        clock.t += s
+    steps = _DrainSteps(clock, left=40, per_tick=10)
+    assert nightly.drain_due(steps, clock.t)
+    asyncio.run(nightly.drain_once(steps, clock=clock, sleep=sleep))
+    assert steps.left == 0 and steps.full == 4 and steps.order == ["settle", "alerts"]
+    assert not nightly.drain_due(steps, clock.t)
+    assert nightly._state["drain"]["before"] == 40 and nightly._state["drain"]["after"] == 0
+
+
+def test_a_stuck_backlog_stops_the_drain_for_the_day(monkeypatch):
+    monkeypatch.setattr(nightly, "_state", {})
+    monkeypatch.setattr(nightly, "_save", lambda: None)
+    clock = _Clock()
+
+    async def sleep(s):
+        clock.t += s
+    steps = _DrainSteps(clock, left=5, per_tick=0)
+    asyncio.run(nightly.drain_once(steps, clock=clock, sleep=sleep))
+    assert clock.t <= nightly.DRAIN_MAX_S + 60
+    assert not nightly.drain_due(steps, clock.t)
+
+
+def test_no_drain_right_before_a_run(monkeypatch):
+    monkeypatch.setattr(nightly, "_state", {})
+    steps = _DrainSteps(_Clock(), left=5, per_tick=1)
+    soon = nightly.next_run(0) - nightly.DRAIN_GAP_S
+    assert not nightly.drain_due(steps, soon)
+
+
+def test_the_sentinel_loop_drains_when_a_backlog_is_left(monkeypatch):
+    monkeypatch.setattr(nightly, "_state", {})
+    monkeypatch.setattr(nightly, "_save", lambda: None)
+    monkeypatch.setattr(settings, "onchain_sentinel_enabled", True)
+    clock = _Clock()
+    steps = _DrainSteps(clock, left=20, per_tick=10)
+
+    async def sleep(s):
+        if s == nightly.SENTINEL_EVERY_S:
+            raise asyncio.CancelledError
+        clock.t += s
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(nightly.sentinel_loop(clock=clock, sleep=sleep, steps_factory=lambda c: steps))
+    assert steps.full >= 2 and steps.ticks == 0 and steps.left == 0
