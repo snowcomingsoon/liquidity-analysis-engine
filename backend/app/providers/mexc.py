@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 
 from app import http_client
@@ -50,6 +52,7 @@ class MexcProvider(DataProvider):
     _PAGE_LIMIT = 500
     _MAX_PAGES = 40   # 40 x 500 = 20000 = settings.backtest_candles
     _MAX_PAGES_SINCE = 10000
+    _PARALLEL_PAGES = 5
 
     def __init__(self, base_url: str | None = None):
         self._base_url = base_url or BASE_URL
@@ -65,43 +68,71 @@ class MexcProvider(DataProvider):
         interval_ms = INTERVAL_SECONDS[interval] * 1000
 
         rows: list[list] = []
-        end_time: int | None = None
         max_pages = self._MAX_PAGES_SINCE if since_ms is not None else self._MAX_PAGES
         remaining = int(1e9) if since_ms is not None else outputsize
+
+        async def page(client, limit: int, end_time: int | None) -> list:
+            params = {"symbol": formatted_symbol, "interval": api_interval, "limit": limit}
+            if end_time is not None:
+                params["endTime"] = end_time
+                params["startTime"] = end_time - limit * interval_ms
+            resp = await client.get(f"{self._base_url}/api/v3/klines", params=params)
+            try:
+                payload = resp.json()
+            except ValueError as exc:
+                raise ProviderError(f"Invalid response from MEXC for {formatted_symbol}") from exc
+            if isinstance(payload, dict) and "code" in payload:
+                raw = payload.get("msg", "unknown error")
+                raise ProviderError(
+                    f"MEXC does not recognize {formatted_symbol}: {raw}. "
+                    f"Check it is written the way MEXC writes it, e.g. BTCUSDT."
+                )
+            return payload or []
+
         try:
             async with http_client.pooled(timeout=30.0) as client:
-                for _ in range(max_pages):
-                    if remaining <= 0:
+                # Each full page ends exactly limit candles before the previous
+                # one, so the windows of the next pages are known in advance:
+                # a few go out together instead of one round trip each (BTC
+                # on 5d walked 6 pages back to back, ~2 s of the chart's
+                # load). Pages past the first short or empty one are dropped,
+                # so the result is the same as the old one-by-one walk. "1M"
+                # has no fixed length: one page at a time there.
+                batch = 1 if interval == "1M" else self._PARALLEL_PAGES
+                end_time: int | None = None
+                pages_done = 0
+                first = True
+                while pages_done < max_pages and remaining > 0:
+                    plan: list[tuple[int, int | None]] = []
+                    left, end = remaining, end_time
+                    for _ in range(1 if first else min(batch, max_pages - pages_done)):
+                        if left <= 0:
+                            break
+                        limit = min(left, self._PAGE_LIMIT)
+                        plan.append((limit, end))
+                        left -= limit
+                        if end is not None:
+                            end -= limit * interval_ms
+                    first = False
+                    results = await asyncio.gather(*(page(client, lim, e) for lim, e in plan))
+                    stop = False
+                    for (limit, _), payload in zip(plan, results):
+                        pages_done += 1
+                        if not payload:
+                            stop = True
+                            break
+                        rows.extend(payload)
+                        remaining -= len(payload)
+                        earliest = min(int(row[0]) for row in payload)
+                        end_time = earliest - 1
+                        if len(payload) < limit:
+                            stop = True  # short page — reached the symbol's listing date
+                            break
+                        if since_ms is not None and earliest <= since_ms:
+                            stop = True  # reached the requested origin
+                            break
+                    if stop:
                         break
-                    limit = min(remaining, self._PAGE_LIMIT)
-                    params = {"symbol": formatted_symbol, "interval": api_interval, "limit": limit}
-                    if end_time is not None:
-                        params["endTime"] = end_time
-                        params["startTime"] = end_time - limit * interval_ms
-
-                    resp = await client.get(f"{self._base_url}/api/v3/klines", params=params)
-                    try:
-                        payload = resp.json()
-                    except ValueError as exc:
-                        raise ProviderError(f"Invalid response from MEXC for {formatted_symbol}") from exc
-
-                    if isinstance(payload, dict) and "code" in payload:
-                        raw = payload.get("msg", "unknown error")
-                        raise ProviderError(
-                            f"MEXC does not recognize {formatted_symbol}: {raw}. "
-                            f"Check it is written the way MEXC writes it, e.g. BTCUSDT."
-                        )
-                    if not payload:
-                        break
-
-                    rows.extend(payload)
-                    remaining -= len(payload)
-                    earliest = min(int(row[0]) for row in payload)
-                    if len(payload) < limit:
-                        break  # short page — reached the symbol's listing date
-                    if since_ms is not None and earliest <= since_ms:
-                        break  # reached the requested origin
-                    end_time = earliest - 1
         except httpx.HTTPError as exc:
             if not rows:
                 raise ProviderUnreachable(f"MEXC unreachable for {formatted_symbol}: {exc}") from exc

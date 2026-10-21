@@ -9459,6 +9459,9 @@
           el("polling-badge").classList.remove("hidden");
         }
       }
+      // Drawn from the server's last good copy while it fetches a fresh one:
+      // ask again shortly instead of waiting for the 60 s refresh.
+      if (body.stale) setTimeout(() => silentRefresh(body.symbol), 4000);
     }).catch((err) => {
       if (seq !== state.analyzeSeq) return; // a newer search owns the screen
       if (EMBED && !embedRetried) {

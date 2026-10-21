@@ -341,6 +341,9 @@ class AnalysisResponse(BaseModel):
     summary: AnalysisSummary
     strategies: dict[TimeframeKey, list[StrategyState]]
     backtests: dict[TimeframeKey, BacktestResult]
+    # Candles served from the last good copy while a fresh one is fetched:
+    # the page asks again a few seconds later.
+    stale: bool = False
     disclaimer: str = (
         "Automated technical analysis tool. Not financial advice, "
         "an investment recommendation or a trading signal."

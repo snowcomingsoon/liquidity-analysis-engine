@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0374", "I grafici impiegano troppo a comparire",
+     "Lorenzo, 21/10: 'impiega troppo tempo a visualizzare i grafici' (BTCUSDT, Trend EMA, 5d, fermo su 'Analyzing...').",
+     "alta"),
     ("seed-0373", "GitHub Models come terza fonte gratuita di AI, dopo Groq e Gemini",
      "Lorenzo, 21/10: 'se non dovessero bastare Grok piu' Gemini, mi ricordo che [...] anche GitHub poteva fornire delle potenzialita' gratuite', poi 'Ok, procedi'.",
      "media"),

@@ -3349,5 +3349,10 @@
     "status": "risolto",
     "at": 1792582771,
     "summary": "Aggiunto GitHub Models come terza fonte gratuita: entra solo quando Groq e Gemini hanno finito la quota o sono in pausa, con i modelli gpt-4.1-mini e gpt-4o-mini. Si attiva con un token GitHub salvato in Diagnostica, nella stessa sezione delle chiavi di Groq e Gemini, sotto 'GitHub Models'. Il token va creato su github.com/settings/tokens (fine-grained) con il solo permesso Models in lettura. Al salvataggio il sito fa una prova vera da un token per controllare che funzioni."
+  },
+  "seed-0374": {
+    "status": "risolto",
+    "at": 1792605520,
+    "summary": "Il tempo di apertura del grafico era quasi tutto nel download delle candele da MEXC: 3000 candele arrivano a pagine da 500, scaricate una dopo l'altra (2-3 secondi). Ora le pagine partono insieme: stessi dati, circa 40% piu' veloce. I grafici 2d/3d/5d restano in memoria 10 minuti come il giornaliero (prima 90 secondi). E quando la copia in memoria e' scaduta il grafico compare subito con l'ultima copia buona (fino a 15 minuti per i time frame brevi, 6 ore dal giornaliero in su) e si aggiorna da solo dopo pochi secondi. Misurato su BTCUSDT 5d: da ~3 s a ~2 s alla prima apertura, ~0,6 s alle successive."
   }
 }

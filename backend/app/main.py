@@ -90,7 +90,7 @@ from app.analysis.strategies import (
     spot_only,
 )
 from app.analysis.summary import build_summary, determine_bias
-from app.cache import get_or_fetch
+from app.cache import get_or_fetch, get_or_fetch_stale
 from app.config import email_allowlist, settings
 from app import diagnostics
 from app.live.kraken_stream import kraken_stream_manager
@@ -6656,11 +6656,17 @@ async def analyze(
         outputsize = settings.ltf_candles if tf_key == "ltf" else settings.candles_per_timeframe
         cache_key = (f"{asset_type}:{exchange}:{symbol.upper()}", interval, outputsize)
 
+        async def _do():
+            return await fetch_ohlcv_canonical(provider, symbol, interval, outputsize)
         try:
-            df = await _fetch_cached(cache_key, provider, symbol, interval, outputsize)
+            df, was_stale = await get_or_fetch_stale(cache_key, _do)
         except ProviderError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
+        if was_stale:
+            stale.add(tf_key)
         return tf_key, df
+
+    stale: set[str] = set()
 
     async def fetch_weekly():
         # Bull Market Support Band: always on weekly closes, whatever the chart.
@@ -6785,6 +6791,7 @@ async def analyze(
             summary=summary,
             strategies=strategies,
             backtests=backtests,
+            stale="ltf" in stale,
         )
 
     return await _cpu(_compute)
