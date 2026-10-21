@@ -116,6 +116,7 @@ from app.trading.onchain import deposit as onchain_deposit
 from app.trading.onchain import ai_scan as onchain_ai_scan
 from app.trading.onchain import arenas as onchain_arenas
 from app.trading.onchain import gem_hold as onchain_gem_hold
+from app.trading.onchain import quality_picks as onchain_quality_picks
 from app.trading.onchain import execute as onchain_execute
 from app.trading.onchain import send as onchain_send
 from app.trading.onchain import jito as onchain_jito
@@ -146,6 +147,7 @@ from app.trading.onchain import listings as onchain_listings
 from app.trading.onchain import leaderboard as onchain_leaderboard
 from app.trading.onchain import projects_db as onchain_projects_db
 from app.trading.onchain import launchpad as onchain_launchpad
+from app.trading.onchain import depth as onchain_depth
 from app.trading.onchain import ai_veto as onchain_ai_veto
 from app.trading.onchain import ai_review as onchain_ai_review
 from app.trading.onchain import alert_track as onchain_alert_track
@@ -3704,13 +3706,10 @@ async def onchain_top(n: int = 15, narrative: str = "", user: User = Depends(aut
         # The arenas (arenas.py, Lorenzo 07/10) take every project that
         # passed the gates, not a fixed 50; `entries` stays for older pages.
         full = _full_score(user)
-        pool = _top_entries(ARENA_POOL, narrative, full=full)
-        early = _kobra_early() if full else onchain_leaderboard.board().get("early") or []
         if full:
-            pool, early = _gem_view(pool), _gem_view(early)
-            # A gem held in the arenas under the $300k floor is not in Early too.
-            in_pool = {_gem_key(e) for e in pool}
-            early = [e for e in early if _gem_key(e) not in in_pool]
+            pool, early = _kobra_lists(narrative)
+        else:
+            pool, early = _top_entries(ARENA_POOL, narrative), onchain_leaderboard.board().get("early") or []
         for e in pool:
             e["backtests"] = None
         out = pool[:max(1, min(int(n), 50))]
@@ -3733,6 +3732,133 @@ async def onchain_top(n: int = 15, narrative: str = "", user: User = Depends(aut
     out = out[:max(1, min(int(n), 50))]
     return {"entries": out, "on_board": sum(1 for e in out if e["on_board"]),
             "backtests": onchain_strategy_lab.status(_top_entries(50))}
+
+
+# Whitekobra's Quality list (quality_picks.py, Lorenzo 21/10): the projects of
+# quality 80 or more that are not in his Top 25, for him to accept or discard.
+QUALITY_TOP_N = 25
+QUALITY_LIST_MAX = 100
+
+
+def _quality_out_reason(e: dict, now: float) -> str:
+    """Why an accepted gem is not in the arenas or Early: the first gem rule it fails."""
+    lb = onchain_leaderboard
+    chain, token = e.get("chain") or "", e.get("token_address") or ""
+    lv = lb.live(chain, token) or {}
+    market = {**e, "market_cap": lv.get("market_cap") or e.get("market_cap"),
+              "liquidity_usd": lv.get("liquidity_usd") if lv.get("liquidity_usd") is not None else e.get("liquidity_usd")}
+    for why in (lb.crash_reason(chain, token), (e.get("overall") or {}).get("fatal") or "", lb.too_big(market),
+                lb.research_floor(market, now), onchain_launchpad.gate(e, now), onchain_ai_veto.reason(e, now),
+                lb.usage_gate(market, False)):
+        if why:
+            return why
+    born = e.get("launched_at") or onchain_listing_dates.get(chain, token)
+    if not born:
+        return "no creation or listing date"
+    if now - born > GEM_MAX_AGE_DAYS * 86400:
+        return f"launched more than {GEM_MAX_AGE_DAYS} days ago"
+    if _mostly_locked({**e, "fdv": lv.get("fdv")}):
+        return f"FDV over {GEM_MAX_FDV_RATIO:g}x its market cap"
+    if _fading(e):
+        return "volume fading: last week under a fifth of the month's average"
+    return "waiting for the next ranking"
+
+
+def _quality_row(e: dict, q: float | None, state: str | None) -> dict:
+    lv = onchain_leaderboard.live(e.get("chain") or "", e.get("token_address") or "") or {}
+    pillars = e.get("pillars") or {}
+    return {"chain": e.get("chain"), "token_address": e.get("token_address"), "symbol": e.get("symbol"),
+            "name": e.get("name"), "image": e.get("image"), "pair_address": lv.get("pair_address"),
+            "pair_url": lv.get("pair_url"), "market_cap": lv.get("market_cap") or e.get("market_cap"),
+            "liquidity_usd": lv.get("liquidity_usd") or e.get("liquidity_usd"), "change_24h": lv.get("change_24h"),
+            "fdv": lv.get("fdv"), "launched_at": e.get("launched_at"), "score": e.get("score"),
+            "quality": round(q, 1) if q is not None else None,
+            "pillars": {k: (pillars.get(k) or {}).get("score") for k in onchain_depth.WEIGHTS},
+            "usage": onchain_leaderboard.usage.latest(e.get("chain") or "", e.get("token_address") or ""),
+            "state": state}
+
+
+def _quality_view(now: float | None = None) -> dict:
+    """waiting (to decide), accepted (with where each one is now) and discarded."""
+    now = now or _time.time()
+    lb = onchain_leaderboard
+    pool, early = _kobra_lists()
+    top = {_quality_key(e) for e in sorted(pool, key=lambda e: -(e.get("score") or 0))[:QUALITY_TOP_N]}
+    in_pool = {_quality_key(e) for e in pool}
+    in_early = {_quality_key(e) for e in early}
+    picks = onchain_quality_picks.picks()
+    found: dict[str, dict] = {}
+    for e in list(lb._entries.values()):
+        if (onchain_quality_picks.quality(e) or 0) >= onchain_quality_picks.QUALITY_MIN:
+            found.setdefault(_quality_key(e), e)
+    rows = onchain_projects_db.quality_rows(onchain_quality_picks.QUALITY_MIN - 15)
+    for k in picks:
+        if k not in found and not any(r["key"] == k for r in rows):
+            chain, _, token = k.partition(":")
+            r = onchain_projects_db.get(chain, token)
+            if r is not None:
+                rows.append(r)
+    for r in rows:
+        k = onchain_projects_db.key(r["chain"], r["token"])
+        if k not in found:
+            found[k] = {**lb.db_entry(r), "global_cap": r.get("cg_mcap"), "judge": onchain_judge.get(r["chain"], r["token"]),
+                        "sources": r.get("sources"), "analyzed_at": r.get("analyzed_at")}
+    waiting, accepted, discarded = [], [], []
+    for k, e in found.items():
+        q = onchain_quality_picks.quality(e)
+        state = (picks.get(k) or {}).get("state")
+        if lb.no_name(e.get("symbol")) or (state is None and (q or 0) < onchain_quality_picks.QUALITY_MIN):
+            continue
+        e = {**e, "score": lb.final_score(e, kobra=True)}
+        row = _quality_row(e, q, state)
+        if state == "accepted":
+            row["where"] = "top" if k in top else "arena" if k in in_pool else "early" if k in in_early else "out"
+            if row["where"] == "out":
+                row["why"] = _quality_out_reason(e, now)
+            accepted.append(row)
+        elif state == "discarded":
+            discarded.append(row)
+        elif k not in top and not lb.crash_reason(e.get("chain") or "", e.get("token_address") or ""):
+            v = onchain_ai_veto.fresh(f"{e.get('chain')}:{e.get('token_address')}", now) or {}
+            if v.get("verdict") == "scam" and float(v.get("confidence") or 0) >= onchain_ai_veto.SCAM_MIN \
+                    and not onchain_ai_veto.excellent(e):
+                continue
+            row["where"] = "arena" if k in in_pool else "early" if k in in_early else "out"
+            waiting.append(row)
+    best = lambda r: (-(r.get("quality") or 0), -(r.get("score") or 0))  # noqa: E731
+    return {"min_quality": onchain_quality_picks.QUALITY_MIN,
+            "waiting": sorted(waiting, key=best)[:QUALITY_LIST_MAX], "accepted": sorted(accepted, key=best),
+            "discarded": sorted(discarded, key=best)}
+
+
+@app.get("/api/onchain/quality")
+async def onchain_quality(user: User = Depends(auth.get_current_user)) -> dict:
+    """Whitekobra's Quality list (quality_picks.py): his account only."""
+    _require_onchain_enabled()
+    if not _full_score(user):
+        raise HTTPException(status_code=404, detail="Not found.")
+    return _quality_view()
+
+
+class QualityDecision(BaseModel):
+    chain: str = Field(min_length=1, max_length=32)
+    token: str = Field(min_length=1, max_length=128)
+    action: str = Field(pattern="^(accept|discard|reset)$")
+
+
+@app.post("/api/onchain/quality")
+async def onchain_quality_decide(body: QualityDecision, user: User = Depends(auth.get_current_user)) -> dict:
+    """Accept a project into the gems, discard it, or put it back on the list."""
+    _require_onchain_enabled()
+    if not _full_score(user):
+        raise HTTPException(status_code=404, detail="Not found.")
+    row = onchain_projects_db.get(body.chain, body.token)
+    board = onchain_leaderboard._entries.get(onchain_leaderboard._key(body.chain, body.token))
+    if row is None and board is None:
+        raise HTTPException(status_code=404, detail="Unknown project.")
+    symbol = (board or {}).get("symbol") or (row or {}).get("symbol")
+    state = onchain_quality_picks.decide(body.chain, body.token, body.action, symbol)
+    return {"state": state}
 
 
 def _lab_summary(bt: dict | None) -> dict | None:
@@ -3877,11 +4003,14 @@ def _gem_view(entries: list[dict], now: float | None = None) -> list[dict]:
     """`entries` without the old, the weak, the mostly locked and the
     duplicates, order kept. Of two rows of one project the one with the
     deeper pool stays (the real market), then the higher score. A missing
-    creation date is the listing's; a gem with neither is left out."""
+    creation date is the listing's; a gem with neither is left out. A gem
+    accepted from the Quality list skips only the score's bar."""
     now = now or _time.time()
     entries = _with_fdv(_with_listing_dates(entries))
+    picked = onchain_quality_picks.accepted()
     ok = [e for e in entries
-          if _score_kept(e, now) and onchain_gem_hold.keep(_gem_key(e), "fdv", _mostly_locked(e), now)
+          if (_quality_key(e) in picked or _score_kept(e, now))
+          and onchain_gem_hold.keep(_gem_key(e), "fdv", _mostly_locked(e), now)
           and not _fading(e)
           and e.get("launched_at") and now - e["launched_at"] <= GEM_MAX_AGE_DAYS * 86400]
     rank = lambda e: ((e.get("liquidity_usd") or 0), (e.get("score") or 0))  # noqa: E731
@@ -3891,6 +4020,24 @@ def _gem_view(entries: list[dict], now: float | None = None) -> list[dict]:
         if k not in best or rank(e) > rank(ok[best[k]]):
             best[k] = i
     return [ok[i] for i in sorted(best.values())]
+
+
+def _quality_key(e: dict) -> str:
+    return onchain_quality_picks.key(e.get("chain") or "", e.get("token_address") or "")
+
+
+def _kobra_lists(narrative: str = "") -> tuple[list[dict], list[dict]]:
+    """Whitekobra's arenas pool and Early, as his Top shows them. An accepted
+    Quality gem under the $300k floor goes to Early, like any other."""
+    pool = _top_entries(ARENA_POOL, narrative, full=True)
+    small = [e for e in pool if e.pop("quality_early", False)]
+    pool = _gem_view([e for e in pool if not any(e is x for x in small)])
+    early = _gem_view(_kobra_early() + small)
+    # A gem held in the arenas under the $300k floor is not in Early too.
+    in_pool = {_gem_key(e) for e in pool}
+    early = [e for e in early if _gem_key(e) not in in_pool]
+    early.sort(key=lambda e: -(e.get("score") or 0))
+    return pool, early
 
 
 def _ai_veto_candidates() -> list[dict]:
@@ -3969,8 +4116,18 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
     # skipped by both halves of the Top (Lorenzo, 28/09: high scores never on the podium).
     rows = [r for st in ("studied", "ranked")
             for r in onchain_projects_db.search(status=st, sort="score", limit=200, narrative=narrative, full=full)["items"]]
+    # Whitekobra's Quality picks (quality_picks.py): whatever their status,
+    # score or last analysis, through every rule below all the same.
+    picked = onchain_quality_picks.accepted() if full else set()
+    listed = {onchain_projects_db.key(r["chain"], r["token"]) for r in rows}
+    for k in sorted(picked - listed):
+        chain_, _, token_ = k.partition(":")
+        r = onchain_projects_db.get(chain_, token_)
+        if r is not None:
+            rows.append(r)
     for row in sorted(rows, key=lambda r: -(r.get("score") or 0)):
-        if row.get("score") is None or (row.get("analyzed_at") or 0) < cutoff:
+        pick = bool(picked) and onchain_projects_db.key(row["chain"], row["token"]) in picked
+        if not pick and (row.get("score") is None or (row.get("analyzed_at") or 0) < cutoff):
             continue
         if want and not _narr_now(row) & want:
             continue
@@ -4011,7 +4168,7 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
         # a reason here: applied to the Top they emptied it (Lorenzo, 29/09: 2
         # tokens left). Rows that stay become "ranked" and lose that text
         # (projects_db.sync_top), so the Database no longer contradicts the Top.
-        if (row.get("why") or "").startswith("DeepSeek"):
+        if (row.get("why") or "").startswith("DeepSeek") and not pick:
             continue
         # The board's usage bars hold here too (Lorenzo, 07/10): volume, trades,
         # buyers, holders and the $300k floor, the same as usage_gate on the
@@ -4020,6 +4177,7 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
         score = row.get("score")
         hidden = False
         blocks = None
+        small = False
         if row["chain"] != onchain_layers.CHAIN:
             # DeepSeek's reading too, so a token scores the same in both halves.
             entry = {**onchain_leaderboard.db_entry(row), "global_cap": row.get("cg_mcap"), "judge": j,
@@ -4038,7 +4196,9 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
                 # Only the $300k floor fails, or nothing: whitekobra's arena
                 # gem falls back to Early only after 7 days under it.
                 if not onchain_gem_hold.keep(key, "floor", bool(gate)):
-                    continue
+                    if not pick:
+                        continue
+                    small = True        # a Quality pick under $300k: Early (_kobra_lists)
             elif gate:
                 continue
             score = onchain_leaderboard.final_score(entry, kobra=full)
@@ -4072,7 +4232,8 @@ def _top_entries(n: int = 50, narrative: str = "", full: bool = False) -> list[d
                     "liquidity_usd": lv.get("liquidity_usd") or row.get("liq"), "change_24h": lv.get("change_24h"),
                     "launched_at": row.get("launched_at"), "score": score, "early": None, "on_board": False,
                     "hidden": hidden, "usage": onchain_leaderboard.usage.latest(row["chain"], row["token"]),
-                    "blocks": blocks, "narratives": sorted(_narr_now(row))})
+                    "blocks": blocks, "narratives": sorted(_narr_now(row)),
+                    **({"quality_pick": True} if pick else {}), **({"quality_early": True} if small else {})})
     out.sort(key=lambda e: -(e.get("score") or 0))
     return out[:n]
 

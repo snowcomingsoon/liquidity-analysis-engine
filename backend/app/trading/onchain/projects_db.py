@@ -564,6 +564,19 @@ def recheck_studied(patterns: tuple[str, ...], statuses: tuple[str, ...] = ("stu
         return cur.rowcount
 
 
+def quality_rows(min_quality: float, limit: int = 300) -> list[dict]:
+    """Whole rows whose stored quality (overall.score) is at least
+    `min_quality`, best first, layer chains aside: the Quality list
+    (quality_picks.py) reads them whatever their status or score."""
+    with _lock:
+        rows = _db().execute(
+            "SELECT * FROM projects WHERE chain != 'layer' AND pillars IS NOT NULL"
+            " AND CAST(json_extract(overall, '$.score') AS REAL) >= ?"
+            " ORDER BY CAST(json_extract(overall, '$.score') AS REAL) DESC LIMIT ?",
+            (float(min_quality), max(1, int(limit)))).fetchall()
+    return [_row(r) for r in rows]
+
+
 def scored_rows() -> list[dict]:
     """Every studied or ranked row: what a rescore walks over."""
     with _lock:

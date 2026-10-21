@@ -86,6 +86,16 @@ def _private_gem_hold(monkeypatch, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _private_quality_picks(monkeypatch, tmp_path):
+    """Whitekobra's Quality picks (quality_picks.py) start empty in every test."""
+    from app.trading.onchain import quality_picks
+    monkeypatch.setattr(quality_picks, "_FILE", tmp_path / "quality_picks.json")
+    quality_picks.reset_for_tests()
+    yield
+    quality_picks.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
 def _private_quant_memory(monkeypatch, tmp_path):
     from app.trading.onchain import quant_memory
     monkeypatch.setattr(quant_memory, "_path", tmp_path / "quant.sqlite3")

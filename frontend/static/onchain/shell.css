@@ -1752,6 +1752,7 @@
   #app-shell:not([data-view="top"]) #early-view,
   #app-shell:not([data-view="pearl"]) #pearl-view,
   #app-shell:not([data-view="rank"]) #rank-view,
+  #app-shell:not([data-view="quality"]) #quality-view,
   #app-shell:not([data-view="profile"]) #track-fold,
   #app-shell :is(#meme-alerts, #memes, #pilot, #radar, #leaders),
   #app-shell:not([data-view="profile"]) #profile,

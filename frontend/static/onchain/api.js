@@ -209,6 +209,10 @@ export async function streamScan(query, onEvent, { view = "", onId } = {}) {
 export const addScanned = (chain, token) => request("/api/onchain/scan/add", { method: "POST", body: { chain, token } });
 export const getTop = (n, keys = []) =>
   request(`/api/onchain/top?n=${n}${keys?.length ? `&narrative=${encodeURIComponent(keys.join(","))}` : ""}`);
+// Whitekobra's Quality list (quality.js): 404 for the other accounts.
+export const getQuality = () => request("/api/onchain/quality", { timeoutMs: 20000 });
+export const decideQuality = (chain, token, action) =>
+  request("/api/onchain/quality", { method: "POST", body: { chain, token, action } });
 export const getNarrativeCoverage = () => request("/api/onchain/narratives/coverage");
 export const getToken = (chain, token) => request(`/api/onchain/token?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`);
 export const recheckToken = (chain, token) =>
