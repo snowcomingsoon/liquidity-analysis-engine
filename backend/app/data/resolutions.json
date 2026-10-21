@@ -3339,5 +3339,10 @@
     "status": "risolto",
     "at": 1792568337,
     "summary": "Solo per whitekobra, nuova scheda Quality nella barra in basso (dopo Top): tutti i progetti con qualita' dei pilastri da 80 in su che non sono nella Top 25, qualunque sia il voto o l'uso, con i voti di GitHub, sito e holder. Restano fuori solo quelli crollati o giudicati truffa con sicurezza. Con Accetta il progetto supera solo la soglia del voto (il 60 delle gemme e i minimi dei pilastri): tutte le altre regole delle gemme continuano a valere (crollo, liquidita', uso, capitalizzazione, regole launchpad, giudizio AI, eta', FDV). Se ne fallisce una esce da arene e Top finche' non torna a rispettarla, e nella lista 'Accepted' si legge dove si trova o perche' e' fuori. Sotto i 300k va in Early come le altre gemme. Scarta lo toglie dalla lista; tra gli scartati c'e' 'Restore' per rimetterlo. Gli altri account non vedono la scheda e il server risponde 404."
+  },
+  "seed-0372": {
+    "status": "risolto",
+    "at": 1792582169,
+    "summary": "Le chiamate all'AI gratuita fatte durante lo smaltimento della coda ora hanno priorita' bassa: al massimo 120 al giorno, e nessuna appena un modello ha finito la quota del giorno o quando piu' di meta' dei modelli e' in pausa. Il controllo AI delle gemme, le scansioni manuali, la chat e le ricerche delle 04:00 e delle 16:00 hanno sempre la precedenza; lo smaltimento continua con il lavoro che non chiede l'AI (misure d'uso, mercato). La mappa delle narrative, quando non trova un modello libero, ora aspetta il giro dopo senza riempire i log di errori."
   }
 }

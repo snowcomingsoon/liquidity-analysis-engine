@@ -1,3 +1,7 @@
+# 2026-10-21 — Lo smaltimento non tocca la quota AI del resto — `seed-0372` (Claude, a mano)
+
+Lorenzo: "lo smaltimento dei lavori in coda pero' non deve andare a inficiare il resto delle operazioni", poi chiede di GitHub Models come terza fonte gratuita. Stato coda alle 13:15: 237 → 146 in 6 giri. Fatto: `free_ai.low_priority()` intorno ai tick di `nightly.drain_once`; `free_ai.low_allowed`: max `LOW_DAILY` 120 chiamate, nessuna se un modello e' in pausa per quota giornaliera o se piu' di meta' dei modelli e' in pausa. `narrative_map` logga a INFO i `BudgetExceeded`. **Da decidere con Lorenzo**: GitHub Models (models.github.ai, token GitHub con permesso Models) come terzo fornitore dopo Gemini, chiave da Diagnostics come Groq/Gemini.
+
 # 2026-10-21 — Coda dopo la ricerca, crollo al 75%, sezione Quality — `seed-0369`, `seed-0370`, `seed-0371` (Claude, a mano)
 
 Lorenzo: "i lavori rimasti in coda [...] vanno fatti smaltire dopo la ricerca. Attualmente ce ne sono 230", "alzerei [...] intorno al 75% [...] aspetto anche una tua valutazione", e per whitekobra "una nuova sezione che si potrebbe chiamare quality". Poi, alla mia proposta: "punti 1 e 2. [...] compaiono solo progetti attualmente non in top 25, e poi, anche se una volta accettati manualmente, se poi non dovessero rispettare [...] i parametri che caratterizzano tutte le gemme [...] escono [...] Se Dregg domani dovesse avere un crollo [...] esce".

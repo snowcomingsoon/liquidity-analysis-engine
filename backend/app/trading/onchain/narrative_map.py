@@ -142,8 +142,12 @@ async def step(now: float | None = None, ask=None) -> dict[str, list[str]]:
             projects_db.set_narratives(r["chain"], r["token"], keys, now)
             written[projects_db.key(r["chain"], r["token"])] = keys
         return written
-    except Exception:
-        logger.exception("narrative map: batch fallito")
+    except Exception as exc:
+        from app.notify.deepseek_desk import BudgetExceeded
+        if isinstance(exc, BudgetExceeded):     # no free model now: the next turn retries
+            logger.info("narrative map: %s", exc)
+        else:
+            logger.exception("narrative map: batch fallito")
         return {}
 
 

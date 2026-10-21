@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0372", "Lo smaltimento della coda non deve togliere quota AI al resto",
+     "Lorenzo, 21/10: 'lo smaltimento dei lavori in coda pero' non deve andare a inficiare il resto delle operazioni'. Il controllo sul server mostrava la mappa delle narrative fallita 14 volte in un'ora con tutti i modelli gratuiti in pausa.",
+     "alta"),
     ("seed-0371", "Sezione Quality: progetti di qualita' da 80 in su, accettati o scartati a mano",
      "Lorenzo, 21/10: 'soltanto per l'account White Cobra inserirei una nuova sezione che si potrebbe chiamare quality [...] progetti di alta qualita', quelli che magari raggiungono una quota di 80% o piu' [...] decidere poi con un pulsante se [...] accettarli all'interno delle gemme oppure no, oppure scartarli', poi 'compaiono solo progetti attualmente non in top 25 [...] se poi non dovessero rispettare [...] i parametri che caratterizzano tutte le gemme [...] escono'.",
      "media"),

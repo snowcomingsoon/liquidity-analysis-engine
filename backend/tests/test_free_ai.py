@@ -92,3 +92,37 @@ def test_with_paid_deepseek_off_ai_readings_never_move_the_score(monkeypatch):
     assert lb.deepseek_score(e) == 90 and lb.product_score(e) == 70
     monkeypatch.setattr(settings, "research_ai_enabled", False)
     assert lb.deepseek_score(e) is None and lb.product_score(e) == 50
+
+
+def test_the_drain_is_low_priority(monkeypatch):
+    """Lorenzo, 21/10: the backlog drain "non deve andare a inficiare il resto
+    delle operazioni"."""
+    import time
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k", "gemini": "g"})
+    monkeypatch.setattr(free_ai, "LOW_DAILY", 2)
+
+    async def run(low=True, kind="research"):
+        async with _client(lambda r: httpx.Response(200, json=OK)) as c:
+            if low:
+                with free_ai.low_priority():
+                    return await free_ai.post({"messages": []}, kind=kind, http=c)
+            return await free_ai.post({"messages": []}, kind=kind, http=c)
+
+    def refused(**kw):
+        try:
+            asyncio.run(run(**kw))
+            return False
+        except free_ai.Unavailable:
+            return True
+    assert not refused() and not refused()
+    assert refused()                                   # its own daily share is spent
+    assert not refused(low=False)                      # the rest is untouched
+    free_ai._calls.clear()
+    # A model out of its daily quota: low priority work stops, the rest goes on.
+    free_ai._cool["groq/openai/gpt-oss-120b"] = free_ai._next_day(time.time())
+    assert refused() and not refused(low=False)
+    free_ai._cool.clear()
+    # Most models cooling for a minute: low priority waits too.
+    for m in free_ai._models_on()[:4]:
+        free_ai._cool[m] = time.time() + 60
+    assert refused() and not refused(low=False)

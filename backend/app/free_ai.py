@@ -44,6 +44,14 @@ WAIT_MAX_S = 20               # a 429 asking for longer moves to the next model
 PER_PROVIDER = 2              # calls at once on one provider (free tiers count per minute)
 
 _manual = contextvars.ContextVar("free_ai_manual", default=False)
+_low = contextvars.ContextVar("free_ai_low", default=False)
+# Lorenzo, 21/10: the backlog drain (nightly.drain_once) "non deve andare a
+# inficiare il resto delle operazioni". Its calls are low priority: LOW_DAILY
+# a day at most, and none while a model has spent its daily quota or most
+# models are cooling down, so the veto, manual scans, the chat and the
+# research runs keep what the free tiers give.
+LOW_DAILY = 120
+LOW_KIND = "_low"
 _cool: dict[str, float] = {}                 # "provider/model" -> usable again at
 _calls: dict[str, dict[str, int]] = {}       # day -> kind -> requests
 _used: dict[str, dict[str, int]] = {}        # day -> "provider/model" -> answers
@@ -72,6 +80,36 @@ def manual():
         def __exit__(self, *exc):
             _manual.reset(self.token)
     return _Ctx()
+
+
+def low_priority():
+    """`with free_ai.low_priority():` around background work that must never
+    take quota from the rest (the backlog drain). Tasks started inside inherit it."""
+    class _Ctx:
+        def __enter__(self):
+            self.token = _low.set(True)
+
+        def __exit__(self, *exc):
+            _low.reset(self.token)
+    return _Ctx()
+
+
+def _models_on() -> list[str]:
+    ks = keys()
+    return [f"{p}/{m}" for p, _, models in PROVIDERS if p in ks for m in models]
+
+
+def low_allowed(now: float | None = None) -> bool:
+    """Room for low-priority work: under LOW_DAILY, no daily quota spent,
+    at least half the models answering."""
+    now = now or time.time()
+    if (_calls.get(_day(now)) or {}).get(LOW_KIND, 0) >= LOW_DAILY:
+        return False
+    models = _models_on()
+    cooling = [m for m in models if _cool.get(m, 0) > now]
+    if any(_cool[m] - now > 3600 for m in cooling):       # a daily quota is gone
+        return False
+    return len(cooling) * 2 < max(1, len(models))
 
 
 def keys() -> dict[str, str]:
@@ -135,9 +173,14 @@ async def post(body: dict, *, kind: str, http: httpx.AsyncClient | None = None, 
     if not ks:
         raise Unavailable("no free AI key set (Diagnostics)")
     now = now or time.time()
+    low = _low.get() and not _manual.get() and kind not in UNCAPPED
+    if low and not low_allowed(now):
+        raise Unavailable("low priority work waits: the free quota is kept for the rest")
     if not allowed(kind, now):
         raise Unavailable(f"daily cap of {DAILY.get(kind, DAILY_DEFAULT)} reached for {kind}")
     day = _day(now)
+    if low:
+        _calls.setdefault(day, {})[LOW_KIND] = _calls.get(day, {}).get(LOW_KIND, 0) + 1
     _calls.setdefault(day, {})[kind] = _calls.get(day, {}).get(kind, 0) + 1
     last = ""
     own = http is None

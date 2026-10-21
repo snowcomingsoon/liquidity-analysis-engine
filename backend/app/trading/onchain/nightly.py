@@ -615,8 +615,10 @@ async def drain_once(steps, *, clock: Callable[[], float] = time.time, sleep=asy
     end = min(start + DRAIN_MAX_S, next_run(start) - DRAIN_GAP_S)
     before = _left(steps)
     ticks = 0
+    from app import free_ai
     while clock() < end:
-        await _guard("drain", steps.tick())
+        with free_ai.low_priority():        # never the quota the rest needs
+            await _guard("drain", steps.tick())
         ticks += 1
         await sleep(leaderboard.TICK_S)
         if ticks >= SENTINEL_MIN_TICKS and steps.drained():
