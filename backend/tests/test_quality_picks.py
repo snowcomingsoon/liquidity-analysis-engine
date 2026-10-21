@@ -102,3 +102,14 @@ def test_the_top_25_is_not_on_the_quality_list(monkeypatch):
     monkeypatch.setattr(lb, "_entries", {lb._key("solana", "DREGGmint"): e})
     monkeypatch.setattr(m, "_kobra_lists", lambda narrative="": ([dict(e)], []))
     assert m._quality_view(now)["waiting"] == []
+
+
+def test_a_dead_pool_is_not_on_the_quality_list(monkeypatch):
+    """BORLY (21/10): quality 94, $3k left, its rug from before the crash rule."""
+    import app.main as m
+    from app.trading.onchain import leaderboard as lb
+    e = {"chain": "solana", "token_address": "BORLYpump", "symbol": "BORLY", "name": "Borly", "market_cap": 3_100,
+         "liquidity_usd": 2_000, "overall": {"score": 94.0}, "pillars": {}}
+    monkeypatch.setattr(lb, "_entries", {lb._key("solana", "BORLYpump"): e})
+    monkeypatch.setattr(m, "_kobra_lists", lambda narrative="": ([], []))
+    assert m._quality_view()["waiting"] == []

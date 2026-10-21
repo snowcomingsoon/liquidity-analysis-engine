@@ -3764,6 +3764,15 @@ def _quality_out_reason(e: dict, now: float) -> str:
     return "waiting for the next ranking"
 
 
+def _dead_pool(e: dict) -> bool:
+    """A pool nobody can trade any more (under the research floor): a rug
+    from before the crash rule, like BORLY at $3k, has no place on the list."""
+    lv = onchain_leaderboard.live(e.get("chain") or "", e.get("token_address") or "") or {}
+    liq = lv.get("liquidity_usd") if lv.get("liquidity_usd") is not None else e.get("liquidity_usd")
+    return bool(onchain_leaderboard.research_floor({**e, "liquidity_usd": liq,
+                                                     "market_cap": lv.get("market_cap") or e.get("market_cap")}))
+
+
 def _quality_row(e: dict, q: float | None, state: str | None) -> dict:
     lv = onchain_leaderboard.live(e.get("chain") or "", e.get("token_address") or "") or {}
     pillars = e.get("pillars") or {}
@@ -3818,7 +3827,8 @@ def _quality_view(now: float | None = None) -> dict:
             accepted.append(row)
         elif state == "discarded":
             discarded.append(row)
-        elif k not in top and not lb.crash_reason(e.get("chain") or "", e.get("token_address") or ""):
+        elif k not in top and not lb.crash_reason(e.get("chain") or "", e.get("token_address") or "") \
+                and not _dead_pool(e):
             v = onchain_ai_veto.fresh(f"{e.get('chain')}:{e.get('token_address')}", now) or {}
             if v.get("verdict") == "scam" and float(v.get("confidence") or 0) >= onchain_ai_veto.SCAM_MIN \
                     and not onchain_ai_veto.excellent(e):
