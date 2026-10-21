@@ -165,6 +165,9 @@ def _resolutions() -> dict[str, dict]:
 
 
 _SEED = [
+    ("seed-0373", "GitHub Models come terza fonte gratuita di AI, dopo Groq e Gemini",
+     "Lorenzo, 21/10: 'se non dovessero bastare Grok piu' Gemini, mi ricordo che [...] anche GitHub poteva fornire delle potenzialita' gratuite', poi 'Ok, procedi'.",
+     "media"),
     ("seed-0372", "Lo smaltimento della coda non deve togliere quota AI al resto",
      "Lorenzo, 21/10: 'lo smaltimento dei lavori in coda pero' non deve andare a inficiare il resto delle operazioni'. Il controllo sul server mostrava la mappa delle narrative fallita 14 volte in un'ora con tutti i modelli gratuiti in pausa.",
      "alta"),

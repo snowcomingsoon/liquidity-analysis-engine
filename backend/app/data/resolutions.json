@@ -3344,5 +3344,10 @@
     "status": "risolto",
     "at": 1792582169,
     "summary": "Le chiamate all'AI gratuita fatte durante lo smaltimento della coda ora hanno priorita' bassa: al massimo 120 al giorno, e nessuna appena un modello ha finito la quota del giorno o quando piu' di meta' dei modelli e' in pausa. Il controllo AI delle gemme, le scansioni manuali, la chat e le ricerche delle 04:00 e delle 16:00 hanno sempre la precedenza; lo smaltimento continua con il lavoro che non chiede l'AI (misure d'uso, mercato). La mappa delle narrative, quando non trova un modello libero, ora aspetta il giro dopo senza riempire i log di errori."
+  },
+  "seed-0373": {
+    "status": "risolto",
+    "at": 1792582771,
+    "summary": "Aggiunto GitHub Models come terza fonte gratuita: entra solo quando Groq e Gemini hanno finito la quota o sono in pausa, con i modelli gpt-4.1-mini e gpt-4o-mini. Si attiva con un token GitHub salvato in Diagnostica, nella stessa sezione delle chiavi di Groq e Gemini, sotto 'GitHub Models'. Il token va creato su github.com/settings/tokens (fine-grained) con il solo permesso Models in lettura. Al salvataggio il sito fa una prova vera da un token per controllare che funzioni."
   }
 }

@@ -1,4 +1,4 @@
-"""The free AI that does DeepSeek's research work: Groq first, Gemini next.
+"""The free AI that does DeepSeek's research work: Groq first, Gemini next, GitHub Models last.
 
 Lorenzo, 20/10: "le opzioni che avevamo per analizzare le gemme dove era
 attivo DeepSeek, come ad esempio la scansione manuale o la rescansione con
@@ -34,6 +34,11 @@ PROVIDERS = (
       "openai/gpt-oss-20b")),
     ("gemini", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
      ("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash")),
+    # GitHub Models (Lorenzo, 21/10: "procedi"): free with a GitHub token that
+    # has the Models permission; small daily quotas and short requests, so
+    # last, the reserve when Groq and Gemini are spent or cooling.
+    ("github", "https://models.github.ai/inference/chat/completions",
+     ("openai/gpt-4.1-mini", "openai/gpt-4o-mini")),
 )
 # Requests a day per kind of work (deepseek_desk.KINDS, plus the veto).
 # Manual scans are not counted against these.
@@ -116,7 +121,7 @@ def keys() -> dict[str, str]:
     now = time.time()
     if now - _keys_cache["at"] > 60:
         from app import service_keys
-        _keys_cache.update(at=now, keys={n: k for n in ("groq", "gemini") if (k := service_keys.get(n))})
+        _keys_cache.update(at=now, keys={n: k for n, _, _ in PROVIDERS if (k := service_keys.get(n))})
     return _keys_cache["keys"]
 
 

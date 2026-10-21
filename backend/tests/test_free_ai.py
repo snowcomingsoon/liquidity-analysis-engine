@@ -126,3 +126,21 @@ def test_the_drain_is_low_priority(monkeypatch):
     for m in free_ai._models_on()[:4]:
         free_ai._cool[m] = time.time() + 60
     assert refused() and not refused(low=False)
+
+
+def test_github_models_takes_the_call_when_groq_and_gemini_are_spent(monkeypatch):
+    monkeypatch.setattr(free_ai, "keys", lambda: {"groq": "k", "gemini": "g", "github": "t"})
+    seen = []
+
+    def handler(request):
+        seen.append(str(request.url))
+        if "models.github.ai" in str(request.url):
+            assert request.headers["Authorization"] == "Bearer t"
+            return httpx.Response(200, json=OK)
+        return httpx.Response(429, text="Rate limit reached: requests per day (RPD)")
+
+    async def run():
+        async with _client(handler) as c:
+            return await free_ai.post({"messages": [], "max_tokens": 100}, kind="judge", http=c)
+    data = asyncio.run(run())
+    assert data["provider"] == "github" and data["model"] == "openai/gpt-4.1-mini"

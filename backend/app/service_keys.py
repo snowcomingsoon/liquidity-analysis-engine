@@ -29,7 +29,13 @@ SERVICES = {
     "groq": ("GROQ_API_KEY", "https://api.groq.com/openai/v1/models"),
     # Google's OpenAI-compatible endpoint takes the key as a bearer token too.
     "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai/models"),
+    # A GitHub token with the Models permission (read-only), from github.com/settings/tokens.
+    "github": ("GITHUB_MODELS_TOKEN", "https://models.github.ai/inference/chat/completions"),
 }
+# The catalog of GitHub Models answers without a token, so its check is the
+# smallest real call: one token out.
+CHECK_POST = {"github": {"model": "openai/gpt-4o-mini", "max_tokens": 1,
+                         "messages": [{"role": "user", "content": "ok"}]}}
 
 
 def _read() -> dict:
@@ -66,10 +72,12 @@ async def check(name: str, key: str) -> str:
     _, url = SERVICES[name]
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get(url, headers={"Authorization": f"Bearer {key}"})
+            headers = {"Authorization": f"Bearer {key}"}
+            r = await (client.post(url, json=CHECK_POST[name], headers=headers) if name in CHECK_POST
+                       else client.get(url, headers=headers))
     except httpx.HTTPError as exc:
         return f"the service did not answer ({type(exc).__name__})"
-    if r.status_code == 200:
+    if r.status_code == 200 or (r.status_code == 429 and name in CHECK_POST):   # busy, but the key is good
         return ""
     if r.status_code in (401, 403):
         return "the service refused the key: check that it was copied whole"
