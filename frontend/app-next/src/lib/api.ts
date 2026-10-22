@@ -1,4 +1,5 @@
-import type { Candle, Deep, Job, Narrative, Projects, RecheckProgress, Top, TokenDossier } from "./types";
+import type { Candle, Deep, Job, Narrative, Projects, QualityLists, RecheckProgress, Top, TokenDossier } from "./types";
+import type { AgentInfo, AgentItem, JourneyAnswer } from "./scout";
 
 // The same contract as static/onchain/api.js: X-Device on every call,
 // identical GETs in flight shared, errors carry the server's detail.
@@ -70,3 +71,16 @@ export const recheckJob = (chain: string, token: string, body: { view: string; l
 export const getJob = (id: string) => send<Job>(`/api/jobs/${encodeURIComponent(id)}?visible=1`, "GET", undefined, 10000);
 export const getTokenChart = (chain: string, pool: string, symbol: string, interval: string, peek = false) =>
   get<{ candles?: Candle[] }>(`/api/onchain/chart?${new URLSearchParams({ chain, pool, symbol, interval, ...(peek ? { peek: "1" } : {}) })}`, 20000);
+
+// Quality (quality.js): one account's list; 404 for the others.
+export const getQuality = () => get<QualityLists>("/api/onchain/quality", 20000);
+export const decideQuality = (chain: string, token: string, action: "accept" | "discard" | "reset") =>
+  post<{ state?: string }>("/api/onchain/quality", { chain, token, action });
+
+// Scout (agent.js, agent-journey.js).
+export const getAgent = () => get<AgentInfo>("/api/agent");
+export const getAgentLog = (before?: number) => get<{ items?: AgentItem[] }>(`/api/agent/log?limit=60${before ? `&before=${before}` : ""}`);
+export const getAgentJourney = ({ q = "", chain = "", token = "" }: { q?: string; chain?: string; token?: string }) =>
+  get<JourneyAnswer>(`/api/agent/journey?q=${encodeURIComponent(q)}&chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 20000);
+// Coordinated sells (sells.js): one account's; 404 for the others.
+export const getCoordinatedSells = () => get<{ reports?: { risk?: { score?: number } }[] }>("/api/onchain/coordinated-sells", 20000);

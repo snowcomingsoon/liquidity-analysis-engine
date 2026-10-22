@@ -14,6 +14,8 @@ import { Sectors } from "./views/Sectors";
 import { Today } from "./views/Today";
 import { getSectors, type SectorsView } from "./lib/sectors";
 import { TokenPage, type Opened } from "./views/TokenPage";
+import { Quality, qualityContext } from "./views/Quality";
+import { Scout } from "./views/Scout";
 
 const POLL_MS = 30_000;
 const PEARL_MIN = 70;          // a "70" on screen is always a pearl
@@ -47,6 +49,7 @@ export function App() {
   const [search, setSearch] = useState(false);
   const closePage = useCallback(() => setOpenRaw(null), []);
   const [quality, setQuality] = useState(false);
+  const [sells, setSells] = useState<{ risk: number | null } | null>(null);
   const [labels, setLabels] = useState<Record<string, string>>({});
   const narr = useNarratives();
   const [{ initial }] = useState(boot);
@@ -74,6 +77,13 @@ export function App() {
   useEffect(() => { loadHidden(); coverage().then((l) => setLabels(Object.fromEntries(l.map((n) => [n.key, n.label ?? n.key])))); }, []);
   // Quality is one account's (quality.js): its button shows only when the list answers.
   useEffect(() => { fetch("/api/onchain/quality").then((r) => setQuality(r.ok)).catch(() => {}); }, []);
+  // Coordinated sells is one account's too (sells.js): a pill at the top of Scout, with the highest risk.
+  useEffect(() => {
+    api.getCoordinatedSells().then((d) => {
+      const top = Math.max(-1, ...(d.reports ?? []).map((r) => r.risk?.score ?? -1));
+      setSells({ risk: top < 0 ? null : top });
+    }).catch(() => {});
+  }, []);
   useEffect(() => { history.replaceState(null, "", `${location.pathname}${location.search}#${view}`); scrollTo(0, 0); }, [view]);
 
   const views = DOCK.filter((v) => v !== "quality" || quality);
@@ -156,7 +166,9 @@ export function App() {
                 lead="The 25 highest scores among the gems that passed the checks: usage, holders, code, research and tokenomics. Market cap and 24h change live from DexScreener. Research, not advice."
                 empty="The ranking is filling up: gems appear as they pass the checks." />
             )}
-            {(view === "quality" || view === "agent" || view === "profile") && (
+            {view === "quality" && <Quality onOpen={openWith(qualityContext)} />}
+            {view === "agent" && <Scout sells={sells} />}
+            {view === "profile" && (
               <p className="py-8 text-center text-[14px] text-text-2">
                 {LABEL[view]} moves here in a next step. Until then it is in the <a className="underline" href={`/onchain-app.html#${view}`}>current app</a>.
               </p>

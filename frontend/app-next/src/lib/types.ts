@@ -66,3 +66,6 @@ export type RecheckProgress = { running?: boolean; started?: number; steps?: { l
   log?: { n: number; src: string; text: string; code?: number | null }[] };
 export type TokenDossier = { entry: Entry | null; deep?: Deep | null; deep_wait_s?: number | null; deep_progress?: RecheckProgress | null };
 export type Job = { state: string; result?: { deep?: Deep }; detail?: { wait_s?: number }; error?: string };
+
+export type QualityRow = Gem & { quality?: number; pillars?: Record<string, number>; where?: "top" | "arena" | "early" | "out"; why?: string };
+export type QualityLists = { waiting?: QualityRow[]; accepted?: QualityRow[]; discarded?: QualityRow[] };

@@ -8,17 +8,18 @@ const BADGE = { early: "EARLY", hidden: "HIDDEN GEM" } as const;
 export const gemId = (e: { chain: string; token_address: string }) => `${e.chain}:${e.token_address}`;
 
 /** One gem as a soft card: logo, name, score, ticker, age, market line; cap and 24h on the right (format.js tokenRow). */
-export function TokenRow({ e, name, badge, onOpen, i = 0, dim = false }: {
+export function TokenRow({ e, name, badge, onOpen, i = 0, dim = false, footer }: {
   e: Gem; name?: string; badge?: keyof typeof BADGE | null; onOpen: (e: Gem) => void; i?: number; dim?: boolean;
+  footer?: React.ReactNode;   // under the row, on the same card (quality.js actions)
 }) {
   const [a, fresh] = age(e.launched_at);
   const [chg, sign] = changeText(e.change_24h);
   const sub = marketSub(e);
   return (
     <motion.li layout="position" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.26, ease: [0.25, 0.1, 0.25, 1], delay: Math.min(i, 8) * 0.025 }} className="mb-2">
+      transition={{ duration: 0.26, ease: [0.25, 0.1, 0.25, 1], delay: Math.min(i, 8) * 0.025 }} className={`mb-2 ${footer ? "rounded-[20px] bg-card" : ""}`}>
       <button type="button" onClick={() => onOpen(e)}
-        className="flex w-full items-center gap-3.5 rounded-[20px] bg-card px-3.5 py-2.5 text-left transition-colors duration-150 active:bg-pill">
+        className={`flex w-full items-center gap-3.5 rounded-[20px] ${footer ? "" : "bg-card"} px-3.5 py-2.5 text-left transition-colors duration-150 active:bg-pill`}>
         <Logo symbol={e.symbol} image={e.image} chain={e.chain} token={e.token_address} />
         <span className="min-w-0 flex-1">
           <b className={`block truncate text-[16px] font-medium leading-tight ${dim ? "text-text-2" : ""}`}>
@@ -41,6 +42,7 @@ export function TokenRow({ e, name, badge, onOpen, i = 0, dim = false }: {
           <em className={`num text-[13px] font-medium not-italic ${sign === "up" ? "text-up" : sign === "down" ? "text-down" : "text-text-3"}`}>{chg}</em>
         </span>
       </button>
+      {footer}
     </motion.li>
   );
 }
