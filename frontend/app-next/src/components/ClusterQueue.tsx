@@ -64,7 +64,7 @@ export function ClusterQueue({ onOpen }: { onOpen: (chain: string, token: string
     <section className="rounded-[16px] bg-card p-1.5">
       <div className="flex items-baseline gap-2 px-2 pb-1 pt-2">
         <b className="flex-1 text-[14px] font-semibold">Engine now</b>
-        <small className="num text-[12px] text-text-3">{view.queued} in line · {view.built_today}/{view.max_per_day} today</small>
+        <small className="num text-[12px] text-text-3">{view.queued} in line · {view.built_today} done today</small>
       </div>
       <ol>{view.running.length ? view.running.map((x, i) => row(x, i, true))
         : <li className="px-2 py-2 text-[13px] text-text-3">Nothing running right now.</li>}</ol>
