@@ -3945,9 +3945,8 @@ async def onchain_coordinated_check(body: dict = Body(...), user: User = Depends
     st = wallet_clusters.token_status(chain, token)
     if not st["queued"] and not _full_score(user) and not wallet_clusters.account_take(str(user.id)):
         raise HTTPException(status_code=429, detail=f"{wallet_clusters.PER_ACCOUNT_PER_DAY} checks a day per account")
-    queued = wallet_clusters.request(chain, token, str(body.get("symbol") or ""), urgent=True, manual=True)
-    _fire(wallet_clusters.run_once())
-    return {"queued": queued, **wallet_clusters.token_status(chain, token)}
+    started = wallet_clusters.start_manual(chain, token, str(body.get("symbol") or ""))
+    return {"queued": started, "started": started, **wallet_clusters.token_status(chain, token)}
 
 
 @app.get("/api/onchain/coordinated-sells/check")

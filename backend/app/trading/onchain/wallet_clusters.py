@@ -26,6 +26,7 @@ full result stays on the data volume: the repo is public, no addresses in it.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import random
@@ -84,6 +85,18 @@ RETRY_S = 86400
 TS_EXACT = 300                            # exact timestamps for this many sell blocks
 DEAD = {"0x" + "0" * 40, "0x000000000000000000000000000000000000dead"}
 _lock = asyncio.Lock()
+# Manual checks run at once, beside the queue (Lorenzo, 22/10: "voglio vederlo
+# partire subito"), at most two together.
+_manual_sem = asyncio.Semaphore(2)
+_running: dict[str, dict] = {}          # key -> {"phase", "progress", "started_at"}
+_current: "contextvars.ContextVar[str | None]" = contextvars.ContextVar("wallet_cluster_key", default=None)
+
+
+def progress(phase: str, done: float | None = None) -> None:
+    """The phase of the token being built in this task, and how far (0..1)."""
+    k = _current.get()
+    if k and k in _running:
+        _running[k].update(phase=phase, progress=None if done is None else round(max(0.0, min(1.0, done)), 3))
 
 
 def _dir() -> Path:
@@ -191,7 +204,10 @@ def token_status(chain: str, token: str) -> dict:
     k = _key((chain or "").lower(), sync_watch._n(token or ""))
     pos = next((n for n, q in enumerate(st.get("queue", [])) if q.get("key") == k), None)
     rec = (st.get("tokens") or {}).get(k) or {}
+    run = _running.get(k) or {}
     return {"queued": pos is not None, "position": pos, "busy": _lock.locked(),
+            "running": bool(run), "phase": run.get("phase"), "progress": run.get("progress"),
+            "started_at": run.get("started_at"),
             "built_at": rec.get("built_at"), "clusters": rec.get("clusters"), "wallets": rec.get("wallets"),
             "partial": rec.get("partial"), "error": rec.get("error") if rec.get("failed_at") else None,
             "failed_at": rec.get("failed_at"),
@@ -276,6 +292,7 @@ async def all_transfers(rpc, chain: str, token: str, start: int, latest: int) ->
             continue
         out += [t for t in map(_parse, logs) if t]
         b = end + 1
+        progress("transfers", (b - start) / max(1, latest + 1 - start))
         if len(logs) < 3000:
             w = min(top, w * 2)
     out.sort(key=lambda t: (t["block"], t["log_index"]))
@@ -458,6 +475,7 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
     latest = int(await _call(rpc, "eth_blockNumber", []) or "0x0", 16)
     if created_at and created_at > 1e12:
         created_at /= 1000
+    progress("transfers", 0)
     if chain in transfer_sources.SOURCES:
         # History from a free explorer: the free RPCs keep only recent logs.
         transfers, partial, source = await transfer_sources.transfers(chain, token)
@@ -478,6 +496,7 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
         touch[t["to"]] += 1
     probe = list(dict.fromkeys([a for a, _ in sorted(peak.items(), key=lambda x: -x[1])[:TOP_HOLDERS * 2]]
                                + [a for a, n in touch.most_common(40) if n >= 20]))
+    progress("holders", None)
     contracts = await _contracts(rpc, [a for a in probe if a not in DEAD])
     first_b, last_b = transfers[0]["block"], transfers[-1]["block"]
     anchors = {t["block"]: t["ts"] for t in transfers if t.get("ts") is not None}
@@ -488,6 +507,7 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
                 anchors[b] = t
     span_b = max(1, max(anchors) - min(anchors))
     block_s = (anchors[max(anchors)] - anchors[min(anchors)]) / span_b
+    progress("clusters", None)
     res = cluster(transfers, contracts, supply, block_s)
     res.update(chain=chain, token=token, symbol=symbol, built_at=int(time.time()), partial=partial,
                from_block=start, to_block=latest, transfers=len(transfers), supply=str(supply),
@@ -497,6 +517,7 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
     _dir().mkdir(parents=True, exist_ok=True)
     write_text_atomic(_dir() / f"{_key(chain, token)}.json", json.dumps(res))
     if res["clusters"] or len(res["top"]) >= 2:
+        progress("sells", None)
         await _hand_to_watch(rpc, res, transfers, anchors, latest)
     return res
 
@@ -555,16 +576,56 @@ async def run_once(now: float | None = None) -> dict | None:
         item = _take(now)
         if not item:
             return None
-        try:
-            res = await build(item["chain"], item["token"], item.get("symbol", ""), item.get("created_at"))
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("wallet clusters %s", item["token"])
-            _done(item, None, str(exc) or type(exc).__name__, now)
+        res = await _build_tracked(item, now)
+        if res is None:
             return None
-        _done(item, res, None, now)
         logger.info("wallet clusters %s %s: %d clusters, %d transfers%s", item["chain"], item.get("symbol"),
                     len(res["clusters"]), res["transfers"], " (partial)" if res["partial"] else "")
         return res
+
+
+async def _build_tracked(item: dict, now: float) -> dict | None:
+    k = item["key"]
+    _running[k] = {"phase": "holders" if item["chain"] == "solana" else "transfers",
+                   "progress": None, "started_at": int(time.time())}
+    tok = _current.set(k)
+    try:
+        res = await build(item["chain"], item["token"], item.get("symbol", ""), item.get("created_at"))
+        if item.get("manual"):
+            # The sells now too, not at the watch's next 6-hour turn.
+            progress("sells", None)
+            for cfg in sync_watch.watched():
+                if _key(cfg["chain"], cfg["token"]) == k:
+                    await sync_watch.run_all(force=True, only=k)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("wallet clusters %s", item["token"])
+        _done(item, None, str(exc) or type(exc).__name__, now)
+        return None
+    finally:
+        _current.reset(tok)
+        _running.pop(k, None)
+    _done(item, res, None, now)
+    return res
+
+
+def start_manual(chain: str, token: str, symbol: str = "") -> bool:
+    """Runs a check asked for by hand at once, in its own task. False when it
+    is already running or was built within the hour."""
+    chain, token = (chain or "").lower(), sync_watch._n(token or "")
+    k = _key(chain, token)
+    if k in _running:
+        return False
+    rec = (_state().get("tokens") or {}).get(k) or {}
+    if rec.get("built_at") and time.time() - rec["built_at"] < 3600:
+        return False
+    item = {"key": k, "chain": chain, "token": token, "symbol": str(symbol or "")[:24], "manual": True}
+    _running[k] = {"phase": "waiting", "progress": None, "started_at": int(time.time())}
+
+    async def go():
+        async with _manual_sem:
+            await _build_tracked(item, time.time())
+    asyncio.get_running_loop().create_task(go())
+    return True
 
 
 async def loop(candidates, every_s: int = LOOP_S) -> None:

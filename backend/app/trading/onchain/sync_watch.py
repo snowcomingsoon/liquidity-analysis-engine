@@ -219,11 +219,13 @@ def busy() -> bool:
     return _lock.locked()
 
 
-async def run_all(force: bool = False) -> int:
+async def run_all(force: bool = False, only: str | None = None) -> int:
     """Every watched token due a run (or all with force). Returns how many ran."""
     n = 0
     async with _lock:
         for cfg in watched():
+            if only and _key(cfg["chain"], cfg["token"]) != only:
+                continue
             st = cfg.get("state") or {}
             if not force and time.time() - (st.get("last_run") or 0) < RUN_EVERY_S:
                 continue

@@ -202,7 +202,16 @@ async def build(mint: str) -> dict:
               for h in await helius_holders(mint, skip)]
     if len(hs) < 2:
         raise RuntimeError("fewer than 2 wallet holders")
-    sigs = await asyncio.gather(*(signatures(h["account"]) for h in hs))
+    from app.trading.onchain import wallet_clusters
+    wallet_clusters.progress("transfers", 0)
+    left = [len(hs)]
+
+    async def one(h):
+        r = await signatures(h["account"])
+        left[0] -= 1
+        wallet_clusters.progress("transfers", 1 - left[0] / len(hs))
+        return r
+    sigs = await asyncio.gather(*(one(h) for h in hs))
     first, last_sig, partial = {}, {}, False
     for h, ss in zip(hs, sigs):
         if not ss:
@@ -212,6 +221,7 @@ async def build(mint: str) -> dict:
             partial = True          # the first receipt is further back: no slot link
             continue
         first[h["owner"]] = ss[-1]["slot"]
+    wallet_clusters.progress("clusters", None)
     pairs = same_slot_links(first)
     why_of = {p: "same_slot" for p in pairs}
     if key:

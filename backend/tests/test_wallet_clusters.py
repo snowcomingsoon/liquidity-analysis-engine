@@ -227,3 +227,21 @@ def test_new_tokens_before_rebuilds_in_order(data):
     wc._save_state(st)
     assert not wc.request("robinhood", c, now=now)          # weekly for the rest
     assert wc.request("robinhood", c, now=now, rebuild_s=wc.REBUILD_TOP_S)   # every 2 days in the Top
+
+
+def test_manual_check_starts_at_once_with_progress(data, monkeypatch):
+    monkeypatch.setattr(sw, "KEEP_S", 10**10)
+    rpc = FakeChain(market(), {POOL})
+    monkeypatch.setattr(ss, "_default_rpc", lambda chain: rpc)
+
+    async def go():
+        assert wc.start_manual("robinhood", TOKEN, "TEST")
+        assert not wc.start_manual("robinhood", TOKEN, "TEST")     # already running
+        assert wc.token_status("robinhood", TOKEN)["running"]
+        for _ in range(200):
+            await asyncio.sleep(0.01)
+            if not wc.token_status("robinhood", TOKEN)["running"]:
+                break
+    asyncio.run(go())
+    assert (data / "wallet_clusters" / f"robinhood-{TOKEN}.json").exists()
+    assert not wc.start_manual("robinhood", TOKEN)                 # built within the hour

@@ -82,6 +82,8 @@ async def transfers(chain: str, token: str, client: httpx.AsyncClient | None = N
                     if t and k not in seen:
                         seen.add(k)
                         out.append(t)
+                from app.trading.onchain import wallet_clusters
+                wallet_clusters.progress("transfers", (page + 1) / MAX_PAGES if len(rows) >= PAGE else 1.0)
                 if len(rows) < PAGE:
                     break
                 nxt = int(rows[-1]["blockNumber"])
