@@ -6,7 +6,7 @@ import { coverage, loadHidden, useNarratives } from "./lib/store";
 import { Dock, LABEL, type View } from "./components/Dock";
 import { Top3 } from "./components/Top3";
 import { Sheet } from "./components/Sheet";
-import { TokenRow, gemId } from "./components/TokenRow";
+import { gemId } from "./components/TokenRow";
 import { Arenas } from "./views/Arenas";
 import { Database } from "./views/Database";
 import { GemList } from "./views/GemList";
@@ -16,14 +16,15 @@ import { getSectors, type SectorsView } from "./lib/sectors";
 import { TokenPage, type Opened } from "./views/TokenPage";
 import { Quality, qualityContext } from "./views/Quality";
 import { Scout } from "./views/Scout";
+import { Watch } from "./views/Watch";
+import { Search } from "./views/Search";
 
 const POLL_MS = 30_000;
 const PEARL_MIN = 70;          // a "70" on screen is always a pearl
 const PEARL_MAX_AGE_DAYS = 30;
-const ALL: View[] = ["today", "sectors", "gems", "pearl", "top", "rank", "quality", "agent", "profile"];
-// Direction A (Lorenzo 22/10 "applica tutto"): a short dock; Pearl, Early and
-// Top live in Gems beside Arenas and Database.
-const DOCK: View[] = ["today", "sectors", "gems", "quality", "agent", "profile"];
+const ALL: View[] = ["today", "sectors", "watch", "search", "gems", "pearl", "top", "rank", "quality", "agent"];
+// Direction A (Lorenzo 22/10 "come in questo pdf"): the dock holds Today,
+// Sectors, Watch and Search; the rest opens from the avatar.
 const GEMS: View[] = ["gems", "pearl", "top", "rank"];
 
 // Read before the view's own hash replaces it.
@@ -46,7 +47,7 @@ export function App() {
   const [sec, setSec] = useState<SectorsView | null>(null);
   const [err, setErr] = useState("");
   const [open, setOpenRaw] = useState<Opened | null>(null);
-  const [search, setSearch] = useState(false);
+  const [more, setMore] = useState(false);
   const closePage = useCallback(() => setOpenRaw(null), []);
   const [quality, setQuality] = useState(false);
   const [sells, setSells] = useState<{ risk: number | null } | null>(null);
@@ -86,7 +87,6 @@ export function App() {
   }, []);
   useEffect(() => { history.replaceState(null, "", `${location.pathname}${location.search}#${view}`); scrollTo(0, 0); }, [view]);
 
-  const views = DOCK.filter((v) => v !== "quality" || quality);
   const inGems = GEMS.includes(view);
   const podium = data ? [...data.entries].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 3) : [];
   const born = Date.now() / 1000 - PEARL_MAX_AGE_DAYS * 86400;
@@ -119,21 +119,29 @@ export function App() {
   return (
     <MotionConfig reducedMotion="user">
       <main className="mx-auto max-w-xl px-4 pb-[calc(104px+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+18px)]">
-        <h1 className="mb-3 text-[40px] font-bold leading-none tracking-tight">{LABEL[view]}</h1>
+        {view !== "search" && (
+          <header className="mb-3 flex items-center justify-between gap-3">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.03em]">{LABEL[view]}</h1>
+            <button type="button" onClick={() => setMore(true)} aria-label="Profile and more"
+              className="grid h-9 w-9 flex-none place-items-center rounded-full bg-ink text-[14px] font-semibold text-on-ink">{initial}</button>
+          </header>
+        )}
         {inGems && <Top3 list={podium} onOpen={openWith((e) => `Top 25 · score ${sc(e)}`)} />}
         {err && !data && <p className="rounded-2xl bg-card p-4 text-[14px] text-down">Could not load the gems: {err}</p>}
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
             {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} />}
             {view === "sectors" && <Sectors data={sec} onOpen={openWith((e) => `Sectors · ${e.arena_rank ? `#${e.arena_rank} · ` : ""}score ${sc(e)}`)} />}
+            {view === "watch" && <Watch data={sec} gems={data ? [...data.entries, ...data.early] : []} onOpen={openWith((e) => `Watch · score ${sc(e)}`)} />}
+            {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} />}
             {inGems && (
               <div className="flex gap-1 rounded-full bg-pill p-1">
                 {([["arenas", "Arenas", "gems"], ["database", "Database", "gems"], ["pearl", "Pearl", "pearl"], ["early", "Early", "top"], ["rank", "Top", "rank"]] as const).map(([s, label, v]) => {
                   const on = view === v && (v !== "gems" || sub === s);
                   return (
                     <button key={s} type="button" onClick={() => { if (v === "gems") setSub(s as "arenas" | "database"); setView(v); }} aria-pressed={on}
-                      className={`relative h-9 min-w-0 flex-1 rounded-full text-[13.5px] font-medium transition-colors duration-200 ${on ? "text-on-ink" : "text-text-2"}`}>
-                      {on && <motion.span layoutId="gems-sub" className="absolute inset-0 rounded-full bg-ink" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
+                      className={`relative h-9 min-w-0 flex-1 rounded-full text-[13.5px] font-medium transition-colors duration-200 ${on ? "text-text" : "text-text-2"}`}>
+                      {on && <motion.span layoutId="gems-sub" className="absolute inset-0 rounded-full bg-card shadow-[0_1px_2px_rgb(0_0_0/.06)]" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
                       <span className="relative">{label}</span>
                     </button>
                   );
@@ -144,10 +152,10 @@ export function App() {
               <>
                 {sub === "arenas" ? (
                   <>
-                    <ScanButton onClick={() => setSearch(true)} />
+                    <ScanButton onClick={() => setView("search")} />
                     {data ? <Arenas arenas={data.arenas} filtered={narr.length > 0} labels={labels} onOpen={openArena} /> : <Skeleton />}
                   </>
-                ) : <Database onOpen={openProject} scan={<ScanButton onClick={() => setSearch(true)} />} />}
+                ) : <Database onOpen={openProject} scan={<ScanButton onClick={() => setView("search")} />} />}
               </>
             )}
             {view === "pearl" && data && (
@@ -168,16 +176,23 @@ export function App() {
             )}
             {view === "quality" && <Quality onOpen={openWith(qualityContext)} />}
             {view === "agent" && <Scout sells={sells} />}
-            {view === "profile" && (
-              <p className="py-8 text-center text-[14px] text-text-2">
-                {LABEL[view]} moves here in a next step. Until then it is in the <a className="underline" href={`/onchain-app.html#${view}`}>current app</a>.
-              </p>
-            )}
           </motion.div>
         </AnimatePresence>
       </main>
-      <Dock view={inGems ? "gems" : view} views={views} onView={setView} onSearch={() => setSearch(true)} initial={initial} />
-      <SearchSheet open={search} data={data} onClose={() => setSearch(false)} onOpen={(e) => { setSearch(false); setOpen({ e }); }} />
+      <Dock view={view} onView={setView} />
+      <Sheet open={more} title="More" onClose={() => setMore(false)}>
+        <nav className="grid gap-1.5">
+          {([["gems", "Gems", "Arenas, Database, Pearl, Early and Top 25"], ...(quality ? [["quality", "Quality", "Quality 80 or more, to accept or discard"]] : []),
+            ["agent", "Scout", "What the engine is doing, and every token's journey"]] as [View, string, string][]).map(([v, label, sub]) => (
+            <button key={v} type="button" onClick={() => { setMore(false); setView(v); }} className="flex flex-col rounded-[16px] bg-bg px-4 py-3 text-left active:bg-pill">
+              <b className="text-[16px] font-semibold">{label}</b><small className="text-[13px] text-text-3">{sub}</small>
+            </button>
+          ))}
+          <a href="/onchain-app.html#profile" className="flex flex-col rounded-[16px] bg-bg px-4 py-3">
+            <b className="text-[16px] font-semibold">Profile</b><small className="text-[13px] text-text-3">Wallets, alerts and theme, in the current app for now</small>
+          </a>
+        </nav>
+      </Sheet>
       <AnimatePresence>{open && <TokenPage key={gemId(open.e)} open={open} onClose={closePage} />}</AnimatePresence>
     </MotionConfig>
   );
@@ -191,27 +206,6 @@ function ScanButton({ onClick }: { onClick: () => void }) {
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
       </span>
     </button>
-  );
-}
-
-// Until the scanner moves here (step 5): a search among the gems already loaded.
-function SearchSheet({ open, data, onClose, onOpen }: { open: boolean; data: Data | null; onClose: () => void; onOpen: (e: Gem) => void }) {
-  const [q, setQ] = useState("");
-  const s = q.trim().toLowerCase();
-  const seen = new Set<string>();
-  const hits = !s || !data ? [] : [...data.entries, ...data.early, ...data.arenas.flatMap((a) => a.entries)].filter((e) => {
-    const id = gemId(e);
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return e.symbol.toLowerCase().includes(s) || (e.name ?? "").toLowerCase().includes(s) || e.token_address.toLowerCase() === s;
-  });
-  return (
-    <Sheet open={open} title="Search" sub="Ticker, name or address among the gems." onClose={onClose}>
-      <input autoFocus value={q} onChange={(ev) => setQ(ev.target.value)} placeholder="Ticker or address" autoComplete="off" spellCheck={false}
-        className="h-12 w-full rounded-full border border-line bg-transparent px-5 text-[16px] outline-none placeholder:text-text-3 focus:border-text-3" />
-      <ol className="mt-3">{hits.map((e, i) => <TokenRow key={gemId(e)} e={e} i={i} onOpen={onOpen} />)}</ol>
-      {s && !hits.length && <p className="py-3 text-[14px] text-text-2">Nothing called "{q}" among the gems.</p>}
-    </Sheet>
   );
 }
 
