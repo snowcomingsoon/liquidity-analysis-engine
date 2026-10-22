@@ -15,6 +15,7 @@ ACC = ["Acc1" + "a" * 40, "Acc2" + "b" * 40, "Acc3" + "c" * 40]
 @pytest.fixture(autouse=True)
 def data(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(sc, "helius_key", lambda: "")
     return tmp_path
 
 
@@ -61,6 +62,40 @@ def test_build_and_watch_keep_case(data, monkeypatch):
     assert cfg["token"] == MINT and cfg["accounts"][W[0]] == ACC[0] and cfg["state"]["last_sig"][ACC[0]] == ACC[0] + "new"
     asyncio.run(sw.run_all(force=True))
     out = json.loads(ss.report_path("solana", MINT).read_text())
-    assert out["token"] == MINT and out["coverage"]["note"].startswith("top 20")
+    assert out["token"] == MINT and out["coverage"]["note"].endswith("no transfer links")
     assert out["events"] and out["risk"]["score"] > 0
     assert wc.request("solana", "not-an-address", now=0) is False
+
+
+def test_sender_links_skip_programs_and_airdrops(monkeypatch):
+    monkeypatch.setattr(sc.legit, "is_program_account", lambda o: o == "POOL")
+    senders = {W[0]: "POOL", W[1]: "F", W[2]: "F", "X": W[0]}
+    links = sc.sender_links(senders, {W[0], W[1], W[2], "X"})
+    assert (W[0], "X", "transfer") in links and (W[1], W[2], "same_sender") in links
+    drop = {f"h{i}": "D" for i in range(sc.AIRDROP_MIN)}
+    assert sc.sender_links(drop, set(drop)) == []
+
+
+def test_helius_holders_sum_by_owner(monkeypatch):
+    monkeypatch.setattr(sc.legit, "is_program_account", lambda o: o == "POOL")
+
+    async def fake_rpc(method, params):
+        return {"token_accounts": [{"owner": W[0], "address": ACC[0], "amount": 5},
+                                   {"owner": W[0], "address": ACC[2], "amount": 7},
+                                   {"owner": "POOL", "address": "P", "amount": 99},
+                                   {"owner": W[1], "address": ACC[1], "amount": 3}]}
+    monkeypatch.setattr(sc, "_rpc", fake_rpc)
+    hs = asyncio.run(sc.helius_holders(MINT, set()))
+    assert [(h["owner"], h["account"], h["amount"]) for h in hs] == [(W[0], ACC[2], 12), (W[1], ACC[1], 3)]
+
+
+def test_helius_errors_never_show_the_key(monkeypatch):
+    import httpx
+
+    class Boom(httpx.AsyncClient):
+        async def post(self, url, **kw):
+            raise httpx.ConnectError(f"failed {url}")
+    monkeypatch.setattr(sc.httpx, "AsyncClient", Boom)
+    with pytest.raises(RuntimeError) as e:
+        asyncio.run(sc._helius("getHealth", [], "SECRETKEY"))
+    assert "SECRETKEY" not in str(e.value)

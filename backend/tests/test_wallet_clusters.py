@@ -189,3 +189,41 @@ def test_build_from_explorer_marks_coverage(data, monkeypatch):
     assert res["coverage"]["partial"] and res["coverage"]["source"] == "eth.blockscout.com"
     cfg = sw.watched()[0]
     assert cfg["coverage"]["partial"] and cfg["state"]["next_block"] == 10_000 - 300
+
+
+def test_manual_check_has_its_own_budget_and_goes_first(data):
+    now = 1_900_000_000.0
+    other = "0x" + "99" * 20
+    assert wc.request("robinhood", other, now=now)
+    st = wc._state()
+    st.update(day=__import__("time").strftime("%Y-%m-%d", __import__("time").gmtime(now)), built_today=wc.MAX_PER_DAY)
+    wc._save_state(st)
+    assert wc.request("robinhood", TOKEN, urgent=True, manual=True, now=now)
+    assert wc._take(now)["token"] == TOKEN          # automatic budget spent, manual still runs
+    assert wc._take(now) is None
+    s = wc.token_status("robinhood", other)
+    assert s["queued"] and s["position"] == 0
+
+
+def test_account_cap(data):
+    for _ in range(wc.PER_ACCOUNT_PER_DAY):
+        assert wc.account_take("u1", now=1_900_000_000)
+    assert not wc.account_take("u1", now=1_900_000_000)
+    assert wc.account_take("u2", now=1_900_000_000)
+    assert wc.account_take("u1", now=1_900_000_000 + 86400)
+
+
+def test_new_tokens_before_rebuilds_in_order(data):
+    now = 1_900_000_000.0
+    a, b, c = ("0x" + x * 20 for x in ("a1", "b2", "c3"))
+    wc._done({"key": wc._key("robinhood", c)}, {"clusters": [], "partial": False}, None, now - 8 * 86400)
+    assert wc.request("robinhood", c, now=now)              # old build: a rebuild
+    assert wc.request("robinhood", a, now=now)              # new
+    assert wc.request("robinhood", b, now=now)              # new, after a
+    assert [q["token"] for q in wc._state()["queue"]] == [a, b, c]
+    wc._done({"key": wc._key("robinhood", c)}, {"clusters": [], "partial": False}, None, now - 3 * 86400)
+    st = wc._state()
+    st["queue"] = []
+    wc._save_state(st)
+    assert not wc.request("robinhood", c, now=now)          # weekly for the rest
+    assert wc.request("robinhood", c, now=now, rebuild_s=wc.REBUILD_TOP_S)   # every 2 days in the Top

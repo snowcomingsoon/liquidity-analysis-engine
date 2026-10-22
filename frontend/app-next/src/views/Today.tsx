@@ -5,19 +5,16 @@ import { type SectorsView, type TodayKind, sinceText } from "../lib/sectors";
 import { Logo } from "../components/Logo";
 import { changeText, usdShort } from "../lib/format";
 import { gemId } from "../components/TokenRow";
+import { watchedIds } from "./Watch";
 
 const FILTERS: [TodayKind | "all", string][] = [["all", "All"], ["champion", "Champions"], ["entered", "New"], ["dropped", "Dropped"]];
 const MARK: Record<TodayKind, string> = { champion: "text-up", entered: "text-up", dropped: "text-down", moved: "text-text-3" };
 const PREVIEW = 4;
-const WATCH_KEY = "watchlist-v1";   // the token page's star (TokenPage.tsx)
-
-function watchedIds(): string[] {
-  try { return (JSON.parse(localStorage.getItem(WATCH_KEY) || "[]") as string[]).map((id) => id.replace(/^gem:/, "")); } catch { return []; }
-}
+const WATCH_ROWS = 5;
 
 /** Today (direction A, Lorenzo 10/10 and 22/10): what changed since about a
  *  day ago, then a glance at the strongest sectors. */
-export function Today({ data, onOpen, onSectors }: { data: SectorsView | null; onOpen: (e: Gem) => void; onSectors: () => void }) {
+export function Today({ data, onOpen, onSectors, onWatch }: { data: SectorsView | null; onOpen: (e: Gem) => void; onSectors: () => void; onWatch: () => void }) {
   const [filter, setFilter] = useState<TodayKind | "all">("all");
   if (!data) return <div className="mt-2 space-y-2">{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-16 animate-pulse rounded-[20px] bg-card" />)}</div>;
   const t = data.today;
@@ -27,7 +24,9 @@ export function Today({ data, onOpen, onSectors }: { data: SectorsView | null; o
   const byId = new Map<string, { e: Gem; sector: string }>();
   for (const s of data.sectors) for (const e of s.entries) if (!byId.has(gemId(e)) || e.in !== false) byId.set(gemId(e), { e, sector: s.label });
   const news = new Map(t.items.map((i) => [gemId(i.gem), i] as const));
-  const watch = watchedIds().map((id) => ({ id, hit: byId.get(id), news: news.get(id) }));
+  // Only the followed tokens that are ranked now, with real data; the rest live in Watch (Lorenzo 22/10).
+  const watchAll = watchedIds().flatMap((id) => { const hit = byId.get(id); return hit ? [{ id, hit, news: news.get(id) }] : []; });
+  const watch = watchAll.slice(0, WATCH_ROWS);
   return (
     <>
       <p className="text-[13px] text-text-2">
@@ -39,11 +38,13 @@ export function Today({ data, onOpen, onSectors }: { data: SectorsView | null; o
       </div>
       {watch.length > 0 && (
         <>
-          <h2 className="mt-4 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Your watchlist</h2>
+          <div className="mt-4 flex items-baseline justify-between">
+            <h2 className="text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Your watchlist</h2>
+            <button type="button" onClick={onWatch} className="text-[13px] font-medium text-text-2">Show all ›</button>
+          </div>
           <ol className="mt-2 rounded-[20px] bg-card p-1.5">
             {watch.map(({ id, hit, news: n }) => {
-              const [chain, token] = [id.slice(0, id.indexOf(":")), id.slice(id.indexOf(":") + 1)];
-              const e = hit?.e ?? n?.gem ?? { chain, token_address: token, symbol: token.slice(0, 6) };
+              const e = hit.e;
               const [chg, sign] = changeText(e.change_24h);
               return (
                 <li key={id}>
@@ -51,7 +52,7 @@ export function Today({ data, onOpen, onSectors }: { data: SectorsView | null; o
                     <Logo size={34} symbol={e.symbol} image={e.image} chain={e.chain} token={e.token_address} />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[15px] font-medium leading-tight">{e.symbol}</b>
-                      <small className="block truncate text-[12.5px] text-text-2">{n ? n.text : hit ? `${hit.sector}${e.arena_rank ? ` · #${e.arena_rank}` : ""} · no change` : "not in the ranking now"}</small>
+                      <small className="block truncate text-[12.5px] text-text-2">{n ? n.text : `${hit.sector}${e.arena_rank ? ` · #${e.arena_rank}` : ""}${e.score != null ? ` · score ${Math.round(e.score)}` : ""}`}</small>
                     </span>
                     <span className="flex flex-col items-end">
                       <b className="num text-[14px] font-semibold">{usdShort(e.market_cap)}</b>

@@ -31,11 +31,15 @@ SERVICES = {
     "gemini": ("GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai/models"),
     # A GitHub token with the Models permission (read-only), from github.com/settings/tokens.
     "github": ("GITHUB_MODELS_TOKEN", "https://models.github.ai/inference/chat/completions"),
+    # Solana RPC and holder lists for the coordinated-sells check (22/10);
+    # the key travels in the URL, not in a header.
+    "helius": ("HELIUS_API_KEY", "https://mainnet.helius-rpc.com/?api-key={key}"),
 }
 # The catalog of GitHub Models answers without a token, so its check is the
 # smallest real call: one token out.
 CHECK_POST = {"github": {"model": "openai/gpt-4o-mini", "max_tokens": 1,
-                         "messages": [{"role": "user", "content": "ok"}]}}
+                         "messages": [{"role": "user", "content": "ok"}]},
+              "helius": {"jsonrpc": "2.0", "id": 1, "method": "getHealth"}}
 
 
 def _read() -> dict:
@@ -73,10 +77,11 @@ async def check(name: str, key: str) -> str:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             headers = {"Authorization": f"Bearer {key}"}
+            url = url.replace("{key}", key)
             r = await (client.post(url, json=CHECK_POST[name], headers=headers) if name in CHECK_POST
                        else client.get(url, headers=headers))
     except httpx.HTTPError as exc:
-        return f"the service did not answer ({type(exc).__name__})"
+        return f"the service did not answer ({type(exc).__name__})"   # never the URL: it may hold the key
     if r.status_code == 200 or (r.status_code == 429 and name in CHECK_POST):   # busy, but the key is good
         return ""
     if r.status_code in (401, 403):

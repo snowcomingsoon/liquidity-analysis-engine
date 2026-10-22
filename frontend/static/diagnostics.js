@@ -156,6 +156,7 @@
   const SERVICES = [
     { id: "groq", name: "Groq", hint: "Free key from console.groq.com/keys — checks the gems before they enter the Top." },
     { id: "gemini", name: "Gemini", hint: "Free key from aistudio.google.com/apikey — the backup when Groq does not answer." },
+    { id: "helius", name: "Helius", hint: "Free key from dashboard.helius.dev — Solana holders and transfers for the coordinated-sells check." },
     { id: "github", name: "GitHub Models", hint: "Free token from github.com/settings/tokens (fine-grained, permission Models: read) — the reserve after Gemini." },
   ];
 

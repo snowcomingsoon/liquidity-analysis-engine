@@ -1549,7 +1549,7 @@ async def lifespan(app: FastAPI):
     if settings.onchain_radar_enabled:
         # Wallet clusters of the candidates, built by the server (22/10).
         from app.trading.onchain import wallet_clusters
-        background.append(asyncio.create_task(wallet_clusters.loop(_ai_veto_candidates)))
+        background.append(asyncio.create_task(wallet_clusters.loop(_cluster_candidates)))
     t5 = asyncio.create_task(_watchdog_loop())
     onchain_leaderboard.set_top_source(_top_entries)
     # Gem research (leaderboard, outcomes, layers, weekly re-check, studies):
@@ -3928,6 +3928,36 @@ async def onchain_sync_watch_upload(body: dict = Body(...), user: User = Depends
     return {"ok": True, "token": cfg["token"], "wallets": len(cfg["wallets"])}
 
 
+@app.post("/api/onchain/coordinated-sells/check")
+async def onchain_coordinated_check(body: dict = Body(...), user: User = Depends(auth.get_current_user)) -> dict:
+    """Check a token by hand (Lorenzo, 22/10): {"chain", "token"}. Queued first
+    in line on its own daily budget (wallet_clusters.MANUAL_PER_DAY), built in
+    the background; the result lands in the watch and the report like the
+    automatic ones. Poll GET /api/onchain/coordinated-sells/check."""
+    from app.trading.onchain import sync_watch, wallet_clusters
+    if not (_full_score(user) or _next_for(user)):
+        raise HTTPException(status_code=404, detail="Not found.")
+    chain, token = str(body.get("chain") or "").lower(), str(body.get("token") or "").strip()
+    if chain not in wallet_clusters.CHAINS:
+        raise HTTPException(status_code=400, detail=f"chain: one of {', '.join(wallet_clusters.CHAINS)}")
+    if not sync_watch._ok(token, chain):
+        raise HTTPException(status_code=400, detail="token: not an address of that chain")
+    st = wallet_clusters.token_status(chain, token)
+    if not st["queued"] and not _full_score(user) and not wallet_clusters.account_take(str(user.id)):
+        raise HTTPException(status_code=429, detail=f"{wallet_clusters.PER_ACCOUNT_PER_DAY} checks a day per account")
+    queued = wallet_clusters.request(chain, token, str(body.get("symbol") or ""), urgent=True, manual=True)
+    _fire(wallet_clusters.run_once())
+    return {"queued": queued, **wallet_clusters.token_status(chain, token)}
+
+
+@app.get("/api/onchain/coordinated-sells/check")
+async def onchain_coordinated_check_status(chain: str, token: str, user: User = Depends(auth.get_current_user)) -> dict:
+    from app.trading.onchain import wallet_clusters
+    if not (_full_score(user) or _next_for(user)):
+        raise HTTPException(status_code=404, detail="Not found.")
+    return wallet_clusters.token_status(chain, token)
+
+
 @app.delete("/api/onchain/coordinated-sells/watch")
 async def onchain_sync_watch_remove(chain: str, token: str, user: User = Depends(auth.get_current_user)) -> dict:
     from app.trading.onchain import sync_watch
@@ -4153,6 +4183,35 @@ def _ai_veto_candidates() -> list[dict]:
             row = onchain_projects_db.get(t["chain"], t["token_address"])
             e = onchain_leaderboard.db_entry(row) if row else t
         out.append(e)
+    return out
+
+
+def _cluster_candidates() -> list[dict]:
+    """Every token the app shows, most important first (wallet_clusters):
+    the Top/arenas (rebuilt every 2 days), Early, Quality, the board, then the
+    research candidates. Light rows: chain, token, symbol, created_at, _top."""
+    out, seen = [], set()
+
+    def add(e: dict, top: bool = False) -> None:
+        chain, tok = e.get("chain") or "", e.get("token_address") or e.get("token") or ""
+        k = f"{chain}:{tok}".lower()
+        if chain and tok and k not in seen:
+            seen.add(k)
+            out.append({"chain": chain, "token_address": tok, "symbol": e.get("symbol") or "",
+                        "created_at": e.get("created_at") or e.get("pair_created_at"), "_top": top})
+    steps = [(lambda: _top_entries(ARENA_POOL, full=True), True),
+             (lambda: onchain_leaderboard.early_list(), False),
+             (lambda: _kobra_early(), False),
+             (lambda: (_quality_view().get("accepted") or []) + (_quality_view().get("waiting") or []), False),
+             (lambda: list(onchain_leaderboard._entries.values()), False),
+             (_ai_veto_candidates, False)]
+    for fn, top in steps:
+        try:
+            for e in fn():
+                if isinstance(e, dict):
+                    add(e, top)
+        except Exception:  # noqa: BLE001
+            logger.exception("cluster candidates")
     return out
 
 
