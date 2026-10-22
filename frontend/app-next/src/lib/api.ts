@@ -90,8 +90,18 @@ export type SellsReport = {
   events: { id: string; cluster: string; ts: number; window_s?: number | null; wallets: number; share_sold?: number | null; sellers?: string[] }[];
 };
 export type ClusterCheck = { state: "unsupported" | "running" | "queued" | "failed" | "built" | "none"; place?: number; clusters?: number };
-export const getClusterCheck = (chain: string, token: string) =>
-  get<ClusterCheck>(`/api/onchain/coordinated-sells/status?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 15000);
+type CheckRaw = { position?: number | null; busy?: boolean; built_at?: number | null; clusters?: number; error?: string | null };
+// GET /check (wallet_clusters): its fields read as one state for the token page.
+export const getClusterCheck = (chain: string, token: string): Promise<ClusterCheck> =>
+  get<CheckRaw>(`/api/onchain/coordinated-sells/check?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 15000).then((r) =>
+    r.busy && r.position === 0 ? { state: "running" }
+      : r.position != null ? { state: "queued", place: r.position }
+      : r.built_at ? { state: "built", clusters: r.clusters ?? 0 }
+      : r.error ? { state: "failed" } : { state: "none" },
+  (e: { status?: number }) => { if (e?.status === 400) return { state: "unsupported" } as ClusterCheck; throw e; });
+// A cluster check on demand for a pasted address (wallet_clusters, first in line).
+export const askClusterCheck = (chain: string, token: string) =>
+  post<{ queued?: boolean; position?: number | null; error?: string | null; manual_left?: number }>("/api/onchain/coordinated-sells/check", { chain, token });
 export const getCoordinatedSells = () => get<{ sample?: boolean; reports?: SellsReport[] }>("/api/onchain/coordinated-sells", 20000);
 
 // The scanner (sheets.js openScan): a server job streamed as NDJSON; if the

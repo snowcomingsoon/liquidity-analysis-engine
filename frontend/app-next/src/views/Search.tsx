@@ -6,6 +6,9 @@ import { Logo } from "../components/Logo";
 import { usdShort } from "../lib/format";
 import type { Gem } from "../lib/types";
 import { Scan } from "../components/Scan";
+import { ClusterCheck } from "../components/ClusterCheck";
+
+const ADDRESS = /^(0x[0-9a-fA-F]{40}|[1-9A-HJ-NP-Za-km-z]{32,48})$/;
 
 const RECENT_KEY = "search-recent-v1";
 const RECENT_MAX = 8;
@@ -77,6 +80,7 @@ export function Search({ sectors, onProject, onSector, onToken }: { sectors: Sec
               </div>
             </>
           )}
+          {ADDRESS.test(s) && <><Label>Wallet clusters</Label><ClusterCheck address={s} onOpen={(e) => { remember(s); onToken(e); }} /></>}
           <Label>{hits?.length ? "Something else?" : "Not in the database yet"}</Label>
           <Scan key={s} query={s} onOpen={(e) => { remember(e.symbol || s); onToken(e); }} />
         </>

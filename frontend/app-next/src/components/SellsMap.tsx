@@ -42,13 +42,20 @@ export function SellsMap({ chain, token }: { chain: string; token: string }) {
     let live = true;
     setRep(null); setCheck(null);
     const n = token.startsWith("0x") ? token.toLowerCase() : token;
-    api.getCoordinatedSells().then((d) => {
+    let t = 0;
+    // While the check waits or runs, look again every 30 s: the map takes its place when ready.
+    const load = () => api.getCoordinatedSells().then((d) => {
       if (!live) return;
       const found = d.sample ? null : (d.reports ?? []).find((r) => r.chain === chain && r.token === n) ?? null;
-      if (found) setRep(found);
-      else api.getClusterCheck(chain, token).then((c) => { if (live) setCheck(c); }).catch(() => {});
+      if (found) { setRep(found); return; }
+      api.getClusterCheck(chain, token).then((c) => {
+        if (!live) return;
+        setCheck(c);
+        if (c.state === "queued" || c.state === "running" || (c.state === "built" && c.clusters)) t = window.setTimeout(load, 30000);
+      }).catch(() => {});
     }).catch(() => {});
-    return () => { live = false; };
+    load();
+    return () => { live = false; clearTimeout(t); };
   }, [chain, token]);
 
   useEffect(() => {
