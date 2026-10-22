@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 
 import pytest
 
@@ -249,3 +250,16 @@ def test_manual_check_starts_at_once_with_progress(data, monkeypatch):
     assert seen["holders"][0]["address"] == w(3) and seen["counts"]["holders"] and any(c["edges"] for c in seen["clusters"])
     assert (data / "wallet_clusters" / f"robinhood-{TOKEN}.json").exists()
     assert not wc.start_manual("robinhood", TOKEN)                 # built within the hour
+
+
+def test_prune_and_console(data):
+    now = 1_900_000_000.0
+    other = "0x" + "99" * 20
+    assert wc.request("robinhood", TOKEN, "A", now=now, section="top")
+    assert wc.request("robinhood", other, "B", now=now)
+    assert wc.prune({wc._key("robinhood", TOKEN)}) == 1
+    v = wc.queue_view()
+    assert [x["symbol"] for x in v["queue"]] == ["A"] and v["queue"][0]["section"] == "top"
+    wc.note("done", {"chain": "robinhood", "symbol": "A"}, "1 clusters")
+    assert wc.queue_view(since=0)["log"][-1]["kind"] == "done"
+    assert wc.queue_view(since=time.time() + 1)["log"] == []
