@@ -212,6 +212,16 @@ async def run(chain: str, token: str, wallets: list[str], pools: list[str], from
 # the Telegram alert. Shares are fractions of supply, never percentages.
 
 REPORT_VERSION = 1
+# Structure risk (Lorenzo 22/10, "conta anche la struttura"): the supply held
+# by linked wallets, before they sell. STRUCT_FULL of supply in clusters = 100,
+# so 18% reaches the exclusion line of 60.
+STRUCT_FULL = 0.30
+
+
+def structure(out_clusters: list[dict]) -> dict:
+    """Share of supply held by linked clusters (not the plain top-holders group)."""
+    held = sum(c["share"] for c in out_clusters if c["id"] != "top" and len(c["wallets"]) >= 2)
+    return {"score": round(100 * min(1.0, held / STRUCT_FULL)), "share": round(held, 6)}
 
 
 def _reasons(cid: str, groups: list[dict], parts: dict) -> list[str]:
@@ -256,9 +266,13 @@ def report(chain: str, token: str, transfers: list[dict], clusters: list[dict], 
                 "txs": [m["tx"] for m in g["moves"] if m.get("tx")],
             })
     events.sort(key=lambda e: e["ts"] or 0)
+    st = structure(out_clusters)
+    if st["score"] > best:
+        reasons.insert(0, f"linked wallets hold {100 * st['share']:.1f}% of supply")
+    best = max(best, st["score"])
     return {"version": REPORT_VERSION, "chain": chain, "token": _addr(token), "symbol": symbol,
             "updated_at": int(now if now is not None else time.time()),
-            "risk": {"score": best, "reasons": reasons}, "clusters": out_clusters, "events": events}
+            "risk": {"score": best, "reasons": reasons, "structure": st}, "clusters": out_clusters, "events": events}
 
 
 def report_path(chain: str, token: str):
