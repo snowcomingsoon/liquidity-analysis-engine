@@ -141,3 +141,7 @@ export type TrackPick = { chain: string; token_address: string; symbol: string; 
 export type Track = { stats?: { horizons?: { days: number; all?: TrackStat; top?: TrackStat; studied?: TrackStat; rejected?: TrackStat; excess?: TrackStat }[] };
   picks?: TrackPick[]; missed?: TrackPick[] };
 export const getTrack = () => get<Track>("/api/onchain/track");
+
+// The Telegram alerts (alert_track.py), the bell of alerts.js.
+export type AlertItem = { symbol: string; name?: string; chain: string; token_address: string; image?: string; at: number; cap0?: number; now?: number | null; gone?: boolean };
+export const getAlerts = (kind: "meme" | "gem") => get<{ items?: AlertItem[] }>(`/api/onchain/alerts/${kind}`);
