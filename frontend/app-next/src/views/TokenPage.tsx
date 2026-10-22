@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import * as api from "../lib/api";
+import { askPush } from "../lib/push";
 import type { Candle, Deep, Entry, Gem, RecheckProgress } from "../lib/types";
 import { age, changeText, usdShort } from "../lib/format";
 import { setTokenHidden } from "../lib/store";
@@ -168,6 +169,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
 
   // The re-check is a job on the server (bg.js): it goes on with the app closed.
   async function recheck() {
+    askPush();
     if (!entry || rc.busy || wait > 0) return;
     const busy: Recheck = { busy: true, own: true, failed: false, steps: [], log: [], started: Date.now() / 1000 };
     rcRef.current = busy;

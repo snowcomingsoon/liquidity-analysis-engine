@@ -104,7 +104,7 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
   return (
     <>
       {sells && (
-        <a href="/onchain-app.html#sells" className="flex h-11 items-center gap-2 rounded-full bg-card px-4 text-[14px] font-medium">
+        <a href="/onchain-app.html?classic=1#sells" className="flex h-11 items-center gap-2 rounded-full bg-card px-4 text-[14px] font-medium">
           <span className="flex-1">Coordinated sells</span>
           {sells.risk != null && <b className={`text-[13px] ${sells.risk >= 70 ? "text-down" : sells.risk >= 40 ? "text-amber" : "text-text-2"}`}>risk {Math.round(sells.risk)}</b>}
           <i className="not-italic text-text-3" aria-hidden="true">›</i>

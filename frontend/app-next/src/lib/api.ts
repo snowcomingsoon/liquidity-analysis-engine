@@ -145,3 +145,5 @@ export const getTrack = () => get<Track>("/api/onchain/track");
 // The Telegram alerts (alert_track.py), the bell of alerts.js.
 export type AlertItem = { symbol: string; name?: string; chain: string; token_address: string; image?: string; at: number; cap0?: number; now?: number | null; gone?: boolean };
 export const getAlerts = (kind: "meme" | "gem") => get<{ items?: AlertItem[] }>(`/api/onchain/alerts/${kind}`);
+export const getPushKey = () => get<{ key: string }>("/api/push/key");
+export const pushSubscribe = (subscription: PushSubscriptionJSON) => post<unknown>("/api/push/subscribe", { subscription });

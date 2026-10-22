@@ -8586,6 +8586,8 @@ def _render_onchain_app(user: User | None) -> str:
     # chiesto chi sei: prima la pagina restava vuota fino a quel momento.
     # Si cerca per id, non per l'intero tag: un attributo aggiunto al tag
     # (data-view del Pilota) bastava a far fallire il replace in silenzio.
+    if _next_for(user):
+        html = html.replace("<head>", "<head>" + _TO_NEXT, 1)
     target = "app-shell" if user else "login-screen"
     html = re.sub(rf'(<[^>]*\bid="{target}"[^>]*?) hidden>', r"\1>", html, count=1)
     return _with_guest_banner(html, user)
@@ -8610,12 +8612,26 @@ async def web_manifest() -> FileResponse:
 _NEXT_INDEX = FRONTEND_DIR / "static" / "next" / "index.html"
 
 
+def _next_for(user: User | None) -> bool:
+    """Whether this account gets /app: everyone signed in once it is open to
+    all (guest links keep the current app), else the allowlist."""
+    if user is None or guest_links.is_guest(user) or not _NEXT_INDEX.is_file():
+        return False
+    return settings.onchain_next_for_all or user.email in email_allowlist(settings.onchain_next_emails)
+
+
+# A phone that opens the current app goes to /app (the desktop stays, and /app
+# sends widths of 1100px and up back here, so the two never loop).
+_TO_NEXT = ('<script>if(innerWidth<1100&&!/[?&]classic=1/.test(location.search))'
+            'location.replace("/app"+location.hash)</script>')
+
+
 @app.get("/app")
 async def onchain_next_page(user: User | None = Depends(auth.get_current_user_optional)) -> Response:
     """The on-chain app rebuilt in React (frontend/app-next, built by the
     Dockerfile into static/next/), for settings.onchain_next_emails only:
     anyone else, or a build that is missing, goes to the current app."""
-    if user is None or user.email not in email_allowlist(settings.onchain_next_emails) or not _NEXT_INDEX.is_file():
+    if not _next_for(user):
         return RedirectResponse("/onchain-app.html", status_code=303)
     data = json.dumps(_onchain_boot_payload(user), separators=(",", ":")).replace("<", "\\u003c")
     html = _NEXT_INDEX.read_text(encoding="utf-8").replace(

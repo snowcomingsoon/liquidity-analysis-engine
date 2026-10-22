@@ -15,6 +15,7 @@ _PASSWORD = "app-next-pass-123"
 def users(tmp_path, monkeypatch):
     monkeypatch.setattr(auth, "_USERS_FILE", tmp_path / "users.json")
     monkeypatch.setattr(main.settings, "onchain_next_emails", "lorenzo@example.com")
+    monkeypatch.setattr(main.settings, "onchain_next_for_all", False)
     index = tmp_path / "index.html"
     index.write_text("<head><!--onchain-boot--></head><div id=root></div>", encoding="utf-8")
     monkeypatch.setattr(main, "_NEXT_INDEX", index)
@@ -47,3 +48,18 @@ def test_anyone_else_goes_to_the_current_app(users, email):
 def test_a_missing_build_falls_back_to_the_current_app(users):
     users.unlink()
     assert _get("lorenzo@example.com").status_code == 303
+
+
+def test_open_to_all_serves_every_account_and_sends_phones_there(users, monkeypatch):
+    monkeypatch.setattr(main.settings, "onchain_next_for_all", True)
+    assert _get("other@example.com").status_code == 200
+    assert _get(None).status_code == 303
+    with TestClient(main.app) as client:
+        client.post("/api/auth/login", json={"email": "other@example.com", "password": _PASSWORD})
+        assert 'location.replace("/app"' in client.get("/onchain-app.html").text
+
+
+def test_the_allowlist_alone_does_not_redirect_others(users):
+    with TestClient(main.app) as client:
+        client.post("/api/auth/login", json={"email": "other@example.com", "password": _PASSWORD})
+        assert 'location.replace("/app"' not in client.get("/onchain-app.html").text

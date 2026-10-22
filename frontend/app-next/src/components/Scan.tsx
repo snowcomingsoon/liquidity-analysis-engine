@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as api from "../lib/api";
+import { askPush } from "../lib/push";
 import type { Entry, Gem } from "../lib/types";
 import { Logo } from "./Logo";
 import { changeText, usdShort, age } from "../lib/format";
@@ -34,6 +35,7 @@ export function Scan({ query, onOpen }: { query: string; onOpen: (e: Gem) => voi
   const [added, setAdded] = useState("");
 
   async function go() {
+    askPush();
     setRun("busy"); setErr(""); setD(null); setSteps([]); setAdded("");
     try {
       const r = await api.streamScan(query, (ev) => {

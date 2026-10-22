@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     # (frontend/app-next). Lorenzo, 21/10: "non x whitekobra ma per lorenzo
     # devi farla": his own account only, everyone else keeps their app.
     onchain_next_emails: str = "sha256:ec987139be8d4d3991504dbe9bd5c8f92ce102948dee4e4305db5e84e841eb0e"
+    # Lorenzo, 22/10: "rinnova l'app per tutto [...] va applicato a tutti".
+    # True opens /app to every signed-in account (guest links aside) and sends
+    # phones from /onchain-app.html to it; False goes back to the list above.
+    onchain_next_for_all: bool = True
     # Accounts whose Top and arenas score the database rows on the whole row,
     # as the token page does (Lorenzo, 17/10: "per ora falla solo per
     # whitekobra"). Everyone else keeps the lighter rows, and the Telegram

@@ -724,6 +724,12 @@ Lorenzo: "se entro qui io veda cosa succede davvero quando una crypto entra in a
 
 # Memoria di sessione
 
+
+**22/10, nuova app React per tutti.** Lorenzo: "rinnova l'app per tutto mantenendo le funzioni che aveva whitekobra; ma va applicato a tutti". Grafica = direzione A (PDF, artifact Rr4FBJ5B9HAQxtqSBUdaAA).
+- PR #655–#661: dock Today/Sectors/Watch/Search, avatar → Gems/Quality/Scout/Profile, foglio token, dossier, scanner, profilo, avvisi.
+- `settings.onchain_next_for_all=True`: /app a ogni account (ospiti esclusi), e il telefono passa da /onchain-app.html a /app. Il desktop non cambia. `?classic=1` tiene la vecchia app.
+- Elenco di parità in `/mnt/project-files/app-react/parita-nuova-app.md`.
+
 ## Dati social veri per la Top 50: Telegram, Discord, X — 2026-10-01
 Lorenzo: "per la top50 sfruttiamo questa connessione per controllare i canali telegram pubblici dei progetti" (guida MTProto/WTelegramClient), poi "possiamo fare lo stesso con discord?", "dobbiamo carpire quante piu informazioni possibili dai telegram, mettendoci in pari sugli sviluppi", "non abbiamo altri metodi per avere accesso a dati social veritieri?".
 Prova sulla Top 50 del 01/10 (`project-files/telegram/top50-canali.md`): Telegram 32/50 (tutti da DexScreener, siti 0 in piu'), 16 canali (solo 2 con post negli ultimi 30 giorni), 11 gruppi, 2 senza anteprima; Discord 11/50 via API inviti pubblica (membri/online), 4 senza Telegram. Login MTProto (Telethon) NON fatto: aggiungerebbe solo i messaggi dei gruppi, serve api_id/api_hash/telefono di Lorenzo. Discord messaggi: solo con bot invitato dagli admin; account utente = ban, scartato.
