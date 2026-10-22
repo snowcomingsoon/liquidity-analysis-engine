@@ -42,3 +42,27 @@ export type ProjectStats = {
 export type Projects = { items: Project[]; total: number; stats?: ProjectStats };
 
 export type Narrative = { key: string; label?: string; projects?: number };
+
+export type Candle = { time: number; open: number; high: number; low: number; close: number };
+
+/* The dossier is wide and grows on the server: the fields the page reads are
+   typed, the facts behind the pillars stay loose (leaderboard.js reads them as is). */
+type Loose = Record<string, any>;
+export type Point = string | { text?: string; evidence?: string; note?: string };
+export type Pillar = { score?: number; facts?: Loose; flags?: string[] };
+export type Judge = { score?: number; verdict?: string; strengths?: string[]; problems?: string[]; admit_reason?: string | null;
+  x?: Loose; tg?: Loose; tg_events?: Loose[]; dc?: Loose; drift?: Loose };
+export type Entry = Gem & {
+  on_board?: boolean; top_rank?: number | null; rank?: number; why?: string; summary?: string; stage?: string; honor?: string;
+  pillars?: Record<string, Pillar>; traction?: { traction?: number; value?: number; facts?: Loose; reasons?: string[] } | null;
+  judge?: Judge | null; review?: { keep?: boolean; reason?: string } | null;
+  code?: { complexity?: number; innovation?: number; fork_of?: string | null; summary?: string; strengths?: string[]; concerns?: string[] } | null;
+  similarity?: { score?: number; traits?: { label: string; got: number }[] }; benchmark?: boolean; closed_source?: boolean;
+  scan_url?: string; description?: string; website?: string; github?: string; socials?: { type: string; url: string }[];
+};
+export type Deep = { verdict?: string; score?: number; keep?: boolean; unsupported?: boolean; reason?: string; strengths?: Point[]; problems?: Point[];
+  claims?: { status: string; text?: string; evidence?: string; note?: string }[]; cleared?: number; unverified?: number; confirmed?: number; at?: number; auto?: boolean };
+export type RecheckProgress = { running?: boolean; started?: number; steps?: { label: string; detail?: string }[];
+  log?: { n: number; src: string; text: string; code?: number | null }[] };
+export type TokenDossier = { entry: Entry | null; deep?: Deep | null; deep_wait_s?: number | null; deep_progress?: RecheckProgress | null };
+export type Job = { state: string; result?: { deep?: Deep }; detail?: { wait_s?: number }; error?: string };

@@ -10,11 +10,15 @@ import { TokenRow, gemId } from "./components/TokenRow";
 import { Arenas } from "./views/Arenas";
 import { Database } from "./views/Database";
 import { GemList } from "./views/GemList";
+import { TokenPage, type Opened } from "./views/TokenPage";
 
 const POLL_MS = 30_000;
 const PEARL_MIN = 70;          // a "70" on screen is always a pearl
 const PEARL_MAX_AGE_DAYS = 30;
 const ALL: View[] = ["gems", "pearl", "top", "rank", "quality", "agent", "profile"];
+
+// Read before the view's own hash replaces it.
+const LINK = location.hash.match(/&token=([^:&]+):([^&]+)/);
 
 type Data = { entries: Gem[]; early: Gem[]; arenas: Arena[] };
 
@@ -31,8 +35,9 @@ export function App() {
   const [sub, setSub] = useState<"arenas" | "database">("arenas");
   const [data, setData] = useState<Data | null>(null);
   const [err, setErr] = useState("");
-  const [open, setOpen] = useState<Gem | null>(null);
+  const [open, setOpenRaw] = useState<Opened | null>(null);
   const [search, setSearch] = useState(false);
+  const closePage = useCallback(() => setOpenRaw(null), []);
   const [quality, setQuality] = useState(false);
   const [labels, setLabels] = useState<Record<string, string>>({});
   const narr = useNarratives();
@@ -58,13 +63,37 @@ export function App() {
   const views = ALL.filter((v) => v !== "quality" || quality);
   const podium = data ? [...data.entries].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 3) : [];
   const born = Date.now() / 1000 - PEARL_MAX_AGE_DAYS * 86400;
-  const openProject = (p: Project) => setOpen({ chain: p.chain, token_address: p.token, symbol: p.symbol ?? "?", name: p.name, image: p.image, score: p.score, market_cap: p.mcap, liquidity_usd: p.liq });
+  const sc = (e: { score?: number }) => Math.round(e.score ?? 0);
+  // Each list says where the token was seen, on the page's context line (top.js, projects.js register()).
+  const openWith = (context: (e: Gem) => string) => (e: Gem) => setOpen({ e, context: context(e) });
+  const setOpen = (o: Opened | null) => setOpenRaw(o);
+  const byScore = data ? [...data.entries].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)) : [];
+  const openArena = openWith((e) => {
+    const a = data?.arenas.find((x) => x.entries.some((y) => gemId(y) === gemId(e)));
+    return a ? `${a.label} · #${e.arena_rank} of ${a.size} · score ${sc(e)}` : `score ${sc(e)}`;
+  });
+  const openRanked = openWith((e) => `Top 25 · #${byScore.findIndex((x) => gemId(x) === gemId(e)) + 1} · score ${sc(e)}`);
+  const openProject = (p: Project) => setOpen({
+    e: { chain: p.chain, token_address: p.token, symbol: p.symbol ?? "?", name: p.name, image: p.image, score: p.score, market_cap: p.mcap, liquidity_usd: p.liq },
+    context: `Database · score ${p.score == null ? "—" : Math.round(p.score)} · ${p.status}${p.why ? ` · ${p.why}` : ""}` });
+
+  // A shared link or an alert: #<view>&token=<chain>:<address>[&tab=why] opens that token.
+  useEffect(() => {
+    const m = LINK;
+    if (!m) return;
+    const chain = decodeURIComponent(m[1]), token = decodeURIComponent(m[2]);
+    api.getToken(chain, token).then((r) => {
+      const p = r.entry;
+      setOpen({ e: { chain, token_address: token, symbol: p?.symbol ?? token.slice(0, 6), name: p?.name, image: p?.image, pair_address: p?.pair_address,
+        pair_url: p?.pair_url, market_cap: p?.market_cap, change_24h: p?.change_24h, launched_at: p?.launched_at } });
+    }).catch(() => {});
+  }, []);
 
   return (
     <MotionConfig reducedMotion="user">
       <main className="mx-auto max-w-xl px-4 pb-[calc(104px+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+18px)]">
         <h1 className="mb-3 text-[40px] font-bold leading-none tracking-tight">{LABEL[view]}</h1>
-        <Top3 list={podium} onOpen={setOpen} />
+        <Top3 list={podium} onOpen={openWith((e) => `Top 25 · score ${sc(e)}`)} />
         {err && !data && <p className="rounded-2xl bg-card p-4 text-[14px] text-down">Could not load the gems: {err}</p>}
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
@@ -82,24 +111,24 @@ export function App() {
                 {sub === "arenas" ? (
                   <>
                     <ScanButton onClick={() => setSearch(true)} />
-                    {data ? <Arenas arenas={data.arenas} filtered={narr.length > 0} labels={labels} onOpen={setOpen} /> : <Skeleton />}
+                    {data ? <Arenas arenas={data.arenas} filtered={narr.length > 0} labels={labels} onOpen={openArena} /> : <Skeleton />}
                   </>
                 ) : <Database onOpen={openProject} scan={<ScanButton onClick={() => setSearch(true)} />} />}
               </>
             )}
             {view === "pearl" && data && (
-              <GemList title="Pearl" rule="Early gems scoring 70 or more, at most 30 days old" badge="early" onOpen={setOpen}
+              <GemList title="Pearl" rule="Early gems scoring 70 or more, at most 30 days old" badge="early" onOpen={openWith((e) => `Pearl · score ${sc(e)}`)}
                 lead="The best of Early: under $300k cap, every bar of the Top passed, and a score of at least 70. Small and risky. Research, not advice."
                 empty="No Early gem of the last 30 days scores 70 or more right now. The list is refreshed by the nightly scan."
                 rows={data.early.filter((e) => Math.round(e.score ?? 0) >= PEARL_MIN && (e.launched_at ?? 0) >= born)} />
             )}
             {view === "top" && data && (
-              <GemList title="Early" rule="under $300k cap" badge="early" onOpen={setOpen} rows={data.early}
+              <GemList title="Early" rule="under $300k cap" badge="early" onOpen={openWith((e) => `Early · score ${sc(e)}`)} rows={data.early}
                 lead="Small projects that pass every other bar of the Top: real usage, holders, code and research. Smaller and riskier. Research, not advice."
                 empty="No project under $300k passes the bars right now. The list is refreshed by the nightly scan." />
             )}
             {view === "rank" && data && (
-              <GemList title={narr.length ? `Top 25 · ${narr.map((k) => labels[k] ?? k).join(", ")}` : "Top 25"} rule="the best gems by score" ranked onOpen={setOpen} rows={data.entries}
+              <GemList title={narr.length ? `Top 25 · ${narr.map((k) => labels[k] ?? k).join(", ")}` : "Top 25"} rule="the best gems by score" ranked onOpen={openRanked} rows={data.entries}
                 lead="The 25 highest scores among the gems that passed the checks: usage, holders, code, research and tokenomics. Market cap and 24h change live from DexScreener. Research, not advice."
                 empty="The ranking is filling up: gems appear as they pass the checks." />
             )}
@@ -112,8 +141,8 @@ export function App() {
         </AnimatePresence>
       </main>
       <Dock view={view} views={views} onView={setView} onSearch={() => setSearch(true)} initial={initial} />
-      <SearchSheet open={search} data={data} onClose={() => setSearch(false)} onOpen={(e) => { setSearch(false); setOpen(e); }} />
-      <TokenPeek e={open} onClose={() => setOpen(null)} />
+      <SearchSheet open={search} data={data} onClose={() => setSearch(false)} onOpen={(e) => { setSearch(false); setOpen({ e }); }} />
+      <AnimatePresence>{open && <TokenPage key={gemId(open.e)} open={open} onClose={closePage} />}</AnimatePresence>
     </MotionConfig>
   );
 }
@@ -146,21 +175,6 @@ function SearchSheet({ open, data, onClose, onOpen }: { open: boolean; data: Dat
         className="h-12 w-full rounded-full border border-line bg-transparent px-5 text-[16px] outline-none placeholder:text-text-3 focus:border-text-3" />
       <ol className="mt-3">{hits.map((e, i) => <TokenRow key={gemId(e)} e={e} i={i} onOpen={onOpen} />)}</ol>
       {s && !hits.length && <p className="py-3 text-[14px] text-text-2">Nothing called "{q}" among the gems.</p>}
-    </Sheet>
-  );
-}
-
-// Until the token page moves here (step 2): the essentials and a link to the full page.
-function TokenPeek({ e, onClose }: { e: Gem | null; onClose: () => void }) {
-  return (
-    <Sheet open={!!e} title={e?.name || e?.symbol} sub={e ? `${e.symbol} · ${e.chain}` : ""} onClose={onClose}>
-      {e && (
-        <>
-          <ol><TokenRow e={e} onOpen={() => {}} /></ol>
-          <a href={`/onchain-app.html#gems&token=${encodeURIComponent(e.chain)}:${encodeURIComponent(e.token_address)}`}
-            className="mt-2 block rounded-full bg-ink py-3.5 text-center text-[15px] font-medium text-on-ink">Open the full page</a>
-        </>
-      )}
     </Sheet>
   );
 }

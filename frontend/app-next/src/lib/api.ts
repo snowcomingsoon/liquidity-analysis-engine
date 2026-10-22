@@ -1,10 +1,11 @@
-import type { Narrative, Projects, Top } from "./types";
+import type { Candle, Deep, Job, Narrative, Projects, RecheckProgress, Top, TokenDossier } from "./types";
 
 // The same contract as static/onchain/api.js: X-Device on every call,
 // identical GETs in flight shared, errors carry the server's detail.
 export class ApiError extends Error {
   status?: number;
-  constructor(message: string, status?: number) { super(message); this.status = status; }
+  detail?: unknown;
+  constructor(message: string, status?: number, detail?: unknown) { super(message); this.status = status; this.detail = detail; }
 }
 
 export const device = (() => {
@@ -32,7 +33,7 @@ async function send<T>(path: string, method = "GET", body?: unknown, timeoutMs =
   let payload: { detail?: unknown } | null = null;
   try { payload = await r.json(); } catch { /* 204 or not JSON */ }
   if (r.status === 401) location.href = "/onchain-app.html";
-  if (!r.ok) throw new ApiError(typeof payload?.detail === "string" ? payload.detail : `error ${r.status}`, r.status);
+  if (!r.ok) throw new ApiError(typeof payload?.detail === "string" ? payload.detail : `error ${r.status}`, r.status, payload?.detail);
   return payload as T;
 }
 
@@ -57,3 +58,15 @@ export const getProjects = (params: Record<string, string | number>) =>
 export const getNarrativeCoverage = () => get<{ items: Narrative[] }>("/api/onchain/narratives/coverage");
 export const getHidden = () => get<{ hidden: string[] }>("/api/profile/hidden");
 export const setHidden = (body: { chain: string; token: string; hide: boolean }) => post<{ hidden: string[] }>("/api/profile/hidden", body);
+
+const tq = (chain: string, token: string) => `chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`;
+// The token page's dossier (main.py onchain_token): board entry or database row, and the deep re-check.
+export const getToken = (chain: string, token: string) => get<TokenDossier>(`/api/onchain/token?${tq(chain, token)}`);
+export const recheckProgress = (chain: string, token: string) =>
+  get<{ progress?: RecheckProgress | null }>(`/api/onchain/token/recheck/progress?${tq(chain, token)}`);
+// The re-check as a job (bg.js): {job} at once, the result by poll.
+export const recheckJob = (chain: string, token: string, body: { view: string; label: string }) =>
+  send<{ job?: string; deep?: Deep }>(`/api/onchain/token/recheck?${tq(chain, token)}`, "POST", body, 20000);
+export const getJob = (id: string) => send<Job>(`/api/jobs/${encodeURIComponent(id)}?visible=1`, "GET", undefined, 10000);
+export const getTokenChart = (chain: string, pool: string, symbol: string, interval: string, peek = false) =>
+  get<{ candles?: Candle[] }>(`/api/onchain/chart?${new URLSearchParams({ chain, pool, symbol, interval, ...(peek ? { peek: "1" } : {}) })}`, 20000);
