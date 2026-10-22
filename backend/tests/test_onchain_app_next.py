@@ -63,3 +63,13 @@ def test_the_allowlist_alone_does_not_redirect_others(users):
     with TestClient(main.app) as client:
         client.post("/api/auth/login", json={"email": "other@example.com", "password": _PASSWORD})
         assert 'location.replace("/app"' not in client.get("/onchain-app.html").text
+
+
+def test_a_phone_is_sent_to_the_new_app_by_the_server(users, monkeypatch):
+    monkeypatch.setattr(main.settings, "onchain_next_for_all", True)
+    phone = {"user-agent": "Mozilla/5.0 (iPhone) Mobile/15E148"}
+    with TestClient(main.app) as client:
+        client.post("/api/auth/login", json={"email": "other@example.com", "password": _PASSWORD})
+        resp = client.get("/onchain-app.html", headers=phone, follow_redirects=False)
+        assert resp.status_code == 303 and resp.headers["location"] == "/app"
+        assert client.get("/onchain-app.html?classic=1", headers=phone).status_code == 200

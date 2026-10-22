@@ -2,7 +2,7 @@
   "name": "DEGEN",
   "short_name": "DEGEN",
   "id": "/onchain-app.html",
-  "start_url": "/onchain-app.html",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0d0e11",

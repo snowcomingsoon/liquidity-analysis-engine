@@ -8641,7 +8641,12 @@ async def onchain_next_page(user: User | None = Depends(auth.get_current_user_op
 
 
 @app.get("/onchain-app.html")
-async def onchain_app_page(user: User | None = Depends(auth.get_current_user_optional)) -> HTMLResponse:
+async def onchain_app_page(request: Request, user: User | None = Depends(auth.get_current_user_optional)) -> Response:
+    # A phone goes to /app from the server too, not only from the injected
+    # script: a home-screen app could keep showing the old page (22/10).
+    if (_next_for(user) and "Mobi" in request.headers.get("user-agent", "")
+            and request.query_params.get("classic") != "1"):
+        return RedirectResponse("/app", status_code=303)
     # La pagina ora contiene chi sei: nessuna cache condivisa deve tenerla.
     return HTMLResponse(
         _render_onchain_app(user),
