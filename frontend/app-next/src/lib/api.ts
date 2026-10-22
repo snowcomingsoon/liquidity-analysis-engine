@@ -89,6 +89,9 @@ export type SellsReport = {
   clusters: { id: string; wallets: { address: string; share?: number | null }[]; share?: number | null; links?: string[]; risk?: number | null; edges?: [string, string][] }[];
   events: { id: string; cluster: string; ts: number; window_s?: number | null; wallets: number; share_sold?: number | null; sellers?: string[] }[];
 };
+export type ClusterCheck = { state: "unsupported" | "running" | "queued" | "failed" | "built" | "none"; place?: number; clusters?: number };
+export const getClusterCheck = (chain: string, token: string) =>
+  get<ClusterCheck>(`/api/onchain/coordinated-sells/status?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 15000);
 export const getCoordinatedSells = () => get<{ sample?: boolean; reports?: SellsReport[] }>("/api/onchain/coordinated-sells", 20000);
 
 // The scanner (sheets.js openScan): a server job streamed as NDJSON; if the

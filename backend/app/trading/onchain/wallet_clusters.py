@@ -63,6 +63,7 @@ RETRY_S = 86400
 TS_EXACT = 300                            # exact timestamps for this many sell blocks
 DEAD = {"0x" + "0" * 40, "0x000000000000000000000000000000000000dead"}
 _lock = asyncio.Lock()
+_running: dict = {"key": None}     # the token being built now, for token_status()
 
 
 def _dir() -> Path:
@@ -153,6 +154,26 @@ def status() -> dict:
             time.strftime("%Y-%m-%d", time.gmtime()) else 0, "max_per_day": MAX_PER_DAY,
             "built": sum(1 for r in (st.get("tokens") or {}).values() if r.get("built_at")),
             "busy": _lock.locked()}
+
+
+def token_status(chain: str, token: str) -> dict:
+    """Where one token's cluster check stands, for the token page (Lorenzo,
+    22/10: the section must not look missing while it waits): unsupported,
+    running, queued (with its place), failed, built or none."""
+    chain, token = (chain or "").lower(), sync_watch._n(token or "")
+    if chain not in CHAINS or not sync_watch._ok(token, chain):
+        return {"state": "unsupported"}
+    k = _key(chain, token)
+    st = _state()
+    if _running["key"] == k:
+        return {"state": "running"}
+    place = next((i + 1 for i, q in enumerate(st.get("queue", [])) if q.get("key") == k), None)
+    if place:
+        return {"state": "queued", "place": place}
+    rec = (st.get("tokens") or {}).get(k) or {}
+    if rec.get("failed_at") and not rec.get("built_at"):
+        return {"state": "failed"}
+    return {"state": "built", "clusters": rec.get("clusters", 0)} if rec.get("built_at") else {"state": "none"}
 
 
 # --- RPC -------------------------------------------------------------------
@@ -503,13 +524,16 @@ async def run_once(now: float | None = None) -> dict | None:
         item = _take(now)
         if not item:
             return None
+        _running["key"] = item["key"]
         try:
             res = await build(item["chain"], item["token"], item.get("symbol", ""), item.get("created_at"))
         except Exception as exc:  # noqa: BLE001
             logger.exception("wallet clusters %s", item["token"])
             _done(item, None, str(exc) or type(exc).__name__, now)
+            _running["key"] = None
             return None
         _done(item, res, None, now)
+        _running["key"] = None
         logger.info("wallet clusters %s %s: %d clusters, %d transfers%s", item["chain"], item.get("symbol"),
                     len(res["clusters"]), res["transfers"], " (partial)" if res["partial"] else "")
         return res

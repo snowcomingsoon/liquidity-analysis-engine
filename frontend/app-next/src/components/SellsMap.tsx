@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "../lib/api";
-import type { SellsReport } from "../lib/api";
+import type { ClusterCheck, SellsReport } from "../lib/api";
 
 // The bubble map lives once, in the classic app's static files: the same
 // module draws it here (canvas, 60 fps, still with reduced motion).
@@ -17,10 +17,22 @@ const when = (ts: number) => {
 };
 const tone = (s?: number | null) => (s == null ? "text-text-3" : s >= 70 ? "text-down" : s >= 40 ? "text-amber" : "text-up");
 
+// Without a report the section still shows, with where its check stands
+// (Lorenzo, 22/10: "mica c'è ancora"): opening the page queues the check.
+const WAIT: Record<ClusterCheck["state"], string> = {
+  running: "Cluster check running now. The map appears here when it ends.",
+  queued: "Cluster check queued. The map appears here when it runs.",
+  none: "Cluster check not run yet for this token.",
+  failed: "Cluster check failed on this token's data. It retries later.",
+  built: "Cluster check done: no wallet cluster found among the top holders.",
+  unsupported: "Cluster check is not available on this chain.",
+};
+
 /** Coordinated sells of one token: its wallet clusters as bubbles and the
- *  waves they sold in. Nothing at all when the token has no report. */
+ *  waves they sold in; without a report, where its check stands. */
 export function SellsMap({ chain, token }: { chain: string; token: string }) {
   const [rep, setRep] = useState<SellsReport | null>(null);
+  const [check, setCheck] = useState<ClusterCheck | null>(null);
   const [pick, setPick] = useState<Pick>(null);
   const [lit, setLit] = useState<number | null>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -28,9 +40,13 @@ export function SellsMap({ chain, token }: { chain: string; token: string }) {
 
   useEffect(() => {
     let live = true;
+    setRep(null); setCheck(null);
+    const n = token.startsWith("0x") ? token.toLowerCase() : token;
     api.getCoordinatedSells().then((d) => {
-      if (!live || d.sample) return;
-      setRep((d.reports ?? []).find((r) => r.chain === chain && r.token === token.toLowerCase()) ?? null);
+      if (!live) return;
+      const found = d.sample ? null : (d.reports ?? []).find((r) => r.chain === chain && r.token === n) ?? null;
+      if (found) setRep(found);
+      else api.getClusterCheck(chain, token).then((c) => { if (live) setCheck(c); }).catch(() => {});
     }).catch(() => {});
     return () => { live = false; };
   }, [chain, token]);
@@ -45,7 +61,18 @@ export function SellsMap({ chain, token }: { chain: string; token: string }) {
     return () => { gone = true; map.current?.destroy(); map.current = null; };
   }, [rep]);
 
-  if (!rep) return null;
+  if (!rep) {
+    if (!check) return null;
+    return (
+      <section className="mt-5">
+        <h3 className="mb-2 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Coordinated sells</h3>
+        <p className="flex items-center gap-2.5 rounded-[16px] bg-card px-4 py-3.5 text-[13.5px] text-text-2">
+          {(check.state === "running" || check.state === "queued") && <i className="h-2 w-2 flex-none animate-pulse rounded-full bg-amber" aria-hidden="true" />}
+          <span>{check.state === "built" && check.clusters ? "Clusters found. Their sells are being read: the map appears here in a few minutes." : WAIT[check.state]}{check.state === "queued" && check.place ? ` Place in line: ${check.place}.` : ""}</span>
+        </p>
+      </section>
+    );
+  }
   const real = rep.clusters.filter((c) => c.id !== "top");
   const name = (id: string) => (id === "top" ? "Top holders" : `Cluster ${real.findIndex((c) => c.id === id) + 1}`);
   const waves = rep.events.slice(0, 6);

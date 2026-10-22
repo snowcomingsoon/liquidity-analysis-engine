@@ -189,3 +189,13 @@ def test_build_from_explorer_marks_coverage(data, monkeypatch):
     assert res["coverage"]["partial"] and res["coverage"]["source"] == "eth.blockscout.com"
     cfg = sw.watched()[0]
     assert cfg["coverage"]["partial"] and cfg["state"]["next_block"] == 10_000 - 300
+
+
+def test_token_status_follows_the_queue(tmp_path, monkeypatch):
+    from app.trading.onchain import storage, wallet_clusters as wc
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    tok = "0x" + "ab" * 20
+    assert wc.token_status("tron", tok)["state"] == "unsupported"
+    assert wc.token_status("robinhood", tok)["state"] == "none"
+    assert wc.request("robinhood", tok, now=1000)
+    assert wc.token_status("robinhood", tok) == {"state": "queued", "place": 1}
