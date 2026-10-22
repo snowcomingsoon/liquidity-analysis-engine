@@ -6,7 +6,7 @@ import { CheckProgress, useClusterCheck } from "./CheckProgress";
 // module draws it here (canvas, 60 fps, still with reduced motion).
 const MAP_URL = "/static/onchain/cluster-map.js";
 type MapApi = { highlight(a: Set<string> | null): void; update(r: SellsReport): void; destroy(): void };
-type Pick = { address: string; share: number; cluster: { id: string } } | null;
+type Pick = { address: string; share: number; cluster: { id: string }; label?: string | null } | null;
 
 const pct = (x?: number | null) => (x == null ? "—" : `${(x * 100).toFixed(x < 0.01 ? 2 : 1)}%`);
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -80,13 +80,13 @@ export function SellsMap({ chain, token, starting = false, bare = false }: { cha
   return (
     <section className={bare ? "" : "mt-5"}>
       <h3 className="mb-2 flex items-baseline justify-between text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">
-        Coordinated sells<b className={`num text-[13px] font-semibold normal-case tracking-normal ${tone(rep.risk?.score)}`}>{done ? `risk ${rep.risk?.score == null ? "—" : Math.round(rep.risk.score)}` : "live"}</b>
+        Coordinated sells<b className={`num text-[13px] font-semibold normal-case tracking-normal ${tone(rep.risk?.score)}`}>{done ? (rep.risk?.score == null ? "risk —" : `risk ${Math.round(rep.risk.score)}/100 · ${rep.risk.score >= 60 ? "high" : rep.risk.score >= 30 ? "medium" : "low"}`) : "live"}</b>
       </h3>
       {!done && <div className="mb-3"><CheckProgress check={check} /></div>}
       <div ref={host} className="overflow-hidden rounded-[16px] bg-card" aria-label="Wallet bubble map" />
       <p className="mt-1 min-h-[1.4em] text-[12.5px] text-text-3">
-        {pick ? `${short(pick.address)} · ${pct(pick.share)} of supply · ${pick.cluster.id === "top" ? "top holder, no link found" : name(pick.cluster.id)}`
-          : "Bubble size = share of supply. Tap a bubble or a sell."}
+        {pick ? (pick.label ? `${pick.label} · ${pct(pick.share)} of supply together` : `${short(pick.address)} · ${pct(pick.share)} of supply · ${pick.cluster.id === "top" ? "top holder, no link found" : name(pick.cluster.id)}`)
+          : "Bubble size = share of supply. Tap a bubble, or a sell below."}
       </p>
       {waves.length > 0 && (
         <ol className="mt-1">

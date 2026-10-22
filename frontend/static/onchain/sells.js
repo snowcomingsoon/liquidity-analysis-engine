@@ -115,7 +115,7 @@ function mountMap(r, card) {
   const map = clusterMap(card.querySelector("[data-map]"), r, {
     onPick(hit) {
       pick.textContent = hit
-        ? `${short(hit.address)} · ${pct(hit.share)} of supply · ${hit.cluster.id === "top" ? "top holder, no link found" : `Cluster ${real.indexOf(hit.cluster) + 1}`}`
+        ? hit.label ? `${hit.label} · ${pct(hit.share)} of supply together` : `${short(hit.address)} · ${pct(hit.share)} of supply · ${hit.cluster.id === "top" ? "top holder, no link found" : `Cluster ${real.indexOf(hit.cluster) + 1}`}`
         : hint;
     },
   });
