@@ -61,7 +61,7 @@ AIRDROP_SAME_SHARE = 0.5
 # Lorenzo, 22/10: "il controllo cluster è vitale, deve avere priorità massima
 # sui titoli presenti nella nostra app, in qualunque sezione": every token the
 # app shows, not only the candidates. One build every LOOP_S, never two at once.
-MAX_PER_DAY = 200       # free RPCs and explorers only: the cap guards their rate limits
+MAX_PER_DAY = 10_000    # no real cap (Lorenzo 22/10: "rendilo costante"); only a runaway guard
 LOOP_S = 300            # candidates refreshed this often; builds run back to back
 GAP_S = 15
 REBUILD_TOP_S = 2 * 86400   # Top/arenas: rebuilt every 2 days, the rest weekly
