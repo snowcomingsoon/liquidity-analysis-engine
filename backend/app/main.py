@@ -3957,6 +3957,15 @@ async def onchain_coordinated_check_status(chain: str, token: str, user: User = 
     return wallet_clusters.token_status(chain, token)
 
 
+@app.get("/api/onchain/clusters/queue")
+async def onchain_clusters_queue(since: float = 0, user: User = Depends(auth.get_current_user)) -> dict:
+    """The Clusters tab: running checks, the queue, the console since `since`."""
+    from app.trading.onchain import wallet_clusters
+    if not (_full_score(user) or _next_for(user)):
+        raise HTTPException(status_code=404, detail="Not found.")
+    return wallet_clusters.queue_view(since)
+
+
 @app.delete("/api/onchain/coordinated-sells/watch")
 async def onchain_sync_watch_remove(chain: str, token: str, user: User = Depends(auth.get_current_user)) -> dict:
     from app.trading.onchain import sync_watch
@@ -4187,28 +4196,29 @@ def _ai_veto_candidates() -> list[dict]:
 
 def _cluster_candidates() -> list[dict]:
     """Every token the app shows, most important first (wallet_clusters):
-    the Top/arenas (rebuilt every 2 days), Early, Quality, the board, then the
-    research candidates. Light rows: chain, token, symbol, created_at, _top."""
+    the Top/arenas (rebuilt every 2 days), Early, Quality. Light rows: chain,
+    token, symbol, created_at, _top, _section."""
     out, seen = [], set()
 
-    def add(e: dict, top: bool = False) -> None:
+    def add(e: dict, top: bool = False, section: str = "") -> None:
         chain, tok = e.get("chain") or "", e.get("token_address") or e.get("token") or ""
         k = f"{chain}:{tok}".lower()
         if chain and tok and k not in seen:
             seen.add(k)
             out.append({"chain": chain, "token_address": tok, "symbol": e.get("symbol") or "",
-                        "created_at": e.get("created_at") or e.get("pair_created_at"), "_top": top})
-    steps = [(lambda: _top_entries(ARENA_POOL, full=True), True),
-             (lambda: onchain_leaderboard.early_list(), False),
-             (lambda: _kobra_early(), False),
-             (lambda: (_quality_view().get("accepted") or []) + (_quality_view().get("waiting") or []), False),
-             (lambda: list(onchain_leaderboard._entries.values()), False),
-             (_ai_veto_candidates, False)]
-    for fn, top in steps:
+                        "created_at": e.get("created_at") or e.get("pair_created_at"), "_top": top,
+                        "_section": section})
+    # Only what a screen shows (Lorenzo 22/10: 200+ in the queue against ~46
+    # in Sectors). The research board and the AI-veto list are not on screen.
+    steps = [("top", lambda: _top_entries(ARENA_POOL, full=True), True),
+             ("early", lambda: onchain_leaderboard.early_list(), False),
+             ("early", lambda: _kobra_early(), False),
+             ("quality", lambda: (_quality_view().get("accepted") or []) + (_quality_view().get("waiting") or []), False)]
+    for section, fn, top in steps:
         try:
             for e in fn():
                 if isinstance(e, dict):
-                    add(e, top)
+                    add(e, top, section)
         except Exception:  # noqa: BLE001
             logger.exception("cluster candidates")
     return out

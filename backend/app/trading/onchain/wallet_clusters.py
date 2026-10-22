@@ -31,7 +31,7 @@ import json
 import logging
 import random
 import time
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 
 from app.atomic_write import write_text_atomic
@@ -89,6 +89,12 @@ _lock = asyncio.Lock()
 # partire subito"), at most two together.
 _manual_sem = asyncio.Semaphore(2)
 _running: dict[str, dict] = {}          # key -> {"phase", "progress", "started_at"}
+_log: deque = deque(maxlen=300)         # the console of the Clusters tab, in memory only
+
+
+def note(kind: str, item: dict, msg: str = "") -> None:
+    _log.append({"ts": round(time.time(), 1), "kind": kind, "chain": item.get("chain"),
+                 "token": item.get("token"), "symbol": item.get("symbol") or "", "msg": msg})
 _current: "contextvars.ContextVar[str | None]" = contextvars.ContextVar("wallet_cluster_key", default=None)
 
 
@@ -96,7 +102,10 @@ def progress(phase: str, done: float | None = None) -> None:
     """The phase of the token being built in this task, and how far (0..1)."""
     k = _current.get()
     if k and k in _running:
-        _running[k].update(phase=phase, progress=None if done is None else round(max(0.0, min(1.0, done)), 3))
+        run = _running[k]
+        if run.get("phase") != phase:
+            note("phase", run, phase)
+        run.update(phase=phase, progress=None if done is None else round(max(0.0, min(1.0, done)), 3))
 
 
 def live(**data) -> None:
@@ -139,7 +148,7 @@ def _key(chain: str, token: str) -> str:
 
 def request(chain: str, token: str, symbol: str = "", created_at: float | None = None,
             urgent: bool = False, now: float | None = None, manual: bool = False,
-            rebuild_s: float | None = None) -> bool:
+            rebuild_s: float | None = None, section: str | None = None) -> bool:
     """Queue a token. Cheap and synchronous: the loop does the work. False
     when the chain has no source or the token was built recently."""
     chain, token = (chain or "").lower(), sync_watch._n(token or "")
@@ -161,7 +170,7 @@ def request(chain: str, token: str, symbol: str = "", created_at: float | None =
     new = not cur
     queue = [q for q in st.get("queue", []) if q.get("key") != k]
     item = {"key": k, "chain": chain, "token": token, "symbol": str(symbol or "")[:24],
-            "created_at": created_at, "at": int(now), "manual": manual}
+            "created_at": created_at, "at": int(now), "manual": manual, "section": section}
     item["new"] = new
     if urgent:
         queue.insert(0, item)
@@ -221,6 +230,30 @@ def token_status(chain: str, token: str) -> dict:
             "failed_at": rec.get("failed_at"),
             "manual_left": MANUAL_PER_DAY - (st.get("manual_today", 0) if st.get("day") ==
                                              time.strftime("%Y-%m-%d", time.gmtime()) else 0)}
+
+
+def prune(keep: set[str]) -> int:
+    """Drops automatic queue items for tokens the app no longer shows."""
+    st = _state()
+    q = st.get("queue") or []
+    kept = [x for x in q if x.get("manual") or x.get("key") in keep]
+    if len(kept) != len(q):
+        st["queue"] = kept
+        _save_state(st)
+    return len(q) - len(kept)
+
+
+def queue_view(since: float = 0, limit: int = 100) -> dict:
+    """The Clusters tab: what runs now, what waits, the console since `since`."""
+    st = _state()
+    q = st.get("queue") or []
+    today = st.get("day") == time.strftime("%Y-%m-%d", time.gmtime())
+    return {"running": [{k: r.get(k) for k in ("chain", "token", "symbol", "phase", "progress", "started_at",
+                                               "manual", "section")} for r in _running.values()],
+            "queue": [{k: x.get(k) for k in ("chain", "token", "symbol", "section", "manual", "new", "at")}
+                      for x in q[:limit]],
+            "queued": len(q), "built_today": st.get("built_today", 0) if today else 0, "max_per_day": MAX_PER_DAY,
+            "log": [e for e in _log if e["ts"] > since], "now": round(time.time(), 1)}
 
 
 def status() -> dict:
@@ -605,8 +638,10 @@ async def run_once(now: float | None = None) -> dict | None:
 
 async def _build_tracked(item: dict, now: float) -> dict | None:
     k = item["key"]
-    _running[k] = {"phase": "holders" if item["chain"] == "solana" else "transfers",
-                   "progress": None, "started_at": int(time.time())}
+    _running[k] = {**(_running.get(k) or {}), "phase": "holders" if item["chain"] == "solana" else "transfers",
+                   "progress": None, "started_at": int(time.time()), "chain": item["chain"], "token": item["token"],
+                   "symbol": item.get("symbol", ""), "manual": bool(item.get("manual")), "section": item.get("section")}
+    note("start", item, "manual" if item.get("manual") else item.get("section") or "")
     tok = _current.set(k)
     try:
         res = await build(item["chain"], item["token"], item.get("symbol", ""), item.get("created_at"))
@@ -624,11 +659,13 @@ async def _build_tracked(item: dict, now: float) -> dict | None:
     except Exception as exc:  # noqa: BLE001
         logger.exception("wallet clusters %s", item["token"])
         _done(item, None, str(exc) or type(exc).__name__, now)
+        note("failed", item, (str(exc) or type(exc).__name__)[:120])
         return None
     finally:
         _current.reset(tok)
         _running.pop(k, None)
     _done(item, res, None, now)
+    note("done", item, f"{len(res['clusters'])} clusters" + (", partial" if res.get("partial") else ""))
     return res
 
 
@@ -643,7 +680,9 @@ def start_manual(chain: str, token: str, symbol: str = "") -> bool:
     if rec.get("built_at") and time.time() - rec["built_at"] < 3600:
         return False
     item = {"key": k, "chain": chain, "token": token, "symbol": str(symbol or "")[:24], "manual": True}
-    _running[k] = {"phase": "waiting", "progress": None, "started_at": int(time.time())}
+    _running[k] = {"phase": "waiting", "progress": None, "started_at": int(time.time()), "chain": chain,
+                   "token": token, "symbol": item["symbol"], "manual": True}
+    note("queued", item, "manual")
 
     async def go():
         async with _manual_sem:
@@ -658,10 +697,15 @@ async def loop(candidates, every_s: int = LOOP_S) -> None:
     while True:
         await asyncio.sleep(every_s)
         try:
-            for e in candidates():
+            cands = candidates()
+            dropped = prune({_key((e.get("chain") or "").lower(), sync_watch._n(e.get("token_address") or ""))
+                             for e in cands})
+            if dropped:
+                note("pruned", {}, f"{dropped} tokens no longer in the app")
+            for e in cands:
                 request(e.get("chain") or "", e.get("token_address") or "", e.get("symbol") or "",
                         e.get("created_at") or e.get("pair_created_at"),
-                        rebuild_s=REBUILD_TOP_S if e.get("_top") else None)
+                        rebuild_s=REBUILD_TOP_S if e.get("_top") else None, section=e.get("_section"))
             await run_once()
         except Exception:  # noqa: BLE001
             logger.exception("wallet clusters loop")

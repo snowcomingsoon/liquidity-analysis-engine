@@ -14,7 +14,7 @@ const WATCH_ROWS = 5;
 
 /** Today (direction A, Lorenzo 10/10 and 22/10): what changed since about a
  *  day ago, then a glance at the strongest sectors. */
-export function Today({ data, onOpen, onSectors, onWatch }: { data: SectorsView | null; onOpen: (e: Gem) => void; onSectors: () => void; onWatch: () => void }) {
+export function Today({ data, onOpen, onSectors, onWatch, early, onEarly }: { data: SectorsView | null; onOpen: (e: Gem) => void; onSectors: () => void; onWatch: () => void; early: number | null; onEarly: () => void }) {
   const [filter, setFilter] = useState<TodayKind | "all">("all");
   if (!data) return <div className="mt-2 space-y-2">{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-16 animate-pulse rounded-[20px] bg-card" />)}</div>;
   const t = data.today;
@@ -36,6 +36,11 @@ export function Today({ data, onOpen, onSectors, onWatch }: { data: SectorsView 
         <Stat label="New champions" v={t.counts.champion} />
         <Stat label="Dropped" v={t.counts.dropped} />
       </div>
+      {/* Early stays one tap away (Lorenzo 22/10: "sparita la sezione early"). */}
+      <button type="button" onClick={onEarly} className="mt-2 flex w-full items-center rounded-[20px] bg-card px-4 py-3 text-left active:bg-pill">
+        <span className="flex-1"><b className="block text-[15px] font-semibold">Early</b><small className="text-[12.5px] text-text-3">under $300k cap, every other bar passed</small></span>
+        <b className="num text-[20px] font-semibold">{early ?? "…"}</b><span className="ml-2 text-text-3">›</span>
+      </button>
       {watch.length > 0 && (
         <>
           <div className="mt-4 flex items-baseline justify-between">

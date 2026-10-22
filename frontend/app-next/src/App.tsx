@@ -134,7 +134,7 @@ export function App() {
         {err && !data && <p className="rounded-2xl bg-card p-4 text-[14px] text-down">Could not load the gems: {err}</p>}
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
-            {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} onWatch={() => setView("watch")} />}
+            {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} onWatch={() => setView("watch")} early={data?.early.length ?? null} onEarly={() => setView("top")} />}
             {view === "sectors" && <Sectors data={sec} onOpen={openWith((e) => `Sectors · ${e.arena_rank ? `#${e.arena_rank} · ` : ""}score ${sc(e)}`)} />}
             {view === "watch" && <Watch data={sec} gems={data ? [...data.entries, ...data.early] : []} onOpen={openWith((e) => `Watch · score ${sc(e)}`)} />}
             {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} onToken={(e) => setOpen({ e, context: "Scan" })} />}
@@ -188,7 +188,7 @@ export function App() {
       <Dock view={view} onView={setView} />
       <Sheet open={more} title="More" onClose={() => setMore(false)}>
         <nav className="grid gap-1.5">
-          {([["gems", "Gems", "Arenas, Database, Pearl, Early and Top 25"], ...(quality ? [["quality", "Quality", "Quality 80 or more, to accept or discard"]] : []),
+          {([["top", "Early", "Projects under $300k cap that pass every other bar"], ["gems", "Gems", "Arenas, Database, Pearl, Early and Top 25"], ...(quality ? [["quality", "Quality", "Quality 80 or more, to accept or discard"]] : []),
             ["agent", "Scout", "What the engine is doing, and every token's journey"], ["profile", "Profile", "Picture, name, theme and the picks' track record"]] as [View, string, string][]).map(([v, label, sub]) => (
             <button key={v} type="button" onClick={() => { setMore(false); setView(v); }} className="flex flex-col rounded-[16px] bg-bg px-4 py-3 text-left active:bg-pill">
               <b className="text-[16px] font-semibold">{label}</b><small className="text-[13px] text-text-3">{sub}</small>
