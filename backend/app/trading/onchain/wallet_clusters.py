@@ -61,8 +61,9 @@ AIRDROP_SAME_SHARE = 0.5
 # Lorenzo, 22/10: "il controllo cluster è vitale, deve avere priorità massima
 # sui titoli presenti nella nostra app, in qualunque sezione": every token the
 # app shows, not only the candidates. One build every LOOP_S, never two at once.
-MAX_PER_DAY = 60
-LOOP_S = 300
+MAX_PER_DAY = 200       # free RPCs and explorers only: the cap guards their rate limits
+LOOP_S = 300            # candidates refreshed this often; builds run back to back
+GAP_S = 15
 REBUILD_TOP_S = 2 * 86400   # Top/arenas: rebuilt every 2 days, the rest weekly
 MANUAL_PER_DAY = 20       # checks asked for by hand: their own budget, first in line
 PER_ACCOUNT_PER_DAY = 5   # of which one account may ask (whitekobra: no own cap)
@@ -693,9 +694,11 @@ def start_manual(chain: str, token: str, symbol: str = "") -> bool:
 
 async def loop(candidates, every_s: int = LOOP_S) -> None:
     """Queues every token the app shows (main._cluster_candidates, most
-    important first; "_top" ones rebuilt sooner) and builds one per turn."""
+    important first; "_top" ones rebuilt sooner) every `every_s`, and in
+    between builds the queue one token after another (Lorenzo 22/10: 101
+    queued and the engine idle, at one build per 5 minutes)."""
+    await asyncio.sleep(60)
     while True:
-        await asyncio.sleep(every_s)
         try:
             cands = candidates()
             dropped = prune({_key((e.get("chain") or "").lower(), sync_watch._n(e.get("token_address") or ""))
@@ -706,6 +709,22 @@ async def loop(candidates, every_s: int = LOOP_S) -> None:
                 request(e.get("chain") or "", e.get("token_address") or "", e.get("symbol") or "",
                         e.get("created_at") or e.get("pair_created_at"),
                         rebuild_s=REBUILD_TOP_S if e.get("_top") else None, section=e.get("_section"))
-            await run_once()
         except Exception:  # noqa: BLE001
             logger.exception("wallet clusters loop")
+        until, idle = time.time() + every_s, False
+        while time.time() < until:
+            try:
+                res = await run_once()
+            except Exception:  # noqa: BLE001
+                logger.exception("wallet clusters loop")
+                res = None
+            st = _state()
+            if res is None and not _lock.locked() and not any(not x.get("manual") for x in st.get("queue") or []):
+                break
+            if res is None and st.get("built_today", 0) >= MAX_PER_DAY:
+                if not idle:
+                    note("idle", {}, f"daily cap {MAX_PER_DAY} reached, resumes at 00:00 UTC")
+                    idle = True
+                break
+            await asyncio.sleep(GAP_S)
+        await asyncio.sleep(max(0, until - time.time()))
