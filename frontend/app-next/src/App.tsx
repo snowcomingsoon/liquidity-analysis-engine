@@ -20,13 +20,14 @@ import { Watch } from "./views/Watch";
 import { Search } from "./views/Search";
 import { TokenSheet } from "./views/TokenSheet";
 import { Profile } from "./views/Profile";
+import { Clusters } from "./views/Clusters";
 
 const POLL_MS = 30_000;
 const PEARL_MIN = 70;          // a "70" on screen is always a pearl
 const PEARL_MAX_AGE_DAYS = 30;
-const ALL: View[] = ["today", "sectors", "watch", "search", "gems", "pearl", "top", "rank", "quality", "agent", "profile"];
+const ALL: View[] = ["today", "sectors", "watch", "search", "gems", "pearl", "top", "rank", "quality", "agent", "clusters", "profile"];
 // Direction A (Lorenzo 22/10 "come in questo pdf"): the dock holds Today,
-// Sectors, Watch and Search; the rest opens from the avatar.
+// Sectors, Clusters, Watch and Search; the rest opens from the avatar.
 const GEMS: View[] = ["gems", "pearl", "top", "rank"];
 
 // Read before the view's own hash replaces it.
@@ -179,6 +180,7 @@ export function App() {
             )}
             {view === "quality" && <Quality onOpen={openWith(qualityContext)} />}
             {view === "agent" && <Scout sells={sells} />}
+            {view === "clusters" && <Clusters onToken={(e) => setOpen({ e, context: "Cluster check" })} />}
             {view === "profile" && <Profile onOpen={(e, context) => setPeek({ e, context })} />}
           </motion.div>
         </AnimatePresence>

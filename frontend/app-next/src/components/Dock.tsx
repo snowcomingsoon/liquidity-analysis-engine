@@ -1,19 +1,20 @@
 import { motion } from "motion/react";
 
-export type View = "today" | "sectors" | "watch" | "search" | "gems" | "pearl" | "top" | "rank" | "quality" | "agent" | "profile";
+export type View = "today" | "sectors" | "watch" | "search" | "gems" | "pearl" | "top" | "rank" | "quality" | "agent" | "clusters" | "profile";
 
 const ICONS: Partial<Record<View, React.ReactNode>> = {
   today: <path d="M4 13h3l2.5-6 4 11 2.5-5H20" />,
   sectors: <><rect x="3.5" y="3.5" width="9" height="9" rx="2" /><rect x="14.5" y="3.5" width="6" height="6" rx="1.5" /><rect x="14.5" y="11.5" width="6" height="9" rx="1.5" /><rect x="3.5" y="14.5" width="9" height="6" rx="2" /></>,
   watch: <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.4l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8Z" />,
+  clusters: <><circle cx="7" cy="8" r="3" /><circle cx="17" cy="7" r="2.2" /><circle cx="14" cy="17" r="3.5" /><path d="m9.6 9.6 2.3 4.4M9.9 7.7l4.9-.5M16.6 9.2l-1.6 4.3" /></>,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></>,
 };
 export const LABEL: Record<View, string> = {
-  today: "Today", sectors: "Sectors", watch: "Watch", search: "Search", gems: "Gems", pearl: "Pearl", top: "Early", rank: "Top", quality: "Quality", agent: "Scout", profile: "Profile",
+  today: "Today", sectors: "Sectors", watch: "Watch", search: "Search", gems: "Gems", pearl: "Pearl", top: "Early", rank: "Top", quality: "Quality", agent: "Scout", clusters: "Clusters", profile: "Profile",
 };
-export const DOCK: View[] = ["today", "sectors", "watch", "search"];
+export const DOCK: View[] = ["today", "sectors", "clusters", "watch", "search"];
 
-/** Direction A's bar (Lorenzo 22/10, "come in questo pdf"): four places on an ink pill, the chosen one on sage. */
+/** Direction A's bar (Lorenzo 22/10, "come in questo pdf"): five places on an ink pill (Clusters added, Lorenzo 22/10: "voglio una tab a parte"), the chosen one on sage. */
 export function Dock({ view, onView }: { view: View; onView: (v: View) => void }) {
   return (
     <nav aria-label="Sections"

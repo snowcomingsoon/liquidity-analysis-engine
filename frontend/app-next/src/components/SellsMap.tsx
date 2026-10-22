@@ -19,7 +19,7 @@ const tone = (s?: number | null) => (s == null ? "text-text-3" : s >= 70 ? "text
 
 // Without a report the section still shows, with where its check stands
 // (Lorenzo, 22/10: "mica c'è ancora"): opening the page queues the check.
-const WAIT: Record<ClusterCheck["state"], string> = {
+export const WAIT: Record<ClusterCheck["state"], string> = {
   running: "Cluster check running now. The map appears here when it ends.",
   queued: "Cluster check queued. The map appears here when it runs.",
   none: "Cluster check not run yet for this token.",
