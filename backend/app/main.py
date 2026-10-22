@@ -1489,11 +1489,13 @@ async def _onchain_reconcile_loop() -> None:
 async def _coordinated_sells_loop() -> None:
     """Telegram alert when a cluster sells one token together (Lorenzo,
     22/10): reads the engine's reports every minute."""
-    from app.trading.onchain import coordinated_sells, sync_watch
+    from app.trading.onchain import coordinated_sells, dev_payments, sync_watch
     while True:
         await asyncio.sleep(60)
         if not sync_watch.busy():
             _fire(sync_watch.run_all())     # each watched token every 6 h, in the background
+        if not dev_payments.busy():
+            _fire(dev_payments.run_all())   # developer payments and sells every 30 min (22/10)
         if not settings.telegram_bot_token:
             continue
         try:
@@ -1501,6 +1503,10 @@ async def _coordinated_sells_loop() -> None:
                 telegram.send_message, f"{settings.public_base_url}/onchain-app.html#sells")
         except Exception:  # noqa: BLE001
             logger.exception("coordinated sells loop")
+        try:
+            await dev_payments.notify_once(telegram.send_message, f"{settings.public_base_url}/app")
+        except Exception:  # noqa: BLE001
+            logger.exception("dev payments alert")
 
 
 @asynccontextmanager
@@ -3926,6 +3932,37 @@ async def onchain_sync_watch_upload(body: dict = Body(...), user: User = Depends
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     _fire(sync_watch.run_all(force=True))
     return {"ok": True, "token": cfg["token"], "wallets": len(cfg["wallets"])}
+
+
+@app.get("/api/onchain/dev-payments")
+async def onchain_dev_payments(token: str, user: User = Depends(auth.get_current_user)) -> dict:
+    """What a token's developer is paid and whether they sell (dev_payments.py,
+    Lorenzo 22/10, DREGG). `watched` is false until a fee account is pasted."""
+    from app.trading.onchain import dev_payments
+    _require_onchain_enabled()
+    if not (_full_score(user) or _next_for(user)):
+        raise HTTPException(status_code=404, detail="Not found.")
+    rep = dev_payments.report(token.strip())
+    watched = rep is not None or any(c["token"] == token.strip() for c in dev_payments.configs())
+    return {"watched": watched, "can_edit": _full_score(user) or not watched, "busy": dev_payments.busy(), "report": rep}
+
+
+@app.post("/api/onchain/dev-payments/watch")
+async def onchain_dev_payments_watch(body: dict = Body(...), user: User = Depends(auth.get_current_user)) -> dict:
+    """{"token", "symbol"?, "fee_accounts": [..]}: saved on the data volume,
+    never in the repo (public), and read at once in the background."""
+    from app.trading.onchain import dev_payments
+    _require_onchain_enabled()
+    first = not any(c["token"] == str(body.get("token") or "").strip() for c in dev_payments.configs())
+    # whitekobra any time; an /app account only the first time (then it is set).
+    if not (_full_score(user) or (first and _next_for(user))):
+        raise HTTPException(status_code=404, detail="Not found.")
+    try:
+        cfg = dev_payments.save(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _fire(dev_payments.run_all(force=True))
+    return {"ok": True, "token": cfg["token"]}
 
 
 @app.post("/api/onchain/coordinated-sells/check")

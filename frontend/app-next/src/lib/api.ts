@@ -182,3 +182,16 @@ export type QueueItem = { chain: string; token: string; symbol?: string; section
 export type QueueLog = { ts: number; kind: string; chain?: string; token?: string; symbol?: string; msg?: string };
 export type ClusterQueue = { running: QueueItem[]; queue: QueueItem[]; queued: number; built_today: number; max_per_day: number; log: QueueLog[]; now: number };
 export const getClusterQueue = (since: number) => get<ClusterQueue>(`/api/onchain/clusters/queue?since=${since}`, 15000);
+
+export type DevEvent = { id: string; ts: number; kind: "fee" | "claim" | "sell" | "limit_sell" | "buy" | "transfer_out" | "transfer_in"; sol?: number; amount?: number; wallet?: string; to?: string; other?: string; tx?: string };
+export type DevClaimer = { address: string; claimed_sol: number; holding: number | null; sold: number; sold_sol: number; sells: number; last_sell: number | null; bought: number; sent_out: number; transfers_out: number; in_orders: number; limit_sells: number };
+export type DevReport = {
+  token: string; symbol: string; updated_at: number; first_ts: number | null; complete: boolean;
+  fees: { total: number; d1: number; d7: number; d30: number; count: number; daily: { day: string; sol: number }[] };
+  claims: { total: number; count: number; unclaimed: number };
+  claimers: DevClaimer[]; events: DevEvent[];
+};
+export const getDevPayments = (token: string) =>
+  get<{ watched: boolean; can_edit: boolean; busy: boolean; report: DevReport | null }>(`/api/onchain/dev-payments?token=${encodeURIComponent(token)}`, 15000);
+export const watchDevPayments = (token: string, symbol: string, feeAccount: string) =>
+  post<{ ok: boolean }>("/api/onchain/dev-payments/watch", { token, symbol, fee_accounts: [feeAccount] });
