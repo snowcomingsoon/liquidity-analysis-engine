@@ -6,7 +6,6 @@ import { CheckProgress, useClusterCheck } from "../components/CheckProgress";
 import { SellsMap } from "../components/SellsMap";
 import { AnimatePresence, motion } from "motion/react";
 
-const ADDRESS = /^(0x[0-9a-fA-F]{40}|[1-9A-HJ-NP-Za-km-z]{32,48})$/;
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const ago = (ts?: number | null) => {
   if (!ts) return "—";
@@ -44,9 +43,7 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
           aria-label="Token address" className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-text-3" />
         {q && <button type="button" aria-label="Clear" onClick={() => setQ("")} className="rounded-md bg-pill px-2 py-0.5 font-mono text-[12px] text-text-2">✕</button>}
       </label>
-      {s && (ADDRESS.test(s)
-        ? <div className="mt-3"><ClusterCheck address={s} onStart={(c) => { setAsked({ chain: c, token: s, at: Date.now() }); setScreen(true); }} onOpen={() => setQ("")} onFail={() => { setAsked(null); setScreen(false); }} /></div>
-        : <p className="mt-3 text-[13px] text-text-3">Not an address yet: 0x… (40 characters) or a Solana mint.</p>)}
+      <div className="mt-3"><ClusterCheck address={s} onStart={(c) => { setAsked({ chain: c, token: s, at: Date.now() }); setScreen(true); }} onOpen={() => setQ("")} onFail={() => { setAsked(null); setScreen(false); }} /></div>
       {asked && <Asked key={asked.at} chain={asked.chain} token={asked.token} onOpen={() => setScreen(true)}
         onReady={() => api.getCoordinatedSells().then((d) => setList(d.sample ? [] : d.reports ?? [])).catch(() => {})} />}
       <AnimatePresence>
