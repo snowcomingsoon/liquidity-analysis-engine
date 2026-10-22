@@ -238,10 +238,14 @@ def test_manual_check_starts_at_once_with_progress(data, monkeypatch):
         assert wc.start_manual("robinhood", TOKEN, "TEST")
         assert not wc.start_manual("robinhood", TOKEN, "TEST")     # already running
         assert wc.token_status("robinhood", TOKEN)["running"]
+        seen = {}
         for _ in range(200):
             await asyncio.sleep(0.01)
+            seen.update(wc.token_status("robinhood", TOKEN).get("live") or {})
             if not wc.token_status("robinhood", TOKEN)["running"]:
                 break
-    asyncio.run(go())
+        return seen
+    seen = asyncio.run(go())
+    assert seen["holders"][0]["address"] == w(3) and seen["counts"]["holders"] and any(c["edges"] for c in seen["clusters"])
     assert (data / "wallet_clusters" / f"robinhood-{TOKEN}.json").exists()
     assert not wc.start_manual("robinhood", TOKEN)                 # built within the hour

@@ -99,6 +99,14 @@ def progress(phase: str, done: float | None = None) -> None:
         _running[k].update(phase=phase, progress=None if done is None else round(max(0.0, min(1.0, done)), 3))
 
 
+def live(**data) -> None:
+    """Partial results of the token being built, for the live view:
+    holders [{wallet, pct}], clusters [{id, wallets, edges}], events."""
+    k = _current.get()
+    if k and k in _running:
+        _running[k].setdefault("live", {}).update(data)
+
+
 def _dir() -> Path:
     return storage.DATA_DIR / "wallet_clusters"
 
@@ -207,7 +215,7 @@ def token_status(chain: str, token: str) -> dict:
     run = _running.get(k) or {}
     return {"queued": pos is not None, "position": pos, "busy": _lock.locked(),
             "running": bool(run), "phase": run.get("phase"), "progress": run.get("progress"),
-            "started_at": run.get("started_at"),
+            "started_at": run.get("started_at"), "live": run.get("live"),
             "built_at": rec.get("built_at"), "clusters": rec.get("clusters"), "wallets": rec.get("wallets"),
             "partial": rec.get("partial"), "error": rec.get("error") if rec.get("failed_at") else None,
             "failed_at": rec.get("failed_at"),
@@ -498,6 +506,9 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
                                + [a for a, n in touch.most_common(40) if n >= 20]))
     progress("holders", None)
     contracts = await _contracts(rpc, [a for a in probe if a not in DEAD])
+    live(holders=[{"address": a, "share": round(v / supply, 5) if supply else None}
+                  for a, v in sorted(peak.items(), key=lambda x: -x[1]) if a not in contracts and a not in DEAD][:TOP_WATCH],
+         counts={"holders": len(peak), "transfers": len(transfers)})
     first_b, last_b = transfers[0]["block"], transfers[-1]["block"]
     anchors = {t["block"]: t["ts"] for t in transfers if t.get("ts") is not None}
     if not anchors:
@@ -509,6 +520,10 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
     block_s = (anchors[max(anchors)] - anchors[min(anchors)]) / span_b
     progress("clusters", None)
     res = cluster(transfers, contracts, supply, block_s)
+    live(clusters=[{"id": c["id"], "wallets": c["wallets"], "edges": c.get("edges", []), "links": c.get("links", [])}
+                   for c in res["clusters"]], top=res["top"])
+    live(counts={**((_running.get(_current.get()) or {}).get("live", {}).get("counts") or {}),
+                 "clusters": len(res["clusters"]), "waves": len(res.get("waves") or [])})
     res.update(chain=chain, token=token, symbol=symbol, built_at=int(time.time()), partial=partial,
                from_block=start, to_block=latest, transfers=len(transfers), supply=str(supply),
                contracts=sorted(contracts), block_s=round(block_s, 4),
@@ -525,6 +540,10 @@ async def build(chain: str, token: str, symbol: str = "", created_at: float | No
 async def _build_solana(mint: str, symbol: str) -> dict:
     from app.trading.onchain import solana_clusters
     res = await solana_clusters.build(mint)
+    live(clusters=[{"id": c["id"], "wallets": c["wallets"], "edges": c.get("edges", []), "links": c.get("links", [])}
+                   for c in res["clusters"]], top=res["top"])
+    live(counts={**((_running.get(_current.get()) or {}).get("live", {}).get("counts") or {}),
+                 "clusters": len(res["clusters"]), "waves": len(res.get("waves") or [])})
     res.update(chain="solana", token=mint, symbol=symbol, built_at=int(time.time()),
                partial=True, transfers=res["coverage"]["transfers"])
     _dir().mkdir(parents=True, exist_ok=True)
@@ -597,6 +616,11 @@ async def _build_tracked(item: dict, now: float) -> dict | None:
             for cfg in sync_watch.watched():
                 if _key(cfg["chain"], cfg["token"]) == k:
                     await sync_watch.run_all(force=True, only=k)
+                    try:
+                        rep = json.loads(sync_sells.report_path(item["chain"], item["token"]).read_text())
+                        live(events=rep.get("events", [])[:50], risk=(rep.get("risk") or {}).get("score"))
+                    except (OSError, ValueError):
+                        pass
     except Exception as exc:  # noqa: BLE001
         logger.exception("wallet clusters %s", item["token"])
         _done(item, None, str(exc) or type(exc).__name__, now)

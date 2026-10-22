@@ -204,6 +204,8 @@ async def build(mint: str) -> dict:
         raise RuntimeError("fewer than 2 wallet holders")
     from app.trading.onchain import wallet_clusters
     wallet_clusters.progress("transfers", 0)
+    wallet_clusters.live(holders=[{"address": h["owner"], "share": round(h["pct"] / 100, 5)} for h in hs],
+                         counts={"holders": len(hs)})
     left = [len(hs)]
 
     async def one(h):
