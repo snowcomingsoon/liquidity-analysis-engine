@@ -25,13 +25,13 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
   // Tokens outside the ranking: their real name from the token page, never the address (Lorenzo 22/10).
   const [named, setNamed] = useState<Record<string, Gem | null>>({});
   useEffect(() => {
-    for (const id of ids) {
-      if (byId.has(id) || news.has(id) || id in named) continue;
+    // One state update for all of them: one render per id made the tab stutter (60 fps, Lorenzo 22/10).
+    const missing = ids.filter((id) => !byId.has(id) && !news.has(id) && !(id in named));
+    if (!missing.length) return;
+    Promise.all(missing.map((id) => {
       const cut = id.indexOf(":");
-      api.getToken(id.slice(0, cut), id.slice(cut + 1))
-        .then((d) => setNamed((m) => ({ ...m, [id]: (d.entry as Gem | null) ?? null })))
-        .catch(() => setNamed((m) => ({ ...m, [id]: null })));
-    }
+      return api.getToken(id.slice(0, cut), id.slice(cut + 1)).then((d) => (d.entry as Gem | null) ?? null).catch(() => null);
+    })).then((got) => setNamed((m) => ({ ...m, ...Object.fromEntries(missing.map((id, i) => [id, got[i]])) })));
   }, [ids.join(","), data, gems.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     Promise.all([api.getAlerts("meme").catch(() => ({ items: [] })), api.getAlerts("gem").catch(() => ({ items: [] }))])
