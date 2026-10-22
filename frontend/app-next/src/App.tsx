@@ -121,7 +121,7 @@ export function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="mx-auto max-w-xl px-4 pb-[calc(104px+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+18px)]">
+      <main className="mx-auto max-w-xl px-4 pb-[calc(128px+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+18px)]">
         {view !== "search" && (
           <header className="mb-3 flex items-center justify-between gap-3">
             <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.03em]">{LABEL[view]}</h1>
@@ -133,7 +133,7 @@ export function App() {
         {err && !data && <p className="rounded-2xl bg-card p-4 text-[14px] text-down">Could not load the gems: {err}</p>}
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
-            {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} />}
+            {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} onWatch={() => setView("watch")} />}
             {view === "sectors" && <Sectors data={sec} onOpen={openWith((e) => `Sectors · ${e.arena_rank ? `#${e.arena_rank} · ` : ""}score ${sc(e)}`)} />}
             {view === "watch" && <Watch data={sec} gems={data ? [...data.entries, ...data.early] : []} onOpen={openWith((e) => `Watch · score ${sc(e)}`)} />}
             {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} onToken={(e) => setOpen({ e, context: "Scan" })} />}
