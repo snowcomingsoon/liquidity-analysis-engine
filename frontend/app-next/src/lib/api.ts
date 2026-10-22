@@ -89,15 +89,24 @@ export type SellsReport = {
   clusters: { id: string; wallets: { address: string; share?: number | null }[]; share?: number | null; links?: string[]; risk?: number | null; edges?: [string, string][] }[];
   events: { id: string; cluster: string; ts: number; window_s?: number | null; wallets: number; share_sold?: number | null; sellers?: string[] }[];
 };
-export type ClusterCheck = { state: "unsupported" | "running" | "queued" | "failed" | "built" | "none"; place?: number; clusters?: number };
-type CheckRaw = { position?: number | null; busy?: boolean; built_at?: number | null; clusters?: number; error?: string | null };
+export type ClusterCheck = { state: "unsupported" | "running" | "queued" | "failed" | "built" | "none"; place?: number; clusters?: number;
+  phase?: string | null; progress?: number | null; started_at?: number | null; live?: ClusterLive | null };
+// What a running check has read so far (wallet_clusters): holders, then clusters and links, then sell waves.
+export type ClusterLive = { holders?: { address: string; share?: number | null }[]; clusters?: { id: string; wallets: string[]; edges?: [string, string][]; links?: string[] }[];
+  events?: SellsReport["events"]; risk?: number | null; counts?: { holders?: number; transfers?: number; clusters?: number; waves?: number } };
+type CheckRaw = { position?: number | null; busy?: boolean; running?: boolean; built_at?: number | null; clusters?: number; error?: string | null;
+  phase?: string | null; progress?: number | null; started_at?: number | null; live?: ClusterLive | null };
 // GET /check (wallet_clusters): its fields read as one state for the token page.
 export const getClusterCheck = (chain: string, token: string): Promise<ClusterCheck> =>
-  get<CheckRaw>(`/api/onchain/coordinated-sells/check?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 15000).then((r) =>
-    r.busy && r.position === 0 ? { state: "running" }
+  get<CheckRaw>(`/api/onchain/coordinated-sells/check?chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 15000).then((r) => {
+    const live = { phase: r.phase ?? null, progress: r.progress ?? null, started_at: r.started_at ?? null, live: r.live ?? null };
+    // Running (wallet_clusters #674): phase "waiting" while two manual checks are ahead.
+    return (r.running && r.phase === "waiting" ? { state: "queued", ...live }
+      : r.running ? { state: "running", ...live }
       : r.position != null ? { state: "queued", place: r.position }
       : r.built_at ? { state: "built", clusters: r.clusters ?? 0 }
-      : r.error ? { state: "failed" } : { state: "none" },
+      : r.error ? { state: "failed" } : { state: "none" }) as ClusterCheck;
+  },
   (e: { status?: number }) => { if (e?.status === 400) return { state: "unsupported" } as ClusterCheck; throw e; });
 // A cluster check on demand for a pasted address (wallet_clusters, first in line).
 export const askClusterCheck = (chain: string, token: string) =>

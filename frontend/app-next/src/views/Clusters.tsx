@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import * as api from "../lib/api";
 import type { Gem } from "../lib/types";
 import { ClusterCheck } from "../components/ClusterCheck";
-import { WAIT } from "../components/SellsMap";
+import { CheckProgress, useClusterCheck } from "../components/CheckProgress";
+import { SellsMap } from "../components/SellsMap";
+import { AnimatePresence, motion } from "motion/react";
 
 const ADDRESS = /^(0x[0-9a-fA-F]{40}|[1-9A-HJ-NP-Za-km-z]{32,48})$/;
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
@@ -22,32 +24,18 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
   const [q, setQ] = useState("");
   const [list, setList] = useState<api.SellsReport[] | null>(null);
   const [chain, setChain] = useState("all");
-  const [asked, setAsked] = useState<{ chain: string; token: string; check?: api.ClusterCheck } | null>(null);
+  const [asked, setAsked] = useState<{ chain: string; token: string; at: number } | null>(null);
+  const [screen, setScreen] = useState(false);
   const s = q.trim();
 
   useEffect(() => {
     api.getCoordinatedSells().then((d) => setList(d.sample ? [] : d.reports ?? [])).catch(() => setList([]));
   }, []);
 
-  // The asked check: where it stands, again every 15 s while it waits or runs.
-  useEffect(() => {
-    if (!asked) return;
-    let t = 0, live = true;
-    const load = () => api.getClusterCheck(asked.chain, asked.token).then((c) => {
-      if (!live) return;
-      setAsked((a) => a && { ...a, check: c });
-      if (c.state === "queued" || c.state === "running") t = window.setTimeout(load, 15000);
-      else if (c.state === "built") api.getCoordinatedSells().then((d) => live && setList(d.sample ? [] : d.reports ?? [])).catch(() => {});
-    }).catch(() => { if (live) t = window.setTimeout(load, 30000); });
-    load();
-    return () => { live = false; clearTimeout(t); };
-  }, [asked?.chain, asked?.token]);
-
   const open = (c: string, token: string, symbol?: string) => onToken({ chain: c, token_address: token, symbol: symbol || short(token) } as Gem);
   const chains = [...new Set((list ?? []).map((r) => r.chain))];
   const rows = (list ?? []).filter((r) => chain === "all" || r.chain === chain)
     .sort((a, b) => (b.risk?.score ?? -1) - (a.risk?.score ?? -1));
-  const st = asked?.check;
 
   return (
     <>
@@ -57,21 +45,14 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
         {q && <button type="button" aria-label="Clear" onClick={() => setQ("")} className="rounded-md bg-pill px-2 py-0.5 font-mono text-[12px] text-text-2">✕</button>}
       </label>
       {s && (ADDRESS.test(s)
-        ? <div className="mt-3"><ClusterCheck address={s} onOpen={(e) => { setAsked({ chain: e.chain, token: s }); setQ(""); }} /></div>
+        ? <div className="mt-3"><ClusterCheck address={s} onStart={(c) => { setAsked({ chain: c, token: s, at: Date.now() }); setScreen(true); }} onOpen={() => setQ("")} onFail={() => { setAsked(null); setScreen(false); }} /></div>
         : <p className="mt-3 text-[13px] text-text-3">Not an address yet: 0x… (40 characters) or a Solana mint.</p>)}
-      {asked && (
-        <button type="button" onClick={() => open(asked.chain, asked.token)} className="mt-3 flex w-full items-center gap-2.5 rounded-[16px] bg-card p-4 text-left active:bg-pill">
-          {(!st || st.state === "running" || st.state === "queued") && <i className="h-2 w-2 flex-none animate-pulse rounded-full bg-amber" aria-hidden="true" />}
-          <span className="min-w-0 flex-1">
-            <b className="block text-[14px] font-semibold">{short(asked.token)} · {asked.chain}</b>
-            <small className={`block text-[13px] ${st?.state === "failed" || st?.state === "unsupported" ? "text-down" : "text-text-2"}`}>
-              {!st ? "Asking…" : st.state === "built" && st.clusters ? `${st.clusters} cluster(s) found. Their sells are being read.` : WAIT[st.state].replace(" The map appears here when it", " Open it when it")}
-              {st?.state === "queued" && st.place ? ` Place in line: ${st.place}.` : ""}
-            </small>
-          </span>
-          <span className="text-[13px] text-text-3">open ›</span>
-        </button>
-      )}
+      {asked && <Asked key={asked.at} chain={asked.chain} token={asked.token} onOpen={() => setScreen(true)}
+        onReady={() => api.getCoordinatedSells().then((d) => setList(d.sample ? [] : d.reports ?? [])).catch(() => {})} />}
+      <AnimatePresence>
+        {asked && screen && <LiveCheck key={asked.at} chain={asked.chain} token={asked.token} onClose={() => setScreen(false)}
+          onOpen={() => { setScreen(false); open(asked.chain, asked.token); }} />}
+      </AnimatePresence>
 
       <div className="mb-2 mt-5 flex items-center gap-2">
         <h2 className="flex-1 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Riskiest first</h2>
@@ -103,5 +84,39 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
           </ol>
         ) : <p className="rounded-[16px] bg-card p-4 text-[14px] text-text-2">No token checked yet. Paste an address above.</p>}
     </>
+  );
+}
+
+/** The check just asked, live from the tap: steps and bar until its report lands. */
+function Asked({ chain, token, onOpen, onReady }: { chain: string; token: string; onOpen: () => void; onReady: () => void }) {
+  const { rep, check } = useClusterCheck(chain, token, true);
+  useEffect(() => { if (rep) onReady(); }, [rep]);
+  return (
+    <button type="button" onClick={onOpen} className="mt-3 block w-full text-left">
+      {rep ? <span className="flex items-center rounded-[16px] bg-card p-4 text-[14px]"><b className="flex-1 font-semibold">{short(token)} · {chain}: ready</b><span className="text-[13px] text-text-3">open ›</span></span>
+        : <CheckProgress check={check} title={`${short(token)} · ${chain}`} />}
+    </button>
+  );
+}
+
+/** The check's own screen (Lorenzo, 22/10: "la schermata che si apre sulla
+ *  tab dedicata con il grafico dei cluster che si compila"): steps, counters,
+ *  and the bubble map filling in as holders, links and sells are read. */
+function LiveCheck({ chain, token, onClose, onOpen }: { chain: string; token: string; onClose: () => void; onOpen: () => void }) {
+  return (
+    <motion.div role="dialog" aria-modal="true" aria-label="Cluster check" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.2 }} className="fixed inset-0 z-40 overflow-y-auto bg-bg">
+      <div className="mx-auto max-w-[540px] px-4 pb-28 pt-[calc(12px+env(safe-area-inset-top))]">
+        <header className="mb-4 flex items-center gap-2">
+          <button type="button" onClick={onClose} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-pill text-[18px]">‹</button>
+          <span className="min-w-0 flex-1">
+            <b className="block text-[18px] font-semibold leading-tight">Cluster check</b>
+            <small className="block truncate font-mono text-[12px] text-text-3">{chain} · {short(token)}</small>
+          </span>
+          <button type="button" onClick={onOpen} className="rounded-full bg-ink px-3.5 py-2 text-[13px] font-semibold text-on-ink">Token page</button>
+        </header>
+        <SellsMap chain={chain} token={token} starting bare />
+      </div>
+    </motion.div>
   );
 }

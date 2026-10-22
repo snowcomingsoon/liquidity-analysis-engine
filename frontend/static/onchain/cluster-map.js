@@ -34,18 +34,28 @@ export function clusterMap(host, report, { onPick } = {}) {
   const ctx = canvas.getContext("2d");
 
   // Real clusters first; the top-holders group only colours who is in no other.
-  const real = report.clusters.filter((c) => c.id !== "top");
-  const order = [...real, ...report.clusters.filter((c) => c.id === "top")];
+  let real = [], order = [], list = [], edges = [];
   const nodes = new Map();
-  order.forEach((c) => c.wallets.forEach((w) => {
-    if (!nodes.has(w.address)) nodes.set(w.address, { id: w.address, share: w.share ?? 0, cluster: c, x: 0, y: 0, vx: 0, vy: 0, a: 1, ta: 1, grow: 0 });
-  }));
-  const list = [...nodes.values()];
-  const edges = [];
-  report.clusters.forEach((c) => (c.edges ?? []).forEach(([a, b]) => {
-    if (nodes.has(a) && nodes.has(b)) edges.push([nodes.get(a), nodes.get(b)]);
-  }));
-  canvas.setAttribute("aria-label", `${list.length} wallets in ${real.length || 1} group(s)`);
+  const sync = (rep) => {
+    real = rep.clusters.filter((c) => c.id !== "top");
+    order = [...real, ...rep.clusters.filter((c) => c.id === "top")];
+    const seen = new Set();
+    order.forEach((c) => c.wallets.forEach((w) => {
+      if (seen.has(w.address)) return;
+      seen.add(w.address);
+      const n = nodes.get(w.address);
+      // A wallet already drawn keeps its place and drifts to its (new) cluster.
+      if (n) { n.cluster = c; n.share = w.share ?? n.share; } else nodes.set(w.address, { id: w.address, share: w.share ?? 0, cluster: c, x: NaN, y: 0, vx: 0, vy: 0, a: 1, ta: 1, grow: 0 });
+    }));
+    for (const k of [...nodes.keys()]) if (!seen.has(k)) nodes.delete(k);
+    list = [...nodes.values()];
+    edges = [];
+    rep.clusters.forEach((c) => (c.edges ?? []).forEach(([a, b]) => {
+      if (nodes.has(a) && nodes.has(b)) edges.push([nodes.get(a), nodes.get(b)]);
+    }));
+    canvas.setAttribute("aria-label", `${list.length} wallets in ${real.length || 1} group(s)`);
+  };
+  sync(report);
 
   let W = 0, H = 0, unit = 1, raf = 0, ticks = 0;
   const anchors = new Map();
@@ -72,6 +82,7 @@ export function clusterMap(host, report, { onPick } = {}) {
 
   function seed() {
     list.forEach((n, i) => {
+      if (!Number.isNaN(n.x)) return;
       const a = anchors.get(n.cluster);
       const t = i * 2.399963;           // golden angle: an even spiral, no random
       const r = 6 * Math.sqrt(i + 1);
@@ -178,6 +189,12 @@ export function clusterMap(host, report, { onPick } = {}) {
       if (still()) { list.forEach((n) => { n.a = n.ta; }); draw(); } else kick();
     },
     colourOf: (cluster) => colours.get(cluster),
+    /** A newer report of the same token (a check filling live): new wallets
+     *  grow in, known ones keep their place and drift to their cluster. */
+    update(next) {
+      sync(next); measure(); seed(); ticks = 0;
+      if (still()) settleNow(); else kick();
+    },
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); },
   };
 }

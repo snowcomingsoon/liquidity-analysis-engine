@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import * as api from "../lib/api";
-import type { ClusterCheck, SellsReport } from "../lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ClusterLive, SellsReport } from "../lib/api";
+import { CheckProgress, useClusterCheck } from "./CheckProgress";
 
 // The bubble map lives once, in the classic app's static files: the same
 // module draws it here (canvas, 60 fps, still with reduced motion).
 const MAP_URL = "/static/onchain/cluster-map.js";
-type MapApi = { highlight(a: Set<string> | null): void; destroy(): void };
+type MapApi = { highlight(a: Set<string> | null): void; update(r: SellsReport): void; destroy(): void };
 type Pick = { address: string; share: number; cluster: { id: string } } | null;
 
 const pct = (x?: number | null) => (x == null ? "—" : `${(x * 100).toFixed(x < 0.01 ? 2 : 1)}%`);
@@ -15,68 +15,54 @@ const when = (ts: number) => {
   return s < 3600 ? `${Math.max(1, Math.round(s / 60))}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago`
     : new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
+const liveSig = (l: ClusterLive) => `${l.holders?.length ?? 0}.${l.clusters?.length ?? 0}.${(l.clusters ?? []).reduce((s, c) => s + (c.edges?.length ?? 0) + c.wallets.length, 0)}.${l.events?.length ?? 0}`;
+/** What a running check has read so far, as a report: its clusters, then
+ *  every other holder in the grey top group. */
+function fromLive(chain: string, token: string, l: ClusterLive): SellsReport {
+  const share = new Map((l.holders ?? []).map((h) => [h.address, h.share ?? 0]));
+  const inside = new Set((l.clusters ?? []).flatMap((c) => c.wallets));
+  const clusters = (l.clusters ?? []).map((c) => ({ id: c.id, edges: c.edges, links: c.links, wallets: c.wallets.map((a) => ({ address: a, share: share.get(a) ?? 0 })),
+    share: c.wallets.reduce((s, a) => s + (share.get(a) ?? 0), 0) }));
+  const top = (l.holders ?? []).filter((h) => !inside.has(h.address));
+  return { chain, token, clusters: top.length ? [...clusters, { id: "top", wallets: top }] : clusters, events: [...(l.events ?? [])].sort((a, b) => b.ts - a.ts) };
+}
 const tone = (s?: number | null) => (s == null ? "text-text-3" : s >= 70 ? "text-down" : s >= 40 ? "text-amber" : "text-up");
 
-// Without a report the section still shows, with where its check stands
-// (Lorenzo, 22/10: "mica c'è ancora"): opening the page queues the check.
-export const WAIT: Record<ClusterCheck["state"], string> = {
-  running: "Cluster check running now. The map appears here when it ends.",
-  queued: "Cluster check queued. The map appears here when it runs.",
-  none: "Cluster check not run yet for this token.",
-  failed: "Cluster check failed on this token's data. It retries later.",
-  built: "Cluster check done: no wallet cluster found among the top holders.",
-  unsupported: "Cluster check is not available on this chain.",
-};
 
 /** Coordinated sells of one token: its wallet clusters as bubbles and the
  *  waves they sold in; without a report, where its check stands. */
-export function SellsMap({ chain, token }: { chain: string; token: string }) {
-  const [rep, setRep] = useState<SellsReport | null>(null);
-  const [check, setCheck] = useState<ClusterCheck | null>(null);
+export function SellsMap({ chain, token, starting = false, bare = false }: { chain: string; token: string; starting?: boolean; bare?: boolean }) {
+  const { rep: done, check } = useClusterCheck(chain, token, starting);
+  // While the check runs, what it has read so far is drawn and fills in.
+  const sig = check?.live ? liveSig(check.live) : "";
+  // The last live picture stays until the report replaces it (live goes when the run ends).
+  const last = useRef<SellsReport | null>(null);
+  const rep = useMemo(() => done ?? (last.current = check?.live ? fromLive(chain, token, check.live) : last.current), [done, sig]);
   const [pick, setPick] = useState<Pick>(null);
   const [lit, setLit] = useState<number | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapApi | null>(null);
+  const has = !!rep && rep.clusters.some((c) => c.wallets.length);
 
   useEffect(() => {
-    let live = true;
-    setRep(null); setCheck(null);
-    const n = token.startsWith("0x") ? token.toLowerCase() : token;
-    let t = 0;
-    // While the check waits or runs, look again every 30 s: the map takes its place when ready.
-    const load = () => api.getCoordinatedSells().then((d) => {
-      if (!live) return;
-      const found = d.sample ? null : (d.reports ?? []).find((r) => r.chain === chain && r.token === n) ?? null;
-      if (found) { setRep(found); return; }
-      api.getClusterCheck(chain, token).then((c) => {
-        if (!live) return;
-        setCheck(c);
-        if (c.state === "queued" || c.state === "running" || (c.state === "built" && c.clusters)) t = window.setTimeout(load, 30000);
-      }).catch(() => {});
-    }).catch(() => {});
-    load();
-    return () => { live = false; clearTimeout(t); };
-  }, [chain, token]);
-
-  useEffect(() => {
-    if (!rep || !host.current) return;
+    if (!has || !host.current) return;
+    if (map.current) { map.current.update(rep!); return; }
     let gone = false;
     import(/* @vite-ignore */ MAP_URL).then((m) => {
       if (gone || !host.current) return;
       map.current = m.clusterMap(host.current, rep, { onPick: setPick });
     }).catch(() => {});
-    return () => { gone = true; map.current?.destroy(); map.current = null; };
-  }, [rep]);
+    return () => { gone = true; };
+  }, [rep, has]);
+  useEffect(() => () => { map.current?.destroy(); map.current = null; }, []);
 
-  if (!rep) {
-    if (!check) return null;
+  if (!rep || !has) {
+    if (!check && !starting) return null;
     return (
-      <section className="mt-5">
-        <h3 className="mb-2 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Coordinated sells</h3>
-        <p className="flex items-center gap-2.5 rounded-[16px] bg-card px-4 py-3.5 text-[13.5px] text-text-2">
-          {(check.state === "running" || check.state === "queued") && <i className="h-2 w-2 flex-none animate-pulse rounded-full bg-amber" aria-hidden="true" />}
-          <span>{check.state === "built" && check.clusters ? "Clusters found. Their sells are being read: the map appears here in a few minutes." : WAIT[check.state]}{check.state === "queued" && check.place ? ` Place in line: ${check.place}.` : ""}</span>
-        </p>
+      <section className={bare ? "" : "mt-5"}>
+        {!bare && <h3 className="mb-2 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Coordinated sells</h3>}
+        <CheckProgress check={check} />
+        {bare && <div className="cp-empty mt-3 grid h-[280px] place-items-center rounded-[16px] bg-card text-[13px] text-text-3">The map fills in as holders are read</div>}
       </section>
     );
   }
@@ -92,10 +78,11 @@ export function SellsMap({ chain, token }: { chain: string; token: string }) {
   };
 
   return (
-    <section className="mt-5">
+    <section className={bare ? "" : "mt-5"}>
       <h3 className="mb-2 flex items-baseline justify-between text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">
-        Coordinated sells<b className={`num text-[13px] font-semibold normal-case tracking-normal ${tone(rep.risk?.score)}`}>risk {rep.risk?.score == null ? "—" : Math.round(rep.risk.score)}</b>
+        Coordinated sells<b className={`num text-[13px] font-semibold normal-case tracking-normal ${tone(rep.risk?.score)}`}>{done ? `risk ${rep.risk?.score == null ? "—" : Math.round(rep.risk.score)}` : "live"}</b>
       </h3>
+      {!done && <div className="mb-3"><CheckProgress check={check} /></div>}
       <div ref={host} className="overflow-hidden rounded-[16px] bg-card" aria-label="Wallet bubble map" />
       <p className="mt-1 min-h-[1.4em] text-[12.5px] text-text-3">
         {pick ? `${short(pick.address)} · ${pct(pick.share)} of supply · ${pick.cluster.id === "top" ? "top holder, no link found" : name(pick.cluster.id)}`

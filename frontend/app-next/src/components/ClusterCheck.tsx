@@ -7,18 +7,20 @@ const EVM = [["robinhood", "Robinhood"], ["ethereum", "Ethereum"], ["base", "Bas
 /** A pasted address: check its wallet clusters now (Lorenzo, 22/10:
  *  "indirizzo manuale per verificare un token a richiesta"). The check goes
  *  first in line and the token page opens on its status, then on the map. */
-export function ClusterCheck({ address, onOpen }: { address: string; onOpen: (e: Gem) => void }) {
+export function ClusterCheck({ address, onOpen, onStart, onFail }: { address: string; onOpen: (e: Gem) => void; onStart?: (chain: string) => void; onFail?: () => void }) {
   const sol = !address.startsWith("0x");
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const go = async (chain: string) => {
     setBusy(chain); setMsg("");
+    onStart?.(chain);
     try {
       const r = await api.askClusterCheck(chain, address);
       onOpen({ chain, token_address: address, symbol: `${address.slice(0, 4)}…${address.slice(-4)}` } as Gem);
       if (r.error) setMsg(r.error);
     } catch (e) {
       setMsg((e as Error).message || "Not started, try again.");
+      onFail?.();
     } finally { setBusy(null); }
   };
   const chains = sol ? [["solana", "Solana"]] as const : EVM;
