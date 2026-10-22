@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 
-export type View = "today" | "sectors" | "watch" | "search" | "gems" | "pearl" | "top" | "rank" | "quality" | "agent";
+export type View = "today" | "sectors" | "watch" | "search" | "gems" | "pearl" | "top" | "rank" | "quality" | "agent" | "profile";
 
 const ICONS: Partial<Record<View, React.ReactNode>> = {
   today: <path d="M4 13h3l2.5-6 4 11 2.5-5H20" />,
@@ -9,7 +9,7 @@ const ICONS: Partial<Record<View, React.ReactNode>> = {
   search: <><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></>,
 };
 export const LABEL: Record<View, string> = {
-  today: "Today", sectors: "Sectors", watch: "Watch", search: "Search", gems: "Gems", pearl: "Pearl", top: "Early", rank: "Top", quality: "Quality", agent: "Scout",
+  today: "Today", sectors: "Sectors", watch: "Watch", search: "Search", gems: "Gems", pearl: "Pearl", top: "Early", rank: "Top", quality: "Quality", agent: "Scout", profile: "Profile",
 };
 export const DOCK: View[] = ["today", "sectors", "watch", "search"];
 

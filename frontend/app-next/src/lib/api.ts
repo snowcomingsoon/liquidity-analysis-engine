@@ -129,3 +129,15 @@ export async function streamScan(query: string, onEvent: (ev: ScanEvent) => void
   throw new ApiError("scan is taking too long, try again");
 }
 export const addScanned = (chain: string, token: string) => post<{ error?: string }>("/api/onchain/scan/add", { chain, token });
+
+// Profile (profile.js) and the picks' track record (track.js).
+export type Profile = { display_name: string; handle: string; bio?: string; avatar_url?: string; joined?: number };
+export const getProfile = () => get<{ profile: Profile }>("/api/profile", 25000);
+export const updateProfile = (body: { display_name: string; handle: string; bio: string }) => send<{ profile: Profile }>("/api/profile", "PATCH", body);
+export const uploadAvatar = (data_url: string) => send<{ profile: Profile }>("/api/profile/avatar", "POST", { data_url }, 30000);
+export type TrackStat = { n?: number; median?: number | null; positive?: number | null; doubled?: number | null };
+export type TrackPick = { chain: string; token_address: string; symbol: string; score?: number; at: number; rank?: number; decision?: string;
+  now?: number | null; hi?: number | null; why?: string; checkpoint?: { days?: number; ret?: number; excess?: number | null } };
+export type Track = { stats?: { horizons?: { days: number; all?: TrackStat; top?: TrackStat; studied?: TrackStat; rejected?: TrackStat; excess?: TrackStat }[] };
+  picks?: TrackPick[]; missed?: TrackPick[] };
+export const getTrack = () => get<Track>("/api/onchain/track");
