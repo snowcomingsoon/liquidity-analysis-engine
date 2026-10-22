@@ -16,7 +16,7 @@ import { DeepResult, DossierHead, Details, InfoFallback, WhyOf } from "./Dossier
 // candles, the Why and Info tabs from the dossier, the deep re-check and the
 // way out to DexScreener. No Signal tab: trading is off (07/10).
 
-const WATCH_KEY = "watchlist-v1";
+import { WATCH_KEY } from "../lib/watchKey";
 const LIVE_MS = 60_000;
 const LOG_LINES = 4;
 

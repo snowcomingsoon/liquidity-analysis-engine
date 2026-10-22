@@ -6,7 +6,7 @@ import { Logo } from "../components/Logo";
 import { age, changeText, usdShort } from "../lib/format";
 import { gemId } from "../components/TokenRow";
 
-const WATCH_KEY = "watchlist-v1";   // the token page's star (TokenPage.tsx)
+import { WATCH_KEY } from "../lib/watchKey";
 
 export function watchedIds(): string[] {
   try { return (JSON.parse(localStorage.getItem(WATCH_KEY) || "[]") as string[]).map((id) => id.replace(/^gem:/, ""))
