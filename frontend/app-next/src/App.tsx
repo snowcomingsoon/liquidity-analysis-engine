@@ -135,7 +135,7 @@ export function App() {
             {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} />}
             {view === "sectors" && <Sectors data={sec} onOpen={openWith((e) => `Sectors · ${e.arena_rank ? `#${e.arena_rank} · ` : ""}score ${sc(e)}`)} />}
             {view === "watch" && <Watch data={sec} gems={data ? [...data.entries, ...data.early] : []} onOpen={openWith((e) => `Watch · score ${sc(e)}`)} />}
-            {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} />}
+            {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} onToken={(e) => setOpen({ e, context: "Scan" })} />}
             {inGems && (
               <div className="flex gap-1 rounded-full bg-pill p-1">
                 {([["arenas", "Arenas", "gems"], ["database", "Database", "gems"], ["pearl", "Pearl", "pearl"], ["early", "Early", "top"], ["rank", "Top", "rank"]] as const).map(([s, label, v]) => {

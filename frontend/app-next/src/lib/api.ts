@@ -84,3 +84,48 @@ export const getAgentJourney = ({ q = "", chain = "", token = "" }: { q?: string
   get<JourneyAnswer>(`/api/agent/journey?q=${encodeURIComponent(q)}&chain=${encodeURIComponent(chain)}&token=${encodeURIComponent(token)}`, 20000);
 // Coordinated sells (sells.js): one account's; 404 for the others.
 export const getCoordinatedSells = () => get<{ reports?: { risk?: { score?: number } }[] }>("/api/onchain/coordinated-sells", 20000);
+
+// The scanner (sheets.js openScan): a server job streamed as NDJSON; if the
+// phone drops the stream the job goes on and its result is collected by id.
+export type ScanEvent = { plan?: string[]; step?: string; state?: string; detail?: string; reconnecting?: boolean };
+export async function streamScan(query: string, onEvent: (ev: ScanEvent) => void): Promise<Record<string, unknown>> {
+  let r: Response;
+  try {
+    r = await fetch("/api/onchain/scan/stream", {
+      method: "POST", headers: { "Content-Type": "application/json", ...(device ? { "X-Device": device } : {}) },
+      body: JSON.stringify({ query, view: `${location.pathname}#search` }), signal: AbortSignal.timeout(300000),
+    });
+  } catch (e) { throw new ApiError((e as Error).name === "TimeoutError" ? "network is slow" : "network unreachable"); }
+  if (!r.ok || !r.body) throw new ApiError(`scan failed (${r.status})`);
+  const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = "", result: Record<string, unknown> | null = null, id: string | null = null;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if ("result" in ev) result = ev.result;
+        else if ("id" in ev) id = ev.id;
+        else if (!("ping" in ev)) onEvent(ev);
+      }
+    }
+  } catch { if (!id) throw new ApiError("connection lost, run the scan again"); }
+  if (result) return result;
+  if (!id) throw new ApiError("scan interrupted");
+  onEvent({ reconnecting: true });
+  for (let k = 0; k < 90; k++) {
+    await new Promise((res) => setTimeout(res, 2000));
+    let d: { done?: boolean; result?: Record<string, unknown> };
+    try { d = await send(`/api/onchain/scan/result/${encodeURIComponent(id)}`, "GET", undefined, 10000); }
+    catch (e) { if (String((e as Error).message).startsWith("scan not found")) throw new ApiError("the server restarted during the scan, run it again"); continue; }
+    if (d.done && d.result) return d.result;
+  }
+  throw new ApiError("scan is taking too long, try again");
+}
+export const addScanned = (chain: string, token: string) => post<{ error?: string }>("/api/onchain/scan/add", { chain, token });

@@ -4,6 +4,8 @@ import type { Project } from "../lib/types";
 import type { SectorsView } from "../lib/sectors";
 import { Logo } from "../components/Logo";
 import { usdShort } from "../lib/format";
+import type { Gem } from "../lib/types";
+import { Scan } from "../components/Scan";
 
 const RECENT_KEY = "search-recent-v1";
 const RECENT_MAX = 8;
@@ -16,7 +18,7 @@ function remember(s: string) {
 }
 
 /** The one search (direction A, screen 6): projects in the database, sectors, and recent searches. */
-export function Search({ sectors, onProject, onSector }: { sectors: SectorsView | null; onProject: (p: Project) => void; onSector: (key: string) => void }) {
+export function Search({ sectors, onProject, onSector, onToken }: { sectors: SectorsView | null; onProject: (p: Project) => void; onSector: (key: string) => void; onToken: (e: Gem) => void }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Project[] | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -75,6 +77,8 @@ export function Search({ sectors, onProject, onSector }: { sectors: SectorsView 
               </div>
             </>
           )}
+          <Label>{hits?.length ? "Something else?" : "Not in the database yet"}</Label>
+          <Scan key={s} query={s} onOpen={(e) => { remember(e.symbol || s); onToken(e); }} />
         </>
       )}
 
