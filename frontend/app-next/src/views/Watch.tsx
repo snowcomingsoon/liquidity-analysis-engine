@@ -22,6 +22,17 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
   const news = new Map((data?.today.items ?? []).map((i) => [gemId(i.gem), i] as const));
   const [tab, setTab] = useState<"follow" | "alerts">("follow");
   const [alerts, setAlerts] = useState<api.AlertItem[] | null>(null);
+  // Tokens outside the ranking: their real name from the token page, never the address (Lorenzo 22/10).
+  const [named, setNamed] = useState<Record<string, Gem | null>>({});
+  useEffect(() => {
+    for (const id of ids) {
+      if (byId.has(id) || news.has(id) || id in named) continue;
+      const cut = id.indexOf(":");
+      api.getToken(id.slice(0, cut), id.slice(cut + 1))
+        .then((d) => setNamed((m) => ({ ...m, [id]: (d.entry as Gem | null) ?? null })))
+        .catch(() => setNamed((m) => ({ ...m, [id]: null })));
+    }
+  }, [ids.join(","), data, gems.length]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     Promise.all([api.getAlerts("meme").catch(() => ({ items: [] })), api.getAlerts("gem").catch(() => ({ items: [] }))])
       .then(([m, g]) => setAlerts([...(m.items ?? []), ...(g.items ?? [])].sort((x, y) => y.at - x.at).slice(0, 25)));
@@ -64,8 +75,8 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
         // Ranked first with real data; the rest folded away, and a token with no real name is not shown (Lorenzo 22/10).
         const rows = ids.flatMap((id) => {
           const hit = byId.get(id), n = news.get(id);
-          const e = hit?.e ?? n?.gem;
-          return e?.symbol ? [{ id, e, hit, n }] : [];
+          const e = hit?.e ?? n?.gem ?? named[id] ?? undefined;
+          return e && (e.name || e.symbol) && !/^0x[0-9a-f]{4}$/i.test(e.symbol ?? "") ? [{ id, e, hit, n }] : [];
         });
         const ranked = rows.filter((r) => r.hit), off = rows.filter((r) => !r.hit);
         const row = ({ id, e, hit, n }: (typeof rows)[number]) => {
@@ -76,7 +87,7 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
               <button type="button" onClick={() => onOpen(e)} className="flex w-full items-center gap-3 rounded-[12px] px-2 py-2 text-left active:bg-pill">
                 <Logo size={36} symbol={e.symbol} image={e.image} chain={e.chain} token={e.token_address} />
                 <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[15px] font-semibold leading-tight">{e.symbol}</b>
+                  <b className="block truncate text-[15px] font-semibold leading-tight">{e.symbol || e.name}{e.name && e.symbol && e.name !== e.symbol && <span className="font-normal text-text-3"> · {e.name}</span>}</b>
                   {line && <small className="block truncate text-[12.5px] text-text-3">{line}</small>}
                 </span>
                 {e.market_cap != null && (
