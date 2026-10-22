@@ -5,6 +5,7 @@ import type { Narrative, Project, ProjectStats } from "../lib/types";
 import { coverage, isHiddenIn, setNarratives, useHidden, useNarratives } from "../lib/store";
 import { num } from "../lib/format";
 import { Sheet } from "../components/Sheet";
+import { t } from "../lib/i18n";
 
 // The project database (projects.js): everything the Gem Finder has seen, its verdict and why.
 const PAGE = 30;
@@ -50,7 +51,7 @@ export function Database({ onOpen, scan }: { onOpen: (p: Project) => void; scan:
 
   const labels = Object.fromEntries(narratives.map((n) => [n.key, n.label ?? n.key]));
   const chips: [string, string][] = [
-    ...(query.status ? [["status", LABEL[query.status]] as [string, string]] : []),
+    ...(query.status ? [["status", t(LABEL[query.status])] as [string, string]] : []),
     ...(query.kind ? [["kind", kindLabel(query.kind)] as [string, string]] : []),
     ...narr.map((k) => [`narr:${k}`, labels[k] ?? k] as [string, string]),
   ];
@@ -67,7 +68,7 @@ export function Database({ onOpen, scan }: { onOpen: (p: Project) => void; scan:
     <section>
       {scan}
       <header className="mt-5 flex items-baseline justify-between gap-2">
-        <h3 className="text-[20px] font-semibold">Project database</h3>
+        <h3 className="text-[20px] font-semibold">{t("Project database")}</h3>
       </header>
       {stats && (
         <>
@@ -75,34 +76,34 @@ export function Database({ onOpen, scan }: { onOpen: (p: Project) => void; scan:
             {num(bc.solana)} Solana · {num(bc.robinhood)} Robinhood · {num(bc.base)} Base · {num(bc.ethereum)} Ethereum{bc.arc ? ` · ${num(bc.arc)} Arc` : ""}{bc.layer ? ` · ${num(bc.layer)} Layer` : ""}
           </p>
           <p className="mt-1.5 text-[13px] leading-snug text-text-2">
-            <b>{num(stats.total)}</b> projects known · <b>{num(stats.in_band)}</b> in the {usd(stats.band?.[0] ?? 10000)}–{usd(stats.band?.[1] ?? 10000000)} band · <b>{num((band.studied ?? 0) + (band.ranked ?? 0))}</b> studied · <b>{num(band.rejected ?? 0)}</b> rejected · <b>{num(stats.band_waiting ?? 0)}</b> waiting{stats.top_rejections?.[0] ? ` (most often: ${stats.top_rejections[0].why})` : ""}
+            <b>{num(stats.total)}</b> {t("projects known")} · <b>{num(stats.in_band)}</b> {t("in the {a}–{b} band", { a: usd(stats.band?.[0] ?? 10000), b: usd(stats.band?.[1] ?? 10000000) })} · <b>{num((band.studied ?? 0) + (band.ranked ?? 0))}</b> {t("studied")} · <b>{num(band.rejected ?? 0)}</b> {t("rejected")} · <b>{num(stats.band_waiting ?? 0)}</b> {t("waiting")}{stats.top_rejections?.[0] ? ` ${t("(most often: {why})", { why: stats.top_rejections[0].why })}` : ""}
           </p>
         </>
       )}
       <div className="mt-3 flex gap-2">
-        <input type="search" value={text} placeholder="Search name, ticker, address or site" aria-label="Search the project database" autoComplete="off"
+        <input type="search" value={text} placeholder={t("Search name, ticker, address or site")} aria-label={t("Search the project database")} autoComplete="off"
           onChange={(ev) => { setText(ev.target.value); clearTimeout(typing.current); const v = ev.target.value.trim(); typing.current = window.setTimeout(() => setQuery((q) => ({ ...q, q: v })), 250); }}
           className="h-12 min-w-0 flex-1 rounded-full border border-line bg-transparent px-5 text-[16px] outline-none placeholder:text-text-3 focus:border-text-3" />
         <button type="button" onClick={() => setFilters(true)} aria-haspopup="dialog"
           className={`flex h-12 flex-none items-center gap-1.5 rounded-full px-4 text-[15px] font-medium ${chips.length ? "bg-ink text-on-ink" : "bg-pill text-text"}`}>
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" aria-hidden="true"><path d="M2 4h12M4.5 8h7M7 12h2" /></svg>
-          Filters{chips.length > 0 && <span className="num rounded-full bg-sage px-1.5 text-[12px] text-on-sage">{chips.length}</span>}
+          {t("Filters")}{chips.length > 0 && <span className="num rounded-full bg-sage px-1.5 text-[12px] text-on-sage">{chips.length}</span>}
         </button>
       </div>
       {chips.length > 0 && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {chips.map(([k, l]) => <button key={k} type="button" onClick={() => clear(k)} className="rounded-full bg-sage px-3 py-1 text-[13px] text-on-sage">{l} <span aria-hidden="true">✕</span></button>)}
-          {chips.length > 1 && <button type="button" onClick={() => clear("all")} className="rounded-full px-3 py-1 text-[13px] text-text-2 underline">Clear all</button>}
+          {chips.length > 1 && <button type="button" onClick={() => clear("all")} className="rounded-full px-3 py-1 text-[13px] text-text-2 underline">{t("Clear all")}</button>}
         </div>
       )}
       <ol className="mt-3">
         {shown.length ? shown.map((p, i) => <ProjectRow key={`${p.chain}:${p.token}`} p={p} i={i} onOpen={onOpen} />)
-          : !loading && <li className="py-4 text-[14px] text-text-2">{narr.length ? "No project in these narratives yet." : query.q || query.status || query.kind ? "Nothing matches." : "The database is filling up: sources are being read."}</li>}
+          : !loading && <li className="py-4 text-[14px] text-text-2">{narr.length ? t("No project in these narratives yet.") : query.q || query.status || query.kind ? t("Nothing matches.") : t("The database is filling up: sources are being read.")}</li>}
       </ol>
       {items.length < total && (
-        <button type="button" onClick={() => load(items.length)} className="mt-1 h-11 w-full rounded-full bg-pill text-[15px] font-medium">Show more</button>
+        <button type="button" onClick={() => load(items.length)} className="mt-1 h-11 w-full rounded-full bg-pill text-[15px] font-medium">{t("Show more")}</button>
       )}
-      <Sheet open={filters} title="Filters" sub="Pick what the database shows." onClose={() => setFilters(false)}>
+      <Sheet open={filters} title={t("Filters")} sub={t("Pick what the database shows.")} onClose={() => setFilters(false)}>
         <FilterBody stats={stats} total={total} query={query} narratives={narratives} narr={narr}
           setStatus={(s) => setQuery({ ...query, status: s })} setKind={(k) => setQuery({ ...query, kind: k })}
           onReset={() => clear("all")} onDone={() => setFilters(false)} />
@@ -121,16 +122,16 @@ function ProjectRow({ p, i, onOpen }: { p: Project; i: number; onOpen: (p: Proje
     <motion.li initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26, delay: Math.min(i, 8) * 0.02 }} className="mb-2">
       <button type="button" onClick={() => onOpen(p)} className="flex w-full items-start gap-3 rounded-[20px] bg-card px-3.5 py-3 text-left active:bg-pill">
         <span className={`num w-7 flex-none pt-0.5 text-[15px] font-semibold ${out ? "line-through decoration-1 opacity-45" : ""}`}
-          title={out ? "Score, not on the board" : "Score"}>{score}</span>
+          title={out ? t("Score, not on the board") : t("Score")}>{score}</span>
         <span className="min-w-0 flex-1">
           <b className="block text-[15px] font-semibold">{p.symbol ?? "?"}{layer && <i className="ml-1 rounded bg-pill px-1 text-[10px] not-italic">{layer}</i>}</b>
           <span className="block truncate text-[14px] text-text-2">{p.name}</span>
           <small className="mt-0.5 block truncate text-[12.5px] text-text-3">
-            {layer ? LAYERS[layer] : CHAINS[p.chain] ?? p.chain} · cap {usd(p.mcap)} · liq {usd(p.liq)}{site ? ` · ${site}` : ""}{p.github ? " · code" : ""}
+            {layer ? LAYERS[layer] : CHAINS[p.chain] ?? p.chain} · cap {usd(p.mcap)} · liq {usd(p.liq)}{site ? ` · ${site}` : ""}{p.github ? ` · ${t("code")}` : ""}
           </small>
           {p.why && <small className="mt-0.5 block text-[12.5px] leading-snug text-text-2">{p.why}</small>}
         </span>
-        <em className={`flex-none rounded-full bg-pill px-2 py-0.5 text-[11px] not-italic ${p.status === "rejected" ? "text-down" : "text-text-2"}`}>{LABEL[p.status] ?? p.status}</em>
+        <em className={`flex-none rounded-full bg-pill px-2 py-0.5 text-[11px] not-italic ${p.status === "rejected" ? "text-down" : "text-text-2"}`}>{LABEL[p.status] ? t(LABEL[p.status]) : p.status}</em>
       </button>
     </motion.li>
   );
@@ -156,28 +157,28 @@ function FilterBody({ stats, total, query, narratives, narr, setStatus, setKind,
   const H = ({ children }: { children: React.ReactNode }) => <h4 className="mb-2 mt-4 text-[13px] font-semibold uppercase tracking-wide text-text-3">{children}</h4>;
   return (
     <div>
-      <H>Verdict</H>
+      <H>{t("Verdict")}</H>
       <div className="flex flex-wrap gap-1.5">
-        <Opt on={!query.status} label="All" count={stats?.total} onClick={() => setStatus("")} />
-        {VERDICTS.map((v) => <Opt key={v} on={query.status === v} label={LABEL[v]} count={by[v] ?? 0} onClick={() => setStatus(v)} />)}
+        <Opt on={!query.status} label={t("All")} count={stats?.total} onClick={() => setStatus("")} />
+        {VERDICTS.map((v) => <Opt key={v} on={query.status === v} label={t(LABEL[v])} count={by[v] ?? 0} onClick={() => setStatus(v)} />)}
       </div>
-      <H>Type</H>
+      <H>{t("Type")}</H>
       <div className="flex flex-wrap gap-1.5">
-        <Opt on={!query.kind} label="All" onClick={() => setKind("")} />
+        <Opt on={!query.kind} label={t("All")} onClick={() => setKind("")} />
         {KINDS.map((k) => <Opt key={k} on={query.kind === k} label={LAYERS[k] ? k : kindLabel(k)} count={kindN(k)} onClick={() => setKind(k)} />)}
       </div>
       {narratives.length > 0 && (
         <>
-          <H>Narratives <small className="normal-case tracking-normal">any of</small></H>
+          <H>{t("Narratives")} <small className="normal-case tracking-normal">{t("any of")}</small></H>
           <div className="flex flex-wrap gap-1.5">
-            <Opt on={!sel.size} label="All" onClick={() => toggle("")} />
+            <Opt on={!sel.size} label={t("All")} onClick={() => toggle("")} />
             {narratives.map((n) => <Opt key={n.key} on={sel.has(n.key)} label={n.label ?? n.key} count={n.projects} onClick={() => toggle(n.key)} />)}
           </div>
         </>
       )}
       <footer className="sticky bottom-0 mt-5 grid grid-cols-2 gap-2 bg-card pt-2">
-        <button type="button" onClick={onReset} className="h-12 rounded-full bg-pill text-[15px] font-medium">Reset</button>
-        <button type="button" onClick={onDone} className="h-12 rounded-full bg-ink text-[15px] font-medium text-on-ink">Show {num(total)}</button>
+        <button type="button" onClick={onReset} className="h-12 rounded-full bg-pill text-[15px] font-medium">{t("Reset")}</button>
+        <button type="button" onClick={onDone} className="h-12 rounded-full bg-ink text-[15px] font-medium text-on-ink">{t("Show {n}", { n: num(total) })}</button>
       </footer>
     </div>
   );

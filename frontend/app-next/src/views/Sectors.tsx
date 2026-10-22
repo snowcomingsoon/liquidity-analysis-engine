@@ -5,6 +5,7 @@ import { type Sector, type SectorsView, newChampions } from "../lib/sectors";
 import { changeText, usdShort } from "../lib/format";
 import { TokenRow, gemId } from "../components/TokenRow";
 import { Logo, Tile } from "../components/Logo";
+import { t } from "../lib/i18n";
 
 type Mode = "champions" | "map";
 // Lorenzo, 22/10: "avevo scelto M2" — Champions first, with the Map one tap away.
@@ -19,19 +20,19 @@ export function Sectors({ data, onOpen }: { data: SectorsView | null; onOpen: (e
   const projects = new Set(list.flatMap((s) => s.entries.map(gemId))).size;
   return (
     <>
-      <div className="flex gap-1 rounded-full bg-pill p-1" role="tablist" aria-label="Mosaic">
+      <div className="flex gap-1 rounded-full bg-pill p-1" role="tablist" aria-label={t("Mosaic")}>
         {MODES.map(([m, label]) => (
           <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
             className={`relative h-9 flex-1 rounded-full text-[14px] font-medium transition-colors ${mode === m ? "text-text" : "text-text-2"}`}>
             {mode === m && <motion.span layoutId="sectors-mode" className="absolute inset-0 rounded-full bg-card shadow-sm" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
-            <span className="relative">{label}</span>
+            <span className="relative">{t(label)}</span>
           </button>
         ))}
       </div>
       <p className="mt-3 text-[13px] text-text-2">
-        {list.length} sectors · {projects} projects · {mode === "champions" ? "strongest first: how far the top 3 sit above the median" : "size = market cap"}
+        {t("{n} sectors · {m} projects", { n: list.length, m: projects })} · {mode === "champions" ? t("strongest first: how far the top 3 sit above the median") : t("size = market cap")}
       </p>
-      {!list.length && <p className="py-6 text-[14px] text-text-2">The sectors are filling up: projects appear as they pass the checks.</p>}
+      {!list.length && <p className="py-6 text-[14px] text-text-2">{t("The sectors are filling up: projects appear as they pass the checks.")}</p>}
       <AnimatePresence mode="wait">
         <motion.div key={mode} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} className="mt-3">
           {mode === "champions" && <Champions list={list} fresh={newChampions(data.today)} onOpen={onOpen} />}
@@ -55,7 +56,7 @@ function Champions({ list, fresh, onOpen }: { list: Sector[]; fresh: Set<string>
           <motion.section key={s.key} layout="position" className={`min-w-0 rounded-[20px] bg-card p-3 ${i === 0 || isOpen || isNew ? "col-span-2" : ""} ${isNew ? "ring-[1.5px] ring-up" : ""}`}>
             <button type="button" onClick={() => setOpen(isOpen ? null : s.key)} aria-expanded={isOpen} className="flex w-full items-center gap-2 text-left">
               <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">{s.label}</span>
-              {isNew && <span className="text-[10px] font-bold tracking-wide text-up">NEW CHAMPION</span>}
+              {isNew && <span className="text-[10px] font-bold tracking-wide text-up">{t("NEW CHAMPION")}</span>}
               <span className="num text-[12px] text-text-3">{s.size} ›</span>
             </button>
             <button type="button" onClick={() => onOpen(champ)} className="mt-2 flex w-full min-w-0 items-center gap-2.5 text-left">
@@ -76,7 +77,7 @@ function Champions({ list, fresh, onOpen }: { list: Sector[]; fresh: Set<string>
                 </button>
               ))}
             </div>
-            <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-pill" aria-label={`Strength ${s.strength}`}>
+            <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-pill" aria-label={t("Strength {n}", { n: s.strength })}>
               <div className="h-full rounded-full bg-up" style={{ width: `${Math.max(4, (s.strength / max) * 100)}%` }} />
             </div>
             <AnimatePresence initial={false}>
@@ -118,7 +119,7 @@ function MarketMap({ list, onOpen }: { list: Sector[]; onOpen: (e: Gem) => void 
       <div className="mb-2 flex items-center gap-1.5">
         {(["24h", "score"] as Paint[]).map((p) => (
           <button key={p} type="button" aria-pressed={paint === p} onClick={() => setPaint(p)}
-            className={`h-7 rounded-full px-3 text-[12px] font-medium ${paint === p ? "bg-ink text-on-ink" : "bg-pill text-text-2"}`}>{p === "24h" ? "Colour: 24h" : "Colour: score"}</button>
+            className={`h-7 rounded-full px-3 text-[12px] font-medium ${paint === p ? "bg-ink text-on-ink" : "bg-pill text-text-2"}`}>{p === "24h" ? t("Colour: 24h") : t("Colour: score")}</button>
         ))}
       </div>
       <div className="flex flex-wrap gap-1">
@@ -150,8 +151,8 @@ function MarketMap({ list, onOpen }: { list: Sector[]; onOpen: (e: Gem) => void 
       <p className="mt-2 flex items-center gap-1.5 text-[11px] text-text-3">
         {paint === "24h"
           ? <><i className="h-2 w-4 rounded-sm bg-down" />−5% <i className="h-2 w-4 rounded-sm bg-press" />0 <i className="h-2 w-4 rounded-sm bg-up" />+5%</>
-          : <><i className="h-2 w-4 rounded-sm bg-down/40" />under 50 <i className="h-2 w-4 rounded-sm bg-up/45" />60 <i className="h-2 w-4 rounded-sm bg-up" />80+</>}
-        <span className="ml-auto">tap a square to open it</span>
+          : <><i className="h-2 w-4 rounded-sm bg-down/40" />{t("under 50")} <i className="h-2 w-4 rounded-sm bg-up/45" />60 <i className="h-2 w-4 rounded-sm bg-up" />80+</>}
+        <span className="ml-auto">{t("tap a square to open it")}</span>
       </p>
     </>
   );

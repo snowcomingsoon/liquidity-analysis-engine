@@ -11,6 +11,7 @@ import { Logo } from "../components/Logo";
 import { CandleChart } from "../components/CandleChart";
 import { SellsMap } from "../components/SellsMap";
 import { DeepResult, DossierHead, Details, InfoFallback, WhyOf } from "./Dossier";
+import { t as tr } from "../lib/i18n";
 
 // The token page (detail.js): a full screen with the identity, the market-cap
 // candles, the Why and Info tabs from the dossier, the deep re-check and the
@@ -119,7 +120,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
     if (candles.length >= 2) { setChart({ state: "candles", candles, shown }); return; }
     if (stale) return;
     const pair = m.pair || live.pair;
-    setChart(pair && DS_EMBED.has(m.chain) ? { state: "embed", pair } : { state: "none", text: "No trades to chart yet." });
+    setChart(pair && DS_EMBED.has(m.chain) ? { state: "embed", pair } : { state: "none", text: tr("No trades to chart yet.") });
   }, [e.chain, e.token_address, live.pair]);
 
   useEffect(() => { paint(interval); }, [interval, paint]);
@@ -217,7 +218,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
   const born = e.launched_at ?? entry?.launched_at;
   const last = chart.state === "candles" ? chart.candles[chart.candles.length - 1].close : 0;
   const k = live.supply || (cap && last ? cap / last : 1);
-  const note = chart.state === "candles" && chart.shown !== interval ? `No ${interval} candles for this token: showing ${chart.shown}.` : "";
+  const note = chart.state === "candles" && chart.shown !== interval ? tr("No {a} candles for this token: showing {b}.", { a: interval, b: chart.shown }) : "";
 
   async function share() {
     const url = tokenLink(e);
@@ -230,20 +231,20 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
   function flash(ok: boolean) { setCopied(ok ? "yes" : "no"); setTimeout(() => alive.current && setCopied(""), 1600); }
 
   return (
-    <motion.div role="dialog" aria-label="Token" aria-modal="true" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
+    <motion.div role="dialog" aria-label={tr("Token")} aria-modal="true" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.18 }} className="fixed inset-0 z-40 flex flex-col bg-bg">
       <header className="flex h-14 flex-none items-center gap-2 px-4 pt-[env(safe-area-inset-top)]">
-        <button type="button" onClick={close} aria-label="Back" className="-ml-2 grid h-10 w-10 place-items-center"><Icon d="m15 5-7 7 7 7" className="h-6 w-6" /></button>
+        <button type="button" onClick={close} aria-label={tr("Back")} className="-ml-2 grid h-10 w-10 place-items-center"><Icon d="m15 5-7 7 7 7" className="h-6 w-6" /></button>
         <span className="flex min-w-0 flex-1 items-center gap-2.5 text-[16px] font-medium text-text-2">
           <b className="truncate font-medium">{open.context?.split(" · score")[0] || sym}</b>
           {born && <><i className="h-4 w-px bg-line" /><span className="flex items-center gap-0.5 text-text-3">
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" aria-hidden="true"><path d="M8 14V7M8 9c0-3 2-4.5 5-4.5 0 3-2 4.5-5 4.5ZM8 8C8 5.5 6.3 4 3.5 4c0 2.6 1.7 4 4.5 4Z" /></svg>{a}</span></>}
         </span>
         <span className="flex gap-2">
-          <Round label="Hide from my lists" onClick={() => { setTokenHidden(e.chain, e.token_address, true); close(); }}
+          <Round label={tr("Hide from my lists")} onClick={() => { setTokenHidden(e.chain, e.token_address, true); close(); }}
             d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6-.5 1-1.6 2.6-3.3 3.9M6.2 7.6C4.3 8.9 3 10.8 2.5 12c1 2 4.5 6 9.5 6 1.5 0 2.9-.4 4.1-1M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-          <Round label="Watch" pressed={watch} onClick={() => setWatch(toggleWatch(watchId(e)))} d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.8z" />
-          <Round label={copied === "yes" ? "Link copied" : "Share"} onClick={share} d="M12 15V3.5M8 7.5l4-4 4 4M6 11H5v9.5h14V11h-1" />
+          <Round label={tr("Add to watchlist")} pressed={watch} onClick={() => setWatch(toggleWatch(watchId(e)))} d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.8z" />
+          <Round label={copied === "yes" ? tr("Link copied") : tr("Share")} onClick={share} d="M12 15V3.5M8 7.5l4-4 4 4M6 11H5v9.5h14V11h-1" />
         </span>
       </header>
 
@@ -253,13 +254,13 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
           <span className="min-w-0 flex-1">
             <b className="block truncate text-[18px] font-semibold">{name}</b>
             <small className="mt-1 flex items-center gap-2 text-[14px] text-text-2">
-              <button type="button" onClick={async () => flash(await copy(e.token_address))} title="Copy address">{sym}</button>
-              <button type="button" onClick={async () => flash(await copy(e.token_address))} aria-label={copied === "yes" ? "Address copied" : copied === "no" ? "Copy failed" : "Copy address"}
+              <button type="button" onClick={async () => flash(await copy(e.token_address))} title={tr("Copy address")}>{sym}</button>
+              <button type="button" onClick={async () => flash(await copy(e.token_address))} aria-label={copied === "yes" ? tr("Address copied") : copied === "no" ? tr("Copy failed") : tr("Copy address")}
                 title={e.token_address} className="flex items-center gap-1 rounded-full bg-pill px-2 py-0.5 text-[13px] font-medium">
                 {copied === "yes" ? <Icon d="m5 12.5 4.5 4.5L19 7.5" className="h-3.5 w-3.5 text-up" /> : <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V5H5v11h3" /></svg>}
-                <span>{copied === "yes" ? "Copied" : `${e.token_address.slice(0, 4)}…${e.token_address.slice(-4)}`}</span>
+                <span>{copied === "yes" ? tr("Copied") : `${e.token_address.slice(0, 4)}…${e.token_address.slice(-4)}`}</span>
               </button>
-              {pairUrl && <a href={pairUrl} target="_blank" rel="noopener" aria-label="Open chart"><Icon d={OUT} className="h-4 w-4" /></a>}
+              {pairUrl && <a href={pairUrl} target="_blank" rel="noopener" aria-label={tr("Open chart")}><Icon d={OUT} className="h-4 w-4" /></a>}
             </small>
           </span>
           <span className="flex flex-none flex-col items-end">
@@ -270,7 +271,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
         </section>
         {entry && <Glance e={entry} />}
         <div className="mb-2 mt-4 flex items-center justify-between">
-          <h3 className="text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Price</h3>
+          <h3 className="text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">{tr("Price")}</h3>
           <div className="flex gap-1">
             {INTERVALS.map((iv) => (
               <button key={iv} type="button" aria-pressed={iv === interval} onClick={() => setIv(iv)}
@@ -281,9 +282,9 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
         <div className="h-[240px] overflow-hidden rounded-[16px] bg-card">
           {chart.state === "candles" && !libFailed && <CandleChart candles={chart.candles} k={k} onFail={() => setLibFailed(true)} />}
           {chart.state === "candles" && libFailed && <Line candles={chart.candles} k={k} />}
-          {chart.state === "embed" && <iframe className="h-full w-full rounded-[20px] border-0" src={embedUrl(e.chain, chart.pair, interval)} title={`${sym} chart on DexScreener`} loading="lazy" referrerPolicy="no-referrer" />}
+          {chart.state === "embed" && <iframe className="h-full w-full rounded-[20px] border-0" src={embedUrl(e.chain, chart.pair, interval)} title={tr("{s} chart on DexScreener", { s: sym })} loading="lazy" referrerPolicy="no-referrer" />}
           {(chart.state === "loading" || chart.state === "none") && (
-            <div className="grid h-full place-items-center text-[14px] text-text-3">{chart.state === "none" ? chart.text : "Loading chart…"}</div>
+            <div className="grid h-full place-items-center text-[14px] text-text-3">{chart.state === "none" ? chart.text : tr("Loading chart…")}</div>
           )}
         </div>
         {note && <p className="mt-1 text-[13px] text-text-3">{note}</p>}
@@ -293,7 +294,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
             <button key={t} type="button" aria-current={tab === t ? "true" : undefined} onClick={() => setTab(t)}
               className={`relative h-9 flex-1 rounded-full text-[14px] font-medium ${tab === t ? "text-text" : "text-text-2"}`}>
               {tab === t && <motion.span layoutId="dt-tab" className="absolute inset-0 rounded-full bg-card shadow-[0_1px_2px_rgb(0_0_0/.06)]" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
-              <span className="relative">{t === "why" ? "Why" : "Info"}</span>
+              <span className="relative">{t === "why" ? tr("Why") : tr("Info")}</span>
             </button>
           ))}
         </nav>
@@ -301,7 +302,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
         <div className="pt-2">
           {tab === "why" ? (
             <>
-              {entry ? <WhyOf e={entry} deep={deep} /> : <p className="text-[14px] text-text-2">{loading ? "Loading…" : "Nothing to add yet."}</p>}
+              {entry ? <WhyOf e={entry} deep={deep} /> : <p className="text-[14px] text-text-2">{loading ? tr("Loading…") : tr("Nothing to add yet.")}</p>}
               {entry && (
                 <div>
                   <DossierHead title="Deep re-check" right={deep ? `${deep.verdict ?? ""} · ${deep.score ?? "—"}/100` : undefined} />
@@ -316,7 +317,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-5" style={{ background: "linear-gradient(transparent, var(--c-bg) 18px)" }}>
         <div className="pointer-events-auto flex gap-2">
-          <button type="button" onClick={() => tabs.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="h-12 flex-1 rounded-full bg-pill text-[15px] font-semibold">Why · Info</button>
+          <button type="button" onClick={() => tabs.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="h-12 flex-1 rounded-full bg-pill text-[15px] font-semibold">{tr("Why")} · {tr("Info")}</button>
           <a href={dex} target="_blank" rel="noopener" className="flex h-12 flex-1 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-on-ink">DexScreener ↗</a>
         </div>
       </div>
@@ -345,7 +346,7 @@ function RecheckButton({ rc, wait, onClick }: { rc: Recheck; wait: number; onCli
     return (
       <button type="button" disabled data-busy className={`${base} rounded-[24px] bg-ink py-3 text-left text-[12px] font-normal leading-[1.35] text-on-ink`}>
         <span aria-live="polite" className="block">
-          <span className="flex justify-between gap-3"><b className="truncate font-mono">&gt; {lastStep ? `${lastStep.label}${lastStep.detail ? ` · ${lastStep.detail}` : ""}` : "Starting"}</b>
+          <span className="flex justify-between gap-3"><b className="truncate font-mono">&gt; {lastStep ? `${lastStep.label}${lastStep.detail ? ` · ${lastStep.detail}` : ""}` : tr("Starting")}</b>
             <em className="flex-none not-italic opacity-70">{steps.length ? `step ${steps.length} · ` : ""}{secs}s</em></span>
           {(rc.log ?? []).slice(-LOG_LINES).map((x) => (
             <motion.span key={x.n} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-1 flex gap-2 font-mono">
@@ -357,7 +358,7 @@ function RecheckButton({ rc, wait, onClick }: { rc: Recheck; wait: number; onCli
       </button>
     );
   }
-  const label = rc.failed ? "Re-check failed" : wait > 0 ? (wait >= 3600 ? `Re-check in ${Math.round(wait / 3600)}h` : `Re-check in ${Math.max(1, Math.round(wait / 60))}m`) : "Deep re-check";
+  const label = rc.failed ? tr("Re-check failed") : wait > 0 ? (wait >= 3600 ? tr("Re-check in {n}h", { n: Math.round(wait / 3600) }) : tr("Re-check in {n}m", { n: Math.max(1, Math.round(wait / 60)) })) : tr("Deep re-check");
   return <button type="button" disabled={rc.failed || wait > 0} onClick={onClick} className={`${base} bg-pill text-text disabled:text-text-3`}>{label}</button>;
 }
 
@@ -375,7 +376,7 @@ function Line({ candles, k }: { candles: Candle[]; k: number }) {
   const d = candles.map((c, i) => `${i ? "L" : "M"}${x(c.time).toFixed(1)},${y(ys[i]).toFixed(1)}`).join("");
   const up = ys[ys.length - 1] >= ys[0];
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img" aria-label="Market cap chart">
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img" aria-label={tr("Market cap chart")}>
       {[0, 1, 2, 3, 4].map((i) => { const v = lo + ((hi - lo) * i) / 4; return <text key={i} x={W - 4} y={y(v) + 4} textAnchor="end" className="fill-text-3 text-[10px]">{usdShort(v)}</text>; })}
       <path d={d} fill="none" strokeWidth={1.6} className={up ? "stroke-up" : "stroke-down"} />
     </svg>

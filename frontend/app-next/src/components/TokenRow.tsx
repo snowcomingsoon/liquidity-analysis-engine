@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import type { Gem } from "../lib/types";
 import { age, changeText, marketSub, usdShort } from "../lib/format";
 import { Logo } from "./Logo";
+import { t } from "../lib/i18n";
 
 const BADGE = { early: "EARLY", hidden: "HIDDEN GEM" } as const;
 
@@ -24,7 +25,7 @@ export function TokenRow({ e, name, badge, onOpen, i = 0, dim = false, footer }:
         <span className="min-w-0 flex-1">
           <b className={`block truncate text-[15px] font-semibold leading-tight ${dim ? "text-text-2" : ""}`}>
             {name ?? e.name ?? e.symbol}
-            {badge && <em className="ml-1.5 rounded-full border border-amber px-1.5 align-[2px] text-[10px] font-semibold not-italic tracking-wide text-amber">{BADGE[badge]}</em>}
+            {badge && <em className="ml-1.5 rounded-full border border-amber px-1.5 align-[2px] text-[10px] font-semibold not-italic tracking-wide text-amber">{t(BADGE[badge])}</em>}
           </b>
           <small className="mt-0.5 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[12.5px] text-text-3">
             {e.score != null && <span className="rounded-md bg-sage px-1.5 font-mono text-[11.5px] leading-normal text-on-sage">{Math.round(e.score)}</span>}

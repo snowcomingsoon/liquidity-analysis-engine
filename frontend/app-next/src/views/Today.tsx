@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Gem } from "../lib/types";
-import { type SectorsView, type TodayKind, sinceText } from "../lib/sectors";
+import { type SectorsView, type TodayKind, sinceText, todayText } from "../lib/sectors";
 import { Logo } from "../components/Logo";
 import { changeText, usdShort } from "../lib/format";
 import { gemId } from "../components/TokenRow";
 import { watchedIds } from "./Watch";
+import { t as tr } from "../lib/i18n";
 
 const FILTERS: [TodayKind | "all", string][] = [["all", "All"], ["champion", "Champions"], ["entered", "New"], ["dropped", "Dropped"]];
 const MARK: Record<TodayKind, string> = { champion: "text-up", entered: "text-up", dropped: "text-down", moved: "text-text-3" };
@@ -30,22 +31,22 @@ export function Today({ data, onOpen, onSectors, onWatch, early, onEarly }: { da
   return (
     <>
       <p className="text-[13px] text-text-2">
-        {t.since ? `${ranked} projects ranked · ${t.items.length} changes ${sinceText(t.since)}` : `${ranked} projects ranked`}
+        {t.since ? tr("{n} projects ranked · {m} changes {since}", { n: ranked, m: t.items.length, since: sinceText(t.since) }) : tr("{n} projects ranked", { n: ranked })}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Stat label="New champions" v={t.counts.champion} />
-        <Stat label="Dropped" v={t.counts.dropped} />
+        <Stat label={tr("New champions")} v={t.counts.champion} />
+        <Stat label={tr("Dropped")} v={t.counts.dropped} />
       </div>
       {/* Early stays one tap away (Lorenzo 22/10: "sparita la sezione early"). */}
       <button type="button" onClick={onEarly} className="mt-2 flex w-full items-center rounded-[20px] bg-card px-4 py-3 text-left active:bg-pill">
-        <span className="flex-1"><b className="block text-[15px] font-semibold">Early</b><small className="text-[12.5px] text-text-3">under $300k cap, every other bar passed</small></span>
+        <span className="flex-1"><b className="block text-[15px] font-semibold">Early</b><small className="text-[12.5px] text-text-3">{tr("under $300k cap, every other bar passed")}</small></span>
         <b className="num text-[20px] font-semibold">{early ?? "…"}</b><span className="ml-2 text-text-3">›</span>
       </button>
       {watch.length > 0 && (
         <>
           <div className="mt-4 flex items-baseline justify-between">
-            <h2 className="text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Your watchlist</h2>
-            <button type="button" onClick={onWatch} className="text-[13px] font-medium text-text-2">Show all ›</button>
+            <h2 className="text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">{tr("Your watchlist")}</h2>
+            <button type="button" onClick={onWatch} className="text-[13px] font-medium text-text-2">{tr("Show all ›")}</button>
           </div>
           <ol className="mt-2 rounded-[20px] bg-card p-1.5">
             {watch.map(({ id, hit, news: n }) => {
@@ -57,7 +58,7 @@ export function Today({ data, onOpen, onSectors, onWatch, early, onEarly }: { da
                     <Logo size={34} symbol={e.symbol} image={e.image} chain={e.chain} token={e.token_address} />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[15px] font-medium leading-tight">{e.symbol}</b>
-                      <small className="block truncate text-[12.5px] text-text-2">{n ? n.text : `${hit.sector}${e.arena_rank ? ` · #${e.arena_rank}` : ""}${e.score != null ? ` · score ${Math.round(e.score)}` : ""}`}</small>
+                      <small className="block truncate text-[12.5px] text-text-2">{n ? todayText(n)[0] : `${hit.sector}${e.arena_rank ? ` · #${e.arena_rank}` : ""}${e.score != null ? ` · ${tr("score {n}", { n: Math.round(e.score) })}` : ""}`}</small>
                     </span>
                     <span className="flex flex-col items-end">
                       <b className="num text-[14px] font-semibold">{usdShort(e.market_cap)}</b>
@@ -78,7 +79,7 @@ export function Today({ data, onOpen, onSectors, onWatch, early, onEarly }: { da
               return (
                 <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)} disabled={!n && k !== "all"}
                   className={`h-8 rounded-full px-3 text-[13px] font-medium disabled:opacity-40 ${filter === k ? "bg-ink text-on-ink" : "bg-pill text-text-2"}`}>
-                  {label}{k !== "all" && n ? ` ${n}` : ""}
+                  {tr(label)}{k !== "all" && n ? ` ${n}` : ""}
                 </button>
               );
             })}
@@ -92,25 +93,25 @@ export function Today({ data, onOpen, onSectors, onWatch, early, onEarly }: { da
                     className="flex w-full items-center gap-3 rounded-[16px] px-2 py-2 text-left active:bg-pill disabled:active:bg-transparent">
                     <Logo size={38} symbol={i.gem.symbol} image={i.gem.image} chain={i.gem.chain} token={i.gem.token_address} />
                     <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[15px] font-medium leading-tight">{i.text}</b>
-                      <small className="num block truncate text-[12.5px] text-text-2">{i.detail}</small>
+                      <b className="block truncate text-[15px] font-medium leading-tight">{todayText(i)[0]}</b>
+                      <small className="num block truncate text-[12.5px] text-text-2">{todayText(i)[1]}</small>
                     </span>
-                    <span className={`text-[11px] font-semibold uppercase tracking-wide ${MARK[i.kind]}`}>{i.kind === "entered" ? "new" : i.kind === "champion" ? "♛" : i.kind}</span>
+                    <span className={`text-[11px] font-semibold uppercase tracking-wide ${MARK[i.kind]}`}>{i.kind === "entered" ? tr("new") : i.kind === "champion" ? "♛" : tr(i.kind)}</span>
                   </button>
                 </motion.li>
               ))}
             </AnimatePresence>
-            {!items.length && <li className="px-2 py-4 text-[14px] text-text-2">Nothing changed {sinceText(t.since)}.</li>}
+            {!items.length && <li className="px-2 py-4 text-[14px] text-text-2">{tr("Nothing changed {since}.", { since: sinceText(t.since) })}</li>}
           </ol>
         </>
       ) : (
         <p className="mt-3 rounded-[20px] bg-card p-4 text-[14px] text-text-2">
-          Today compares the ranking with about a day ago. The first reading is saved now: changes show up after the next research run.
+          {tr("Today compares the ranking with about a day ago. The first reading is saved now: changes show up after the next research run.")}
         </p>
       )}
       <div className="mt-5 flex items-baseline">
-        <h2 className="flex-1 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Strongest sectors</h2>
-        <button type="button" onClick={onSectors} className="text-[13px] font-medium text-text-2">All sectors ›</button>
+        <h2 className="flex-1 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">{tr("Strongest sectors")}</h2>
+        <button type="button" onClick={onSectors} className="text-[13px] font-medium text-text-2">{tr("All sectors ›")}</button>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {data.sectors.slice(0, PREVIEW).map((s) => (

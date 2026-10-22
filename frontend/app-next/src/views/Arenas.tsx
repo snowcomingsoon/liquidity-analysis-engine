@@ -4,6 +4,7 @@ import type { Arena, Gem } from "../lib/types";
 import { isHiddenIn, setNarratives, sortRows, useHidden, useNarratives, useSort } from "../lib/store";
 import { TokenRow, gemId } from "../components/TokenRow";
 import { SortBar } from "../components/SortBar";
+import { t } from "../lib/i18n";
 
 const FOLD = 3;   // the first three of each arena in view, the rest behind "Show all" (Lorenzo, 17/10)
 const SEEN_KEY = "lae:arena-crowns";
@@ -30,7 +31,7 @@ export function Arenas({ arenas, filtered, labels, onOpen }: {
     const out: string[] = [];
     if (prev) for (const a of arenas) {
       const was = prev[a.key], now = a.entries[0];
-      if (was && now && was.id !== gemId(now)) { out.push(`${now.symbol} took ${a.label} from ${was.symbol}`); changed.set(a.key, gemId(now)); }
+      if (was && now && was.id !== gemId(now)) { out.push(t("{a} took {arena} from {b}", { a: now.symbol, arena: a.label, b: was.symbol })); changed.set(a.key, gemId(now)); }
     }
     return out;
   }, [arenas, filtered, changed]);
@@ -48,13 +49,13 @@ export function Arenas({ arenas, filtered, labels, onOpen }: {
             {narr.map((k) => labels[k] ?? k).join(", ")} ✕
           </button>
         )}
-        {lead.length > 0 && `Since your last visit: ${lead.slice(0, 3).join(", ")}. `}
-        {total > 0 && `${list.length} arenas · ${total} projects`}
+        {lead.length > 0 && t("Since your last visit: {list}. ", { list: lead.slice(0, 3).join(", ") })}
+        {total > 0 && t("{n} arenas · {m} projects", { n: list.length, m: total })}
       </p>
       <SortBar />
       {list.length
         ? <div className="grid grid-cols-[minmax(0,1fr)] gap-[18px]">{list.map((a) => <ArenaBox key={a.key} a={a} rows={sortRows(shown(a), sort)} champ={changed.get(a.key)} onOpen={onOpen} />)}</div>
-        : <p className="py-6 text-[14px] text-text-2">The arenas are filling up: projects appear as they pass the checks.</p>}
+        : <p className="py-6 text-[14px] text-text-2">{t("The arenas are filling up: projects appear as they pass the checks.")}</p>}
     </>
   );
 }
@@ -66,8 +67,8 @@ function ArenaBox({ a, rows, champ, onOpen }: { a: Arena; rows: Gem[]; champ?: s
     <section className="min-w-0 rounded-xl border border-line p-3">
       <header className="mb-2.5 flex items-center gap-2">
         <h4 className="text-[15px] font-semibold leading-snug">{a.label}</h4>
-        {a.heat > 0 && <span className="text-[11px] tracking-[-1px] text-amber" aria-label={`Narrative heat ${a.heat} of 3`}>{"█".repeat(a.heat)}<span className="opacity-30">{"█".repeat(Math.max(0, 3 - a.heat))}</span></span>}
-        <span className="num ml-auto text-[12px] text-text-3">{rows.length} projects · median {Math.round(a.median)}</span>
+        {a.heat > 0 && <span className="text-[11px] tracking-[-1px] text-amber" aria-label={t("Narrative heat {n} of 3", { n: a.heat })}>{"█".repeat(a.heat)}<span className="opacity-30">{"█".repeat(Math.max(0, 3 - a.heat))}</span></span>}
+        <span className="num ml-auto text-[12px] text-text-3">{t("{n} projects · median {m}", { n: rows.length, m: Math.round(a.median) })}</span>
       </header>
       <ol>
         <AnimatePresence initial={false}>
@@ -82,7 +83,7 @@ function ArenaBox({ a, rows, champ, onOpen }: { a: Arena; rows: Gem[]; champ?: s
       {rows.length > FOLD && (
         <button type="button" onClick={() => setAll(!all)} aria-expanded={all}
           className="mt-1 h-10 w-full rounded-xl border border-line text-[14px] text-text transition-colors active:bg-pill">
-          {all ? "Show less" : `Show all ${rows.length}`}
+          {all ? t("Show less") : t("Show all {n}", { n: rows.length })}
         </button>
       )}
     </section>

@@ -1,5 +1,6 @@
 import type { Candle, Deep, Job, Narrative, Projects, QualityLists, RecheckProgress, Top, TokenDossier } from "./types";
 import type { AgentInfo, AgentItem, JourneyAnswer } from "./scout";
+import { t } from "./i18n";
 
 // The same contract as static/onchain/api.js: X-Device on every call,
 // identical GETs in flight shared, errors carry the server's detail.
@@ -29,12 +30,12 @@ async function send<T>(path: string, method = "GET", body?: unknown, timeoutMs =
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (e) {
-    throw new ApiError((e as Error).name === "TimeoutError" ? "network is slow" : "network unreachable");
+    throw new ApiError((e as Error).name === "TimeoutError" ? t("network is slow") : t("network unreachable"));
   }
   let payload: { detail?: unknown } | null = null;
   try { payload = await r.json(); } catch { /* 204 or not JSON */ }
   if (r.status === 401) location.href = "/onchain-app.html";
-  if (!r.ok) throw new ApiError(typeof payload?.detail === "string" ? payload.detail : `error ${r.status}`, r.status, payload?.detail);
+  if (!r.ok) throw new ApiError(typeof payload?.detail === "string" ? payload.detail : t("error {n}", { n: r.status }), r.status, payload?.detail);
   return payload as T;
 }
 
@@ -123,8 +124,8 @@ export async function streamScan(query: string, onEvent: (ev: ScanEvent) => void
       method: "POST", headers: { "Content-Type": "application/json", ...(device ? { "X-Device": device } : {}) },
       body: JSON.stringify({ query, view: `${location.pathname}#search` }), signal: AbortSignal.timeout(300000),
     });
-  } catch (e) { throw new ApiError((e as Error).name === "TimeoutError" ? "network is slow" : "network unreachable"); }
-  if (!r.ok || !r.body) throw new ApiError(`scan failed (${r.status})`);
+  } catch (e) { throw new ApiError((e as Error).name === "TimeoutError" ? t("network is slow") : t("network unreachable")); }
+  if (!r.ok || !r.body) throw new ApiError(t("scan failed ({n})", { n: r.status }));
   const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
   let buf = "", result: Record<string, unknown> | null = null, id: string | null = null;
   try {

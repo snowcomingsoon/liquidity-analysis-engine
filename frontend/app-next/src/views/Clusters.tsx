@@ -6,12 +6,13 @@ import { ClusterQueue } from "../components/ClusterQueue";
 import { CheckProgress, useClusterCheck } from "../components/CheckProgress";
 import { SellsMap } from "../components/SellsMap";
 import { AnimatePresence, motion } from "motion/react";
+import { t } from "../lib/i18n";
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const ago = (ts?: number | null) => {
   if (!ts) return "—";
   const h = (Date.now() / 1000 - ts) / 3600;
-  return h < 1 ? "<1h ago" : h < 48 ? `${Math.round(h)}h ago` : `${Math.round(h / 24)}d ago`;
+  return h < 1 ? t("<1h ago") : h < 48 ? t("{n}h ago", { n: Math.round(h) }) : t("{n}d ago", { n: Math.round(h / 24) });
 };
 const pct = (x?: number | null) => (x == null ? "—" : `${(x * 100).toFixed(x < 0.1 ? 1 : 0)}%`);
 // The real clusters' share of supply (the "top" group is holders with no link found).
@@ -47,9 +48,9 @@ export function Clusters({ onToken, inApp }: { onToken: (e: Gem) => void; inApp?
   return (
     <>
       <label className="flex h-12 items-center gap-2 rounded-full bg-card px-4 shadow-[inset_0_0_0_1.5px_var(--c-ink)]">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Paste a token address to check" autoComplete="off" spellCheck={false}
-          aria-label="Token address" className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-text-3" />
-        {q && <button type="button" aria-label="Clear" onClick={() => setQ("")} className="rounded-md bg-pill px-2 py-0.5 font-mono text-[12px] text-text-2">✕</button>}
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Paste a token address to check")} autoComplete="off" spellCheck={false}
+          aria-label={t("Token address")} className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-text-3" />
+        {q && <button type="button" aria-label={t("Clear")} onClick={() => setQ("")} className="rounded-md bg-pill px-2 py-0.5 font-mono text-[12px] text-text-2">✕</button>}
       </label>
       <div className="mt-3"><ClusterCheck address={s} onStart={(c) => { setAsked({ chain: c, token: s, at: Date.now() }); setScreen(true); }} onOpen={() => setQ("")} onFail={() => { setAsked(null); setScreen(false); }} /></div>
       {asked && <Asked key={asked.at} chain={asked.chain} token={asked.token} onOpen={() => setScreen(true)}
@@ -59,12 +60,12 @@ export function Clusters({ onToken, inApp }: { onToken: (e: Gem) => void; inApp?
           onOpen={() => { setScreen(false); open(asked.chain, asked.token); }} />}
       </AnimatePresence>
 
-      <h2 className="mb-2 mt-5 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Live</h2>
+      <h2 className="mb-2 mt-5 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">{t("Live")}</h2>
       <ClusterQueue onOpen={open} />
 
       <div className="mb-2 mt-5 flex flex-wrap items-center gap-1.5">
-        <h2 className="mr-auto text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Checked, riskiest first</h2>
-        {!!inApp?.size && ([["app", `In the app ${nApp}`], ["all", `All ${list?.length ?? 0}`]] as const).map(([k, label]) => (
+        <h2 className="mr-auto text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">{t("Checked, riskiest first")}</h2>
+        {!!inApp?.size && ([["app", `${t("In the app")} ${nApp}`], ["all", `${t("All")} ${list?.length ?? 0}`]] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => setScope(k)} aria-pressed={scope === k}
             className={`num rounded-full px-2.5 py-1 text-[12px] ${scope === k ? "bg-ink font-semibold text-on-ink" : "bg-pill text-text-2"}`}>{label}</button>
         ))}
@@ -72,7 +73,7 @@ export function Clusters({ onToken, inApp }: { onToken: (e: Gem) => void; inApp?
       <div className="mb-2 flex flex-wrap justify-end gap-1.5">
         {chains.length > 1 && ["all", ...chains].map((c) => (
           <button key={c} type="button" onClick={() => setChain(c)} aria-pressed={chain === c}
-            className={`rounded-full px-2.5 py-1 text-[12px] capitalize ${chain === c ? "bg-ink font-semibold text-on-ink" : "bg-pill text-text-2"}`}>{c}</button>
+            className={`rounded-full px-2.5 py-1 text-[12px] capitalize ${chain === c ? "bg-ink font-semibold text-on-ink" : "bg-pill text-text-2"}`}>{c === "all" ? t("All") : c}</button>
         ))}
       </div>
       {list == null ? <div className="h-16 animate-pulse rounded-[16px] bg-card" />
@@ -85,9 +86,9 @@ export function Clusters({ onToken, inApp }: { onToken: (e: Gem) => void; inApp?
                 <li key={`${r.chain}:${r.token}`}>
                   <button type="button" onClick={() => open(r.chain, r.token, r.symbol)} className="flex w-full items-center gap-3 rounded-[12px] px-2 py-2.5 text-left active:bg-pill">
                     <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[15px] font-semibold leading-tight">{r.symbol || short(r.token)} <span className="text-[12.5px] font-normal text-text-3">· {r.chain}{here(r) ? ` · ${here(r)}` : ""}</span></b>
+                      <b className="block truncate text-[15px] font-semibold leading-tight">{r.symbol || short(r.token)} <span className="text-[12.5px] font-normal text-text-3">· {r.chain}{here(r) ? ` · ${t(here(r)!)}` : ""}</span></b>
                       <small className="block truncate text-[12.5px] text-text-3">
-                        clusters hold {pct(held(r))} · {last ? `last wave ${ago(last.ts)}, ${pct(last.share_sold)} sold` : "no wave yet"}
+                        {t("clusters hold {p}", { p: pct(held(r)) })} · {last ? t("last wave {t}, {p} sold", { t: ago(last.ts), p: pct(last.share_sold) }) : t("no wave yet")}
                       </small>
                     </span>
                     {risk != null && <span className={`num flex-none rounded-full px-2.5 py-1 text-[13px] font-semibold ${risk >= 60 ? "bg-down/15 text-down" : "bg-pill text-text-2"}`}>{Math.round(risk)}</span>}
@@ -96,7 +97,7 @@ export function Clusters({ onToken, inApp }: { onToken: (e: Gem) => void; inApp?
               );
             })}
           </ol>
-        ) : <p className="rounded-[16px] bg-card p-4 text-[14px] text-text-2">{list.length ? "No token here checked yet: see All." : "No token checked yet. Paste an address above."}</p>}
+        ) : <p className="rounded-[16px] bg-card p-4 text-[14px] text-text-2">{list.length ? t("No token here checked yet: see All.") : t("No token checked yet. Paste an address above.")}</p>}
     </>
   );
 }
@@ -107,7 +108,7 @@ function Asked({ chain, token, onOpen, onReady }: { chain: string; token: string
   useEffect(() => { if (rep) onReady(); }, [rep]);
   return (
     <button type="button" onClick={onOpen} className="mt-3 block w-full text-left">
-      {rep ? <span className="flex items-center rounded-[16px] bg-card p-4 text-[14px]"><b className="flex-1 font-semibold">{short(token)} · {chain}: ready</b><span className="text-[13px] text-text-3">open ›</span></span>
+      {rep ? <span className="flex items-center rounded-[16px] bg-card p-4 text-[14px]"><b className="flex-1 font-semibold">{short(token)} · {chain}: {t("ready")}</b><span className="text-[13px] text-text-3">{t("open ›")}</span></span>
         : <CheckProgress check={check} title={`${short(token)} · ${chain}`} />}
     </button>
   );
@@ -118,16 +119,16 @@ function Asked({ chain, token, onOpen, onReady }: { chain: string; token: string
  *  and the bubble map filling in as holders, links and sells are read. */
 function LiveCheck({ chain, token, onClose, onOpen }: { chain: string; token: string; onClose: () => void; onOpen: () => void }) {
   return (
-    <motion.div role="dialog" aria-modal="true" aria-label="Cluster check" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+    <motion.div role="dialog" aria-modal="true" aria-label={t("Cluster check")} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
       transition={{ duration: 0.2 }} className="fixed inset-0 z-40 overflow-y-auto bg-bg">
       <div className="mx-auto max-w-[540px] px-4 pb-28 pt-[calc(12px+env(safe-area-inset-top))]">
         <header className="mb-4 flex items-center gap-2">
-          <button type="button" onClick={onClose} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-pill text-[18px]">‹</button>
+          <button type="button" onClick={onClose} aria-label={t("Back")} className="grid h-10 w-10 place-items-center rounded-full bg-pill text-[18px]">‹</button>
           <span className="min-w-0 flex-1">
-            <b className="block text-[18px] font-semibold leading-tight">Cluster check</b>
+            <b className="block text-[18px] font-semibold leading-tight">{t("Cluster check")}</b>
             <small className="block truncate font-mono text-[12px] text-text-3">{chain} · {short(token)}</small>
           </span>
-          <button type="button" onClick={onOpen} className="rounded-full bg-ink px-3.5 py-2 text-[13px] font-semibold text-on-ink">Token page</button>
+          <button type="button" onClick={onOpen} className="rounded-full bg-ink px-3.5 py-2 text-[13px] font-semibold text-on-ink">{t("Token page")}</button>
         </header>
         <SellsMap chain={chain} token={token} starting bare />
       </div>

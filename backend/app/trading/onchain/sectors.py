@@ -188,18 +188,21 @@ def today(sectors: list[dict], snaps: list[dict], now: float) -> dict:
         if was and was["champ"] != entry_id(champ):
             items.append({"kind": "champion", "gem": _gem(champ, s),
                           "text": f"{champ.get('symbol')} takes {s['label']}",
-                          "detail": f"from {was['sym']} · score {round(_score(champ))}"})
+                          "detail": f"from {was['sym']} · score {round(_score(champ))}",
+                          "args": {"s": champ.get("symbol"), "sector": s["label"], "was": was["sym"], "n": round(_score(champ))}})
     then = ref["ranked"]
     for eid, (e, s) in now_ranked.items():
         if eid not in then:
             items.append({"kind": "entered", "gem": _gem(e, s), "text": f"{e.get('symbol')} enters {s['label']}",
-                          "detail": f"score {round(_score(e))}"})
+                          "detail": f"score {round(_score(e))}",
+                          "args": {"s": e.get("symbol"), "sector": s["label"], "n": round(_score(e))}})
         else:
             d = _score(e) - then[eid]["s"]
             if abs(d) >= MOVE_MIN:
                 items.append({"kind": "moved", "gem": _gem(e, s),
                               "text": f"{e.get('symbol')} {'gains' if d > 0 else 'loses'} {abs(round(d))} points",
-                              "detail": f"{s['label']} · {round(then[eid]['s'])} → {round(_score(e))}"})
+                              "detail": f"{s['label']} · {round(then[eid]['s'])} → {round(_score(e))}",
+                              "args": {"s": e.get("symbol"), "sector": s["label"], "d": round(d), "a": round(then[eid]["s"]), "b": round(_score(e))}})
     labels = {k: v["label"] for k, v in ref["sectors"].items()}
     for eid, was in then.items():
         if eid not in now_ranked:
@@ -207,7 +210,8 @@ def today(sectors: list[dict], snaps: list[dict], now: float) -> dict:
             items.append({"kind": "dropped", "gem": {"chain": chain, "token_address": token, "symbol": was["y"],
                                                      "sector": labels.get(was["k"], was["k"])},
                           "text": f"{was['y']} left the ranking",
-                          "detail": f"{labels.get(was['k'], was['k'])} · was {round(was['s'])}"})
+                          "detail": f"{labels.get(was['k'], was['k'])} · was {round(was['s'])}",
+                          "args": {"s": was["y"], "sector": labels.get(was["k"], was["k"]), "n": round(was["s"])}})
     order = {"champion": 0, "entered": 1, "dropped": 2, "moved": 3}
     items.sort(key=lambda i: (order[i["kind"]], -float(i["gem"].get("score") or 0)))
     counts = {k: sum(1 for i in items if i["kind"] == k) for k in order}

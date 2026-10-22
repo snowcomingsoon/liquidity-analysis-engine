@@ -31,7 +31,10 @@ function colour(el, token, i) {
   return FALLBACK[i] || "#888";
 }
 
-export function clusterMap(host, report, { onPick } = {}) {
+const WORDS = { cluster: "Cluster", wallets: "wallets", nolink: "No link found", none: "No linked wallets among the top holders." };
+
+export function clusterMap(host, report, { onPick, words } = {}) {
+  const w = { ...WORDS, ...words };
   const canvas = document.createElement("canvas");
   canvas.className = "cs-map-canvas";
   canvas.setAttribute("role", "img");
@@ -105,9 +108,9 @@ export function clusterMap(host, report, { onPick } = {}) {
 
   function drawLegend() {
     const item = (c, label) => `<li style="display:flex;align-items:center;gap:6px"><i style="inline-size:10px;block-size:10px;border-radius:50%;background:${colours.get(c)};opacity:${c === top ? .45 : .85}"></i>${label}</li>`;
-    legend.innerHTML = real.map((c, i) => item(c, `<b>Cluster ${i + 1}</b>&nbsp;${c.wallets.length} wallets · ${pct(shareOf(c))}`)).join("")
-      + (top && groups.includes(top) ? item(top, "No link found") : "")
-      + (real.length ? "" : `<li>No linked wallets among the top holders.</li>`);
+    legend.innerHTML = real.map((c, i) => item(c, `<b>${w.cluster} ${i + 1}</b>&nbsp;${c.wallets.length} ${w.wallets} · ${pct(shareOf(c))}`)).join("")
+      + (top && groups.includes(top) ? item(top, w.nolink) : "")
+      + (real.length ? "" : `<li>${w.none}</li>`);
   }
 
   function seed() {
@@ -196,7 +199,7 @@ export function clusterMap(host, report, { onPick } = {}) {
       const y = Math.min(...ns.map((n) => n.y - radius(n)));
       ctx.globalAlpha = Math.max(...ns.map((n) => n.a));
       ctx.fillStyle = colours.get(c);
-      ctx.fillText(`Cluster ${i + 1} · ${pct(shareOf(c))}`, Math.min(W - 50, Math.max(50, x)), Math.max(13, y - 4));
+      ctx.fillText(`${w.cluster} ${i + 1} · ${pct(shareOf(c))}`, Math.min(W - 50, Math.max(50, x)), Math.max(13, y - 4));
     });
     ctx.globalAlpha = 1;
   }
@@ -237,7 +240,7 @@ export function clusterMap(host, report, { onPick } = {}) {
     const hit = list.find((n) => Math.hypot(n.x - x, n.y - y) <= Math.max(8, radius(n)));
     list.forEach((n) => { n.ring = n === hit; });
     onPick?.(hit ? { address: hit.id, share: hit.share, cluster: hit.cluster,
-      label: hit.others ? `${hit.others} smaller holders, no link found` : null } : null);
+      others: hit.others ?? 0, label: hit.others ? `${hit.others} smaller holders, no link found` : null } : null);
     if (still()) draw(); else kick();
   });
 

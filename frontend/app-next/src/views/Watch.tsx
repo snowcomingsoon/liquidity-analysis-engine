@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import * as api from "../lib/api";
 import type { Gem } from "../lib/types";
-import type { SectorsView } from "../lib/sectors";
+import { type SectorsView, todayText } from "../lib/sectors";
 import { Logo } from "../components/Logo";
 import { age, changeText, usdShort } from "../lib/format";
 import { gemId } from "../components/TokenRow";
 
 import { WATCH_KEY } from "../lib/watchKey";
+import { t } from "../lib/i18n";
 
 export function watchedIds(): string[] {
   try { return (JSON.parse(localStorage.getItem(WATCH_KEY) || "[]") as string[]).map((id) => id.replace(/^gem:/, ""))
@@ -37,7 +38,7 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
     Promise.all([api.getAlerts("meme").catch(() => ({ items: [] })), api.getAlerts("gem").catch(() => ({ items: [] }))])
       .then(([m, g]) => setAlerts([...(m.items ?? []), ...(g.items ?? [])].sort((x, y) => y.at - x.at).slice(0, 25)));
   }, []);
-  const seg = ([["follow", `Following ${ids.length}`], ["alerts", `Alerts${alerts ? ` ${alerts.length}` : ""}`]] as const);
+  const seg = ([["follow", `${t("Following")} ${ids.length}`], ["alerts", `${t("Alerts")}${alerts ? ` ${alerts.length}` : ""}`]] as const);
   return (
     <>
       <div className="flex rounded-full bg-pill p-1">
@@ -46,7 +47,7 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
             className={`h-9 flex-1 rounded-full text-[14px] font-medium ${tab === k ? "bg-card text-text shadow-[0_1px_2px_rgb(0_0_0/.06)]" : "text-text-2"}`}>{l}</button>
         ))}
       </div>
-      {tab === "alerts" && (alerts && !alerts.length ? <p className="mt-4 rounded-[16px] bg-card p-4 text-[14px] text-text-2">No alert yet: the ones sent on Telegram show up here.</p> : (
+      {tab === "alerts" && (alerts && !alerts.length ? <p className="mt-4 rounded-[16px] bg-card p-4 text-[14px] text-text-2">{t("No alert yet: the ones sent on Telegram show up here.")}</p> : (
         <ol className="mt-3 rounded-[16px] bg-card p-1.5">
           {(alerts ?? []).map((a) => {
             const cap = a.gone ? null : a.cap0 && a.now != null ? a.cap0 * (1 + a.now) : a.cap0;
@@ -58,11 +59,11 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
                   <Logo size={36} symbol={a.symbol} image={a.image} chain={a.chain} token={a.token_address} />
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[15px] font-semibold leading-tight">{a.symbol}</b>
-                    <small className="block truncate text-[12.5px] text-text-3">alerted {age(a.at)[0]} ago{a.gone ? " · pool gone" : ""}</small>
+                    <small className="block truncate text-[12.5px] text-text-3">{t("alerted {t} ago", { t: age(a.at)[0] })}{a.gone ? ` · ${t("pool gone")}` : ""}</small>
                   </span>
                   <span className="flex flex-col items-end">
                     <b className="num text-[14px] font-semibold">{usdShort(cap)}</b>
-                    <em className={`num text-[12px] not-italic ${sign === "up" ? "text-up" : sign === "down" ? "text-down" : "text-text-3"}`}>{chg} since</em>
+                    <em className={`num text-[12px] not-italic ${sign === "up" ? "text-up" : sign === "down" ? "text-down" : "text-text-3"}`}>{chg} {t("since")}</em>
                   </span>
                 </button>
               </li>
@@ -70,7 +71,7 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
           })}
         </ol>
       ))}
-      {tab === "follow" && !ids.length && <p className="mt-4 rounded-[16px] bg-card p-4 text-[14px] text-text-2">Tap ☆ on a token to follow it here, with what changed since the last research run.</p>}
+      {tab === "follow" && !ids.length && <p className="mt-4 rounded-[16px] bg-card p-4 text-[14px] text-text-2">{t("Tap ☆ on a token to follow it here, with what changed since the last research run.")}</p>}
       {tab === "follow" && ids.length > 0 && (() => {
         // Ranked first with real data; the rest folded away, and a token with no real name is not shown (Lorenzo 22/10).
         const rows = ids.flatMap((id) => {
@@ -81,7 +82,7 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
         const ranked = rows.filter((r) => r.hit), off = rows.filter((r) => !r.hit);
         const row = ({ id, e, hit, n }: (typeof rows)[number]) => {
           const [chg, sign] = changeText(e.change_24h);
-          const line = n ? n.text : hit?.sector ? `${hit.sector}${e.arena_rank ? ` · #${e.arena_rank}` : ""}${e.score != null ? ` · score ${Math.round(e.score)}` : ""}` : "";
+          const line = n ? todayText(n)[0] : hit?.sector ? `${hit.sector}${e.arena_rank ? ` · #${e.arena_rank}` : ""}${e.score != null ? ` · ${t("score {n}", { n: Math.round(e.score) })}` : ""}` : "";
           return (
             <li key={id}>
               <button type="button" onClick={() => onOpen(e)} className="flex w-full items-center gap-3 rounded-[12px] px-2 py-2 text-left active:bg-pill">
@@ -103,10 +104,10 @@ export function Watch({ data, gems, onOpen }: { data: SectorsView | null; gems: 
         return (
           <>
             {ranked.length > 0 ? <ol className="mt-3 rounded-[16px] bg-card p-1.5">{ranked.map(row)}</ol>
-              : <p className="mt-4 rounded-[16px] bg-card p-4 text-[14px] text-text-2">None of the tokens you follow is in the ranking now.</p>}
+              : <p className="mt-4 rounded-[16px] bg-card p-4 text-[14px] text-text-2">{t("None of the tokens you follow is in the ranking now.")}</p>}
             {off.length > 0 && (
               <details className="mt-3 rounded-[16px] bg-card p-1.5">
-                <summary className="cursor-pointer px-2 py-2 text-[14px] font-medium text-text-2">Not in the ranking now · {off.length}</summary>
+                <summary className="cursor-pointer px-2 py-2 text-[14px] font-medium text-text-2">{t("Not in the ranking now")} · {off.length}</summary>
                 <ol>{off.map(row)}</ol>
               </details>
             )}

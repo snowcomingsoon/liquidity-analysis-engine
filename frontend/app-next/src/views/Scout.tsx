@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import * as api from "../lib/api";
 import { liveProject, recentProjects, type AgentInfo, type AgentItem } from "../lib/scout";
 import { Journey, type JourneyHandle } from "../components/Journey";
+import { locale, t as tr } from "../lib/i18n";
 
 // Scout (agent.js): what the engine is doing, with every line something the
 // server really did; Inside Engine replays one token's recorded path.
@@ -12,9 +13,9 @@ const LIVE_S = 180;
 const PLURAL: Record<string, string> = { backtest: "backtests", study: "projects studied", research: "deep reads", scanner: "token checks",
   judge: "board reviews", chat: "chats", scan: "scans" };
 const compact = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
-const ago = (t: number) => { const s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? "now" : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`; };
-const agoLong = (s: number) => (s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`);
-const hm = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const ago = (t: number) => { const s = Math.max(0, Date.now() / 1000 - t); return s < 60 ? tr("now") : s < 3600 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`; };
+const agoLong = (s: number) => (s < 60 ? tr("{n}s ago", { n: s }) : s < 3600 ? tr("{n}m ago", { n: Math.round(s / 60) }) : tr("{n}h ago", { n: Math.round(s / 3600) }));
+const hm = (t: number) => new Date(t * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
 export const ScoutCube = ({ state, className = "" }: { state: "idle" | "working" | "off"; className?: string }) => (
   <span className={`scout-cube block ${className}`} data-state={state} aria-hidden="true">
@@ -31,17 +32,17 @@ export const ScoutCube = ({ state, className = "" }: { state: "idle" | "working"
 /** Two things never merged: AI calls (tokens spent) and work done; with the research AI off, how the research runs. */
 function todayLine(d: AgentInfo | null) {
   const calls = Object.values(d?.today ?? {}).reduce((a, n) => a + n, 0);
-  const cap = d?.cap_usd ? ` · $${(d.spent_usd ?? 0).toFixed(2)} of $${d.cap_usd.toFixed(2)}` : "";
+  const cap = d?.cap_usd ? ` · ${tr("{a} of {b}", { a: `$${(d.spent_usd ?? 0).toFixed(2)}`, b: `$${d.cap_usd.toFixed(2)}` })}` : "";
   const r = d?.research;
   const ai = r && !r.ai
-    ? [r.running ? "Research running now, no AI" : "Research without AI",
-       r.last_run ? `last run ${hm(r.last_run)}${r.examined != null ? `: ${r.examined} examined, ${r.entered ?? 0} new on the board` : ""}` : "",
-       r.next_run && !r.running ? `next ${hm(r.next_run)}` : ""].filter(Boolean).join(" · ")
-    : calls ? `AI: ${calls} calls · ${compact(d?.tokens ?? 0)} tokens${cap}` : "";
+    ? [r.running ? tr("Research running now, no AI") : tr("Research without AI"),
+       r.last_run ? `${tr("last run {t}", { t: hm(r.last_run) })}${r.examined != null ? tr(": {n} examined, {m} new on the board", { n: r.examined, m: r.entered ?? 0 }) : ""}` : "",
+       r.next_run && !r.running ? tr("next {t}", { t: hm(r.next_run) }) : ""].filter(Boolean).join(" · ")
+    : calls ? `${tr("AI: {n} calls · {m} tokens", { n: calls, m: compact(d?.tokens ?? 0) })}${cap}` : "";
   const distinct = d?.distinct ?? {};
   const work = Object.entries(d?.done ?? {}).map(([k, n]) => [k, distinct[k] ?? n] as const).filter(([, n]) => n > 0)
-    .sort((a, b) => b[1] - a[1]).map(([k, n]) => `${compact(n)} ${PLURAL[k] ?? k}`).join(" · ");
-  return [ai, work].filter(Boolean).join(" — ") || "Nothing yet today";
+    .sort((a, b) => b[1] - a[1]).map(([k, n]) => `${compact(n)} ${PLURAL[k] ? tr(PLURAL[k]) : k}`).join(" · ");
+  return [ai, work].filter(Boolean).join(" — ") || tr("Nothing yet today");
 }
 
 export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
@@ -73,8 +74,8 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
         first.current = false;
         setError("");
       } catch {
-        setError(first.current ? "Activity could not be loaded. Scout will retry automatically."
-          : "Updates interrupted. Showing the last received activity; retrying automatically.");
+        setError(first.current ? tr("Activity could not be loaded. Scout will retry automatically.")
+          : tr("Updates interrupted. Showing the last received activity; retrying automatically."));
       } finally { busy = false; }
     };
     load();
@@ -105,8 +106,8 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
     <>
       {sells && (
         <a href="/onchain-app.html?classic=1#sells" className="flex h-11 items-center gap-2 rounded-full bg-card px-4 text-[14px] font-medium">
-          <span className="flex-1">Coordinated sells</span>
-          {sells.risk != null && <b className={`text-[13px] ${sells.risk >= 70 ? "text-down" : sells.risk >= 40 ? "text-amber" : "text-text-2"}`}>risk {Math.round(sells.risk)}</b>}
+          <span className="flex-1">{tr("Coordinated sells")}</span>
+          {sells.risk != null && <b className={`text-[13px] ${sells.risk >= 70 ? "text-down" : sells.risk >= 40 ? "text-amber" : "text-text-2"}`}>{tr("risk {n}", { n: Math.round(sells.risk) })}</b>}
           <i className="not-italic text-text-3" aria-hidden="true">›</i>
         </a>
       )}
@@ -115,21 +116,21 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
         <ScoutCube state={state} className="mb-1.5 h-24 w-24" />
         <h2 className="text-[22px] font-bold leading-tight tracking-tight">Scout</h2>
         <p className={`text-[14px] font-semibold ${state === "off" ? "text-text-3" : "text-up"}`}>
-          {error && !info ? "Connection unavailable" : !info ? "Connecting" : info.working ? "Working now" : info.active ? "Watching" : "Off"}
+          {error && !info ? tr("Connection unavailable") : !info ? tr("Connecting") : info.working ? tr("Working now") : info.active ? tr("Watching") : tr("Off")}
         </p>
-        <p className="px-2 text-[12.5px] leading-snug text-text-3">{info ? todayLine(info) : error ? "Today's activity is not available yet." : "Loading activity…"}</p>
+        <p className="px-2 text-[12.5px] leading-snug text-text-3">{info ? todayLine(info) : error ? tr("Today's activity is not available yet.") : tr("Loading activity…")}</p>
       </div>
 
       <section aria-label="Inside Engine" className="my-6 rounded-[24px] bg-card p-3.5">
         <h3 className="text-[20px] font-semibold">Inside Engine</h3>
-        <p className="mt-1 text-[13px] text-text-2">Every recorded step the engine took on a token, replayed in order and checked in your browser.</p>
+        <p className="mt-1 text-[13px] text-text-2">{tr("Every recorded step the engine took on a token, replayed in order and checked in your browser.")}</p>
         <button type="button" disabled={!now} onClick={() => now && journey.current?.trace({ chain: now.chain, token: now.token })}
           className="mt-3 flex w-full items-center gap-2.5 rounded-[16px] bg-bg px-3 py-2.5 text-left text-[13px] text-text-2">
           <span className={`h-2.5 w-2.5 flex-none rounded-full ${on ? "bg-up shadow-[0_0_0_5px_color-mix(in_srgb,var(--c-up)_18%,transparent)]" : "bg-text-3"}`} aria-hidden="true" />
-          <span>{now ? `${on ? "Now analysing" : "Last analysed"} ${now.symbol} · ${now.chain} · ${agoLong(now.ageS)} · tap to trace`
-            : error ? "Activity unavailable. Retrying." : "Waiting for activity…"}</span>
+          <span>{now ? `${on ? tr("Now analysing") : tr("Last analysed")} ${now.symbol} · ${now.chain} · ${agoLong(now.ageS)} · ${tr("tap to trace")}`
+            : error ? tr("Activity unavailable. Retrying.") : tr("Waiting for activity…")}</span>
         </button>
-        <div aria-label="Recently analysed projects" className="mt-3 flex flex-wrap gap-2">
+        <div aria-label={tr("Recently analysed projects")} className="mt-3 flex flex-wrap gap-2">
           {recent.map((p) => (
             <button key={p.key} type="button" onClick={() => journey.current?.trace({ chain: p.chain, token: p.token })}
               className="h-10 rounded-full bg-pill px-4 text-[15px]">{p.symbol}</button>
@@ -146,7 +147,7 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
             return (
               <div key={row.key}>
                 <div className="flex items-baseline justify-between gap-2 text-[13px] text-text-2"><span>{row.label}</span>
-                  <b className="num font-semibold text-text">{row.key === "scan" ? `${total} left` : `${done}/${total}`}</b></div>
+                  <b className="num font-semibold text-text">{row.key === "scan" ? tr("{n} left", { n: total }) : `${done}/${total}`}</b></div>
                 {row.key !== "scan" && (
                   <div className="mt-1 h-1 overflow-hidden rounded-full bg-pill">
                     <motion.i className="block h-full origin-left rounded-full bg-text" initial={{ scaleX: 0 }} animate={{ scaleX: r }} transition={{ duration: 0.6, ease: "easeOut" }} />
@@ -169,9 +170,9 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
         )}
       </AnimatePresence>
 
-      <h3 className="mb-2 mt-4 text-[20px] font-semibold">Activity</h3>
+      <h3 className="mb-2 mt-4 text-[20px] font-semibold">{tr("Activity")}</h3>
       {error && <p role="status" className="mb-2 text-[13px] text-amber">{error}</p>}
-      <ul aria-label="Scout activity" className="grid gap-2">
+      <ul aria-label={tr("Scout activity")} className="grid gap-2">
         {items.length ? items.map((a) => (
           <motion.li key={`${a.t}:${a.kind}`} initial={fresh.has(a.t) ? { opacity: 0, y: -8 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
             className="grid gap-1.5 rounded-[20px] bg-card px-3.5 py-3">
@@ -179,7 +180,7 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
             <p className="text-[14px] leading-[1.4]">{a.text}{a.outcome && <> <b className="block font-semibold">{a.outcome}</b></>}</p>
             {!!a.steps?.length && (
               <details className="group">
-                <summary className="cursor-pointer list-none text-[12.5px] font-semibold text-text-2 [&::-webkit-details-marker]:hidden">Reasoning <span className="text-text-3 group-open:hidden">▾</span><span className="hidden text-text-3 group-open:inline">▴</span></summary>
+                <summary className="cursor-pointer list-none text-[12.5px] font-semibold text-text-2 [&::-webkit-details-marker]:hidden">{tr("Reasoning")} <span className="text-text-3 group-open:hidden">▾</span><span className="hidden text-text-3 group-open:inline">▴</span></summary>
                 <ol className="mt-2 grid gap-1 text-[13px]">{a.steps.map((s, i) => (
                   <motion.li key={i} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.09, duration: 0.3 }}
                     className={s.startsWith("✗") ? "text-down" : s.startsWith("✓") ? "text-up" : ""}>{s}</motion.li>
@@ -187,9 +188,9 @@ export function Scout({ sells }: { sells?: { risk: number | null } | null }) {
               </details>
             )}
           </motion.li>
-        )) : <li className="py-3 text-[14px] text-text-2">No activity recorded yet today.</li>}
+        )) : <li className="py-3 text-[14px] text-text-2">{tr("No activity recorded yet today.")}</li>}
       </ul>
-      {items.length >= 60 && <button type="button" onClick={earlier} className="mx-auto mt-3 block h-10 rounded-full bg-pill px-4 text-[14px]">Load earlier</button>}
+      {items.length >= 60 && <button type="button" onClick={earlier} className="mx-auto mt-3 block h-10 rounded-full bg-pill px-4 text-[14px]">{tr("Load earlier")}</button>}
     </>
   );
 }

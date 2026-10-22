@@ -4,6 +4,7 @@ import * as api from "./lib/api";
 import type { Arena, Gem, Project } from "./lib/types";
 import { coverage, loadHidden, useNarratives } from "./lib/store";
 import { Dock, LABEL, type View } from "./components/Dock";
+import { setLang, t, useLang } from "./lib/i18n";
 import { Top3 } from "./components/Top3";
 import { Sheet } from "./components/Sheet";
 import { gemId } from "./components/TokenRow";
@@ -63,7 +64,7 @@ export function App() {
     try {
       const top = await api.getTop(50, narr);
       // A page served before the arenas: one arena holding the whole list.
-      const arenas = top.arenas ?? [{ key: "all", label: "All projects", heat: 0, size: top.entries.length, median: 0,
+      const arenas = top.arenas ?? [{ key: "all", label: t("All projects"), heat: 0, size: top.entries.length, median: 0,
         entries: top.entries.map((e, i) => ({ ...e, arena_rank: i + 1, in: true })) }];
       setData({ entries: top.entries ?? [], early: top.early ?? [], arenas });
       setErr("");
@@ -104,12 +105,12 @@ export function App() {
   const byScore = data ? [...data.entries].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)) : [];
   const openArena = openWith((e) => {
     const a = data?.arenas.find((x) => x.entries.some((y) => gemId(y) === gemId(e)));
-    return a ? `${a.label} · #${e.arena_rank} of ${a.size} · score ${sc(e)}` : `score ${sc(e)}`;
+    return a ? `${a.label} · ${t("#{n} of {m}", { n: e.arena_rank ?? 0, m: a.size })} · ${t("score {n}", { n: sc(e) })}` : t("score {n}", { n: sc(e) });
   });
-  const openRanked = openWith((e) => `Top 25 · #${byScore.findIndex((x) => gemId(x) === gemId(e)) + 1} · score ${sc(e)}`);
+  const openRanked = openWith((e) => `Top 25 · #${byScore.findIndex((x) => gemId(x) === gemId(e)) + 1} · ${t("score {n}", { n: sc(e) })}`);
   const openProject = (p: Project) => setPeek({
     e: { chain: p.chain, token_address: p.token, symbol: p.symbol ?? "?", name: p.name, image: p.image, score: p.score, market_cap: p.mcap, liquidity_usd: p.liq },
-    context: `Database · score ${p.score == null ? "—" : Math.round(p.score)} · ${p.status}${p.why ? ` · ${p.why}` : ""}` });
+    context: `Database · ${t("score {n}", { n: p.score == null ? "—" : Math.round(p.score) })} · ${p.status}${p.why ? ` · ${p.why}` : ""}` });
 
   // A shared link or an alert: #<view>&token=<chain>:<address>[&tab=why] opens that token.
   useEffect(() => {
@@ -128,19 +129,20 @@ export function App() {
       <main className="mx-auto max-w-xl px-4 pb-[calc(128px+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+18px)]">
         {view !== "search" && (
           <header className="mb-3 flex items-center justify-between gap-3">
-            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.03em]">{LABEL[view]}</h1>
-            <button type="button" onClick={() => setMore(true)} aria-label="Profile and more"
+            <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.03em]">{t(LABEL[view])}</h1>
+            <LangSwitch />
+            <button type="button" onClick={() => setMore(true)} aria-label={t("Profile and more")}
               className="grid h-9 w-9 flex-none place-items-center rounded-full bg-ink text-[14px] font-semibold text-on-ink">{initial}</button>
           </header>
         )}
-        {inGems && <Top3 list={podium} onOpen={openWith((e) => `Top 25 · score ${sc(e)}`)} />}
-        {err && !data && <p className="rounded-2xl bg-card p-4 text-[14px] text-down">Could not load the gems: {err}</p>}
+        {inGems && <Top3 list={podium} onOpen={openWith((e) => `Top 25 · ${t("score {n}", { n: sc(e) })}`)} />}
+        {err && !data && <p className="rounded-2xl bg-card p-4 text-[14px] text-down">{t("Could not load the gems: {err}", { err })}</p>}
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
-            {view === "today" && <Today data={sec} onOpen={openWith((e) => `Today · ${(e as Gem & { sector?: string }).sector ?? "Sectors"} · score ${sc(e)}`)} onSectors={() => setView("sectors")} onWatch={() => setView("watch")} early={data?.early.length ?? null} onEarly={() => setView("top")} />}
-            {view === "sectors" && <Sectors data={sec} onOpen={openWith((e) => `Sectors · ${e.arena_rank ? `#${e.arena_rank} · ` : ""}score ${sc(e)}`)} />}
-            {view === "watch" && <Watch data={sec} gems={data ? [...data.entries, ...data.early] : []} onOpen={openWith((e) => `Watch · score ${sc(e)}`)} />}
-            {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} onToken={(e) => setOpen({ e, context: "Scan" })} />}
+            {view === "today" && <Today data={sec} onOpen={openWith((e) => `${t("Today")} · ${(e as Gem & { sector?: string }).sector ?? t("Sectors")} · ${t("score {n}", { n: sc(e) })}`)} onSectors={() => setView("sectors")} onWatch={() => setView("watch")} early={data?.early.length ?? null} onEarly={() => setView("top")} />}
+            {view === "sectors" && <Sectors data={sec} onOpen={openWith((e) => `${t("Sectors")} · ${e.arena_rank ? `#${e.arena_rank} · ` : ""}${t("score {n}", { n: sc(e) })}`)} />}
+            {view === "watch" && <Watch data={sec} gems={data ? [...data.entries, ...data.early] : []} onOpen={openWith((e) => `${t("Watch")} · ${t("score {n}", { n: sc(e) })}`)} />}
+            {view === "search" && <Search sectors={sec} onProject={openProject} onSector={() => setView("sectors")} onToken={(e) => setOpen({ e, context: t("Scan") })} />}
             {inGems && (
               <div className="flex gap-1 rounded-full bg-pill p-1">
                 {([["arenas", "Arenas", "gems"], ["database", "Database", "gems"], ["pearl", "Pearl", "pearl"], ["early", "Early", "top"], ["rank", "Top", "rank"]] as const).map(([s, label, v]) => {
@@ -149,7 +151,7 @@ export function App() {
                     <button key={s} type="button" onClick={() => { if (v === "gems") setSub(s as "arenas" | "database"); setView(v); }} aria-pressed={on}
                       className={`relative h-9 min-w-0 flex-1 rounded-full text-[13.5px] font-medium transition-colors duration-200 ${on ? "text-text" : "text-text-2"}`}>
                       {on && <motion.span layoutId="gems-sub" className="absolute inset-0 rounded-full bg-card shadow-[0_1px_2px_rgb(0_0_0/.06)]" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
-                      <span className="relative">{label}</span>
+                      <span className="relative">{t(label)}</span>
                     </button>
                   );
                 })}
@@ -166,35 +168,35 @@ export function App() {
               </>
             )}
             {view === "pearl" && data && (
-              <GemList title="Pearl" rule="Early gems scoring 70 or more, at most 30 days old" badge="early" onOpen={openWith((e) => `Pearl · score ${sc(e)}`)}
-                lead="The best of Early: under $300k cap, every bar of the Top passed, and a score of at least 70. Small and risky. Research, not advice."
-                empty="No Early gem of the last 30 days scores 70 or more right now. The list is refreshed by the nightly scan."
+              <GemList title={t("Pearl")} rule={t("Early gems scoring 70 or more, at most 30 days old")} badge="early" onOpen={openWith((e) => `${t("Pearl")} · ${t("score {n}", { n: sc(e) })}`)}
+                lead={t("The best of Early: under $300k cap, every bar of the Top passed, and a score of at least 70. Small and risky. Research, not advice.")}
+                empty={t("No Early gem of the last 30 days scores 70 or more right now. The list is refreshed by the nightly scan.")}
                 rows={data.early.filter((e) => Math.round(e.score ?? 0) >= PEARL_MIN && (e.launched_at ?? 0) >= born)} />
             )}
             {view === "top" && data && (
-              <GemList title="Early" rule="under $300k cap" badge="early" onOpen={openWith((e) => `Early · score ${sc(e)}`)} rows={data.early}
-                lead="Small projects that pass every other bar of the Top: real usage, holders, code and research. Smaller and riskier. Research, not advice."
-                empty="No project under $300k passes the bars right now. The list is refreshed by the nightly scan." />
+              <GemList title="Early" rule={t("under $300k cap")} badge="early" onOpen={openWith((e) => `Early · ${t("score {n}", { n: sc(e) })}`)} rows={data.early}
+                lead={t("Small projects that pass every other bar of the Top: real usage, holders, code and research. Smaller and riskier. Research, not advice.")}
+                empty={t("No project under $300k passes the bars right now. The list is refreshed by the nightly scan.")} />
             )}
             {view === "rank" && data && (
-              <GemList title={narr.length ? `Top 25 · ${narr.map((k) => labels[k] ?? k).join(", ")}` : "Top 25"} rule="the best gems by score" ranked onOpen={openRanked} rows={data.entries}
-                lead="The 25 highest scores among the gems that passed the checks: usage, holders, code, research and tokenomics. Market cap and 24h change live from DexScreener. Research, not advice."
-                empty="The ranking is filling up: gems appear as they pass the checks." />
+              <GemList title={narr.length ? `Top 25 · ${narr.map((k) => labels[k] ?? k).join(", ")}` : "Top 25"} rule={t("the best gems by score")} ranked onOpen={openRanked} rows={data.entries}
+                lead={t("The 25 highest scores among the gems that passed the checks: usage, holders, code, research and tokenomics. Market cap and 24h change live from DexScreener. Research, not advice.")}
+                empty={t("The ranking is filling up: gems appear as they pass the checks.")} />
             )}
             {view === "quality" && <Quality onOpen={openWith(qualityContext)} />}
             {view === "agent" && <Scout sells={sells} />}
-            {view === "clusters" && <Clusters onToken={(e) => setOpen({ e, context: "Cluster check" })} inApp={inApp} />}
+            {view === "clusters" && <Clusters onToken={(e) => setOpen({ e, context: t("Cluster check") })} inApp={inApp} />}
             {view === "profile" && <Profile onOpen={(e, context) => setPeek({ e, context })} />}
           </motion.div>
         </AnimatePresence>
       </main>
       <Dock view={view} onView={setView} />
-      <Sheet open={more} title="More" onClose={() => setMore(false)}>
+      <Sheet open={more} title={t("More")} onClose={() => setMore(false)}>
         <nav className="grid gap-1.5">
           {([["top", "Early", "Projects under $300k cap that pass every other bar"], ["gems", "Gems", "Arenas, Database, Pearl, Early and Top 25"], ...(quality ? [["quality", "Quality", "Quality 80 or more, to accept or discard"]] : []),
             ["agent", "Scout", "What the engine is doing, and every token's journey"], ["profile", "Profile", "Picture, name, theme and the picks' track record"]] as [View, string, string][]).map(([v, label, sub]) => (
             <button key={v} type="button" onClick={() => { setMore(false); setView(v); }} className="flex flex-col rounded-[16px] bg-bg px-4 py-3 text-left active:bg-pill">
-              <b className="text-[16px] font-semibold">{label}</b><small className="text-[13px] text-text-3">{sub}</small>
+              <b className="text-[16px] font-semibold">{t(label)}</b><small className="text-[13px] text-text-3">{t(sub)}</small>
             </button>
           ))}
         </nav>
@@ -208,11 +210,24 @@ export function App() {
 function ScanButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="relative mt-3 flex h-12 w-full items-center rounded-full border border-line pl-5 text-left text-[16px] text-text-3">
-      Scan a token: ticker or address
+      {t("Scan a token: ticker or address")}
       <span className="absolute right-1 top-1 grid h-10 w-10 place-items-center rounded-full bg-ink text-on-ink">
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
       </span>
     </button>
+  );
+}
+
+/** IT / EN (Lorenzo 22/10: "metti poi tastino per selezionare EN o IT"). */
+function LangSwitch() {
+  const lang = useLang();
+  return (
+    <div role="radiogroup" aria-label={t("Language")} className="ml-auto flex rounded-full bg-pill p-0.5 text-[11.5px] font-semibold">
+      {(["it", "en"] as const).map((l) => (
+        <button key={l} type="button" role="radio" aria-checked={lang === l} onClick={() => setLang(l)}
+          className={`h-7 w-8 rounded-full uppercase ${lang === l ? "bg-card text-text shadow-[0_1px_2px_rgb(0_0_0/.06)]" : "text-text-3"}`}>{l}</button>
+      ))}
+    </div>
   );
 }
 

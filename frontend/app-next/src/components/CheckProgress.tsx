@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../lib/api";
 import type { ClusterCheck, SellsReport } from "../lib/api";
+import { t } from "../lib/i18n";
 
 // Lorenzo, 22/10: "quando faccio partire un cluster check manuale voglio
 // vederlo partire subito". The check is read every 2 s while it waits or
@@ -57,13 +58,13 @@ export function CheckProgress({ check, title }: { check: ClusterCheck | null; ti
     return () => clearInterval(t);
   }, [busy]);
   const secs = check?.started_at ? Math.max(0, Math.round(now - check.started_at)) : null;
-  const head = !check ? "Started"
-    : check.state === "queued" ? `Queued${check.place ? `, place ${check.place}` : ""}: it starts when the checks ahead end`
-    : check.state === "running" ? `Reading ${STEPS[Math.max(0, step)][1].toLowerCase()}…`
-    : check.state === "built" && check.clusters ? `${check.clusters} cluster(s) found. Reading their sells…`
-    : check.state === "built" ? "Done: no wallet cluster among the top holders"
-    : check.state === "failed" ? "Failed on this token's data. It retries later"
-    : check.state === "unsupported" ? "Not available on this chain" : "Not started yet";
+  const head = !check ? t("Started")
+    : check.state === "queued" ? (check.place ? t("Queued, place {n}: it starts when the checks ahead end", { n: check.place }) : t("Queued: it starts when the checks ahead end"))
+    : check.state === "running" ? t("Reading {what}…", { what: t(STEPS[Math.max(0, step)][1]).toLowerCase() })
+    : check.state === "built" && check.clusters ? t("{n} cluster(s) found. Reading their sells…", { n: check.clusters })
+    : check.state === "built" ? t("Done: no wallet cluster among the top holders")
+    : check.state === "failed" ? t("Failed on this token's data. It retries later")
+    : check.state === "unsupported" ? t("Not available on this chain") : t("Not started yet");
   const fill = step < 0 ? 0 : Math.min(1, (step + (part ?? 0.5)) / STEPS.length);
   const bad = check?.state === "failed" || check?.state === "unsupported";
 
@@ -86,13 +87,13 @@ export function CheckProgress({ check, title }: { check: ClusterCheck | null; ti
           {check?.live?.counts && (
             <dl className="mt-3 grid grid-cols-4 gap-1">
               {([["holders", "holders"], ["transfers", "transfers"], ["clusters", "clusters"], ["waves", "waves"]] as const).map(([k, label]) => (
-                <div key={k}><dt className="text-[11px] text-text-3">{label}</dt><dd className="num text-[17px] font-semibold leading-tight">{check.live?.counts?.[k] ?? "—"}</dd></div>
+                <div key={k}><dt className="text-[11px] text-text-3">{t(label)}</dt><dd className="num text-[17px] font-semibold leading-tight">{check.live?.counts?.[k] ?? "—"}</dd></div>
               ))}
             </dl>
           )}
           <ol className="mt-2 grid grid-cols-4 gap-1 text-[11.5px]">
             {STEPS.map(([k, label], i) => (
-              <li key={k} className={i < step ? "text-text-2" : i === step ? "font-semibold text-ink" : "text-text-3"}>{i < step ? "✓ " : ""}{label}</li>
+              <li key={k} className={i < step ? "text-text-2" : i === step ? "font-semibold text-ink" : "text-text-3"}>{i < step ? "✓ " : ""}{t(label)}</li>
             ))}
           </ol>
         </>
