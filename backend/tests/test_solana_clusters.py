@@ -59,7 +59,7 @@ def test_build_and_watch_keep_case(data, monkeypatch):
     res = asyncio.run(wc.build("solana", MINT, "X"))
     assert [set(c["wallets"]) for c in res["clusters"]] == [{W[0], W[1]}]
     cfg = sw.watched()[0]
-    assert cfg["token"] == MINT and cfg["accounts"][W[0]] == ACC[0] and cfg["state"]["last_sig"][ACC[0]] == ACC[0] + "new"
+    assert cfg["token"] == MINT and cfg["accounts"][W[0]] == ACC[0] and cfg["state"] == {}
     asyncio.run(sw.run_all(force=True))
     out = json.loads(ss.report_path("solana", MINT).read_text())
     assert out["token"] == MINT and out["coverage"]["note"].endswith("no transfer links")

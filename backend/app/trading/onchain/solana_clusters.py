@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 SIG_PAGES = 5            # x1000 signatures per token account
 MAX_TX_PER_RUN = 250     # getTransaction calls per watch run
 HELIUS_TX_PER_RUN = 1000
+HISTORY_PER_WALLET = 20  # first run of a watch: each holder's latest txs, so past sells count
 HELIUS_HOLDERS = 100     # biggest wallets read with a Helius key
 HELIUS_PAGES = 5         # x1000 token accounts from DAS
 AIRDROP_MIN = 20         # a sender feeding this many holders is an airdrop, not a link
@@ -297,6 +298,8 @@ async def new_sells(cfg: dict) -> tuple[list[dict], dict]:
         ss = await signatures(acc, until=cursors.get(acc))
         if ss:
             cursors[acc] = ss[0]["signature"]
+        if acc not in (cfg.get("state") or {}).get("last_sig", {}):
+            ss = ss[:HISTORY_PER_WALLET]
         for s in ss[:budget]:
             tx = await _rpc("getTransaction", [s["signature"], {"encoding": "jsonParsed",
                                                                 "maxSupportedTransactionVersion": 1}])

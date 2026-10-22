@@ -589,8 +589,9 @@ async def _build_solana(mint: str, symbol: str) -> dict:
                            "source": "auto", "coverage": res["coverage"], "accounts": res["accounts"],
                            "supply": res["supply"], "decimals": res["decimals"]})
     if cfg:
-        # The watch starts from today: older sells were not read.
-        cfg["state"] = {"last_sig": res["last_sig"]}
+        # No cursor: the first watch run reads each holder's recent history
+        # (solana_clusters.HISTORY_PER_WALLET), so past sells count too.
+        cfg["state"] = {}
         write_text_atomic(sync_watch._dir() / f"{_key('solana', mint)}.json", json.dumps(cfg))
     return res
 
