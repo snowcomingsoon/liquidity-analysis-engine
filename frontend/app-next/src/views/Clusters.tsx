@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../lib/api";
 import type { Gem } from "../lib/types";
 import { ClusterCheck } from "../components/ClusterCheck";
+import { ClusterQueue } from "../components/ClusterQueue";
 import { CheckProgress, useClusterCheck } from "../components/CheckProgress";
 import { SellsMap } from "../components/SellsMap";
 import { AnimatePresence, motion } from "motion/react";
@@ -19,10 +20,14 @@ const held = (r: api.SellsReport) => r.clusters.filter((c) => c.id !== "top").re
 /** The Clusters tab (Lorenzo, 22/10: "voglio una tab a parte, oltre ad averlo
  *  sui progetti"): every checked token, riskiest first, and a check by
  *  address. A row opens the token page with its bubble map and waves. */
-export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
+export const appKey = (chain: string, token: string) => `${chain}:${token.startsWith("0x") ? token.toLowerCase() : token}`;
+
+export function Clusters({ onToken, inApp }: { onToken: (e: Gem) => void; inApp?: Map<string, string> }) {
   const [q, setQ] = useState("");
   const [list, setList] = useState<api.SellsReport[] | null>(null);
   const [chain, setChain] = useState("all");
+  // The engine checks every token the app ever showed: by default only the ones on screen now.
+  const [scope, setScope] = useState<"app" | "all">("app");
   const [asked, setAsked] = useState<{ chain: string; token: string; at: number } | null>(null);
   const [screen, setScreen] = useState(false);
   const s = q.trim();
@@ -33,7 +38,10 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
 
   const open = (c: string, token: string, symbol?: string) => onToken({ chain: c, token_address: token, symbol: symbol || short(token) } as Gem);
   const chains = [...new Set((list ?? []).map((r) => r.chain))];
-  const rows = (list ?? []).filter((r) => chain === "all" || r.chain === chain)
+  const here = (r: api.SellsReport) => inApp?.get(appKey(r.chain, r.token));
+  const nApp = (list ?? []).filter(here).length;
+  const all = scope === "all" || !inApp?.size;
+  const rows = (list ?? []).filter((r) => (all || here(r)) && (chain === "all" || r.chain === chain))
     .sort((a, b) => (b.risk?.score ?? -1) - (a.risk?.score ?? -1));
 
   return (
@@ -51,8 +59,17 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
           onOpen={() => { setScreen(false); open(asked.chain, asked.token); }} />}
       </AnimatePresence>
 
-      <div className="mb-2 mt-5 flex items-center gap-2">
-        <h2 className="flex-1 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Riskiest first</h2>
+      <h2 className="mb-2 mt-5 text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Live</h2>
+      <ClusterQueue onOpen={open} />
+
+      <div className="mb-2 mt-5 flex flex-wrap items-center gap-1.5">
+        <h2 className="mr-auto text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Checked, riskiest first</h2>
+        {!!inApp?.size && ([["app", `In the app ${nApp}`], ["all", `All ${list?.length ?? 0}`]] as const).map(([k, label]) => (
+          <button key={k} type="button" onClick={() => setScope(k)} aria-pressed={scope === k}
+            className={`num rounded-full px-2.5 py-1 text-[12px] ${scope === k ? "bg-ink font-semibold text-on-ink" : "bg-pill text-text-2"}`}>{label}</button>
+        ))}
+      </div>
+      <div className="mb-2 flex flex-wrap justify-end gap-1.5">
         {chains.length > 1 && ["all", ...chains].map((c) => (
           <button key={c} type="button" onClick={() => setChain(c)} aria-pressed={chain === c}
             className={`rounded-full px-2.5 py-1 text-[12px] capitalize ${chain === c ? "bg-ink font-semibold text-on-ink" : "bg-pill text-text-2"}`}>{c}</button>
@@ -68,7 +85,7 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
                 <li key={`${r.chain}:${r.token}`}>
                   <button type="button" onClick={() => open(r.chain, r.token, r.symbol)} className="flex w-full items-center gap-3 rounded-[12px] px-2 py-2.5 text-left active:bg-pill">
                     <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[15px] font-semibold leading-tight">{r.symbol || short(r.token)} <span className="text-[12.5px] font-normal text-text-3">· {r.chain}</span></b>
+                      <b className="block truncate text-[15px] font-semibold leading-tight">{r.symbol || short(r.token)} <span className="text-[12.5px] font-normal text-text-3">· {r.chain}{here(r) ? ` · ${here(r)}` : ""}</span></b>
                       <small className="block truncate text-[12.5px] text-text-3">
                         clusters hold {pct(held(r))} · {last ? `last wave ${ago(last.ts)}, ${pct(last.share_sold)} sold` : "no wave yet"}
                       </small>
@@ -79,7 +96,7 @@ export function Clusters({ onToken }: { onToken: (e: Gem) => void }) {
               );
             })}
           </ol>
-        ) : <p className="rounded-[16px] bg-card p-4 text-[14px] text-text-2">No token checked yet. Paste an address above.</p>}
+        ) : <p className="rounded-[16px] bg-card p-4 text-[14px] text-text-2">{list.length ? "No token here checked yet: see All." : "No token checked yet. Paste an address above."}</p>}
     </>
   );
 }

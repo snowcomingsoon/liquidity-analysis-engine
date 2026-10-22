@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import * as api from "./lib/api";
 import type { Arena, Gem, Project } from "./lib/types";
@@ -20,7 +20,7 @@ import { Watch } from "./views/Watch";
 import { Search } from "./views/Search";
 import { TokenSheet } from "./views/TokenSheet";
 import { Profile } from "./views/Profile";
-import { Clusters } from "./views/Clusters";
+import { Clusters, appKey } from "./views/Clusters";
 
 const POLL_MS = 30_000;
 const PEARL_MIN = 70;          // a "70" on screen is always a pearl
@@ -92,6 +92,9 @@ export function App() {
   useEffect(() => { history.replaceState(null, "", `${location.pathname}${location.search}#${view}`); scrollTo(0, 0); }, [view]);
 
   const inGems = GEMS.includes(view);
+  // Which tokens the app shows now, for the Clusters tab ("vedo piu di 200 cluster [...] i progetti in sectors sono 46").
+  const inApp = useMemo(() => new Map([...(data?.entries ?? []).map((e) => [appKey(e.chain, e.token_address), "Top"] as const),
+    ...(data?.early ?? []).map((e) => [appKey(e.chain, e.token_address), "Early"] as const)]), [data]);
   const podium = data ? [...data.entries].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 3) : [];
   const born = Date.now() / 1000 - PEARL_MAX_AGE_DAYS * 86400;
   const sc = (e: { score?: number }) => Math.round(e.score ?? 0);
@@ -180,7 +183,7 @@ export function App() {
             )}
             {view === "quality" && <Quality onOpen={openWith(qualityContext)} />}
             {view === "agent" && <Scout sells={sells} />}
-            {view === "clusters" && <Clusters onToken={(e) => setOpen({ e, context: "Cluster check" })} />}
+            {view === "clusters" && <Clusters onToken={(e) => setOpen({ e, context: "Cluster check" })} inApp={inApp} />}
             {view === "profile" && <Profile onOpen={(e, context) => setPeek({ e, context })} />}
           </motion.div>
         </AnimatePresence>

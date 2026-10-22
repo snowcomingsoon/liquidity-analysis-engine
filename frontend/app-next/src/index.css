@@ -75,7 +75,9 @@ body { margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antiali
 @keyframes cp-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .cp-slide { animation: cp-slide 1.1s cubic-bezier(.45, 0, .55, 1) infinite; }
 .cp-spin { animation: sc-spin .8s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .scout-cube *, .cp-slide, .cp-spin { animation: none !important; } }
+@keyframes cq-in { from { opacity: 0; transform: translateY(4px); } }
+.cq-line { animation: cq-in .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .scout-cube *, .cp-slide, .cp-spin, .cq-line { animation: none !important; } }
 
 /* Direction A (Lorenzo 22/10, the PDF): rows grouped on one card, tiles as small rounded squares with the initial. */
 ol:has(> li.trow) { background: var(--c-card); border-radius: 16px; padding: 6px; }

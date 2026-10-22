@@ -175,3 +175,10 @@ export type AlertItem = { symbol: string; name?: string; chain: string; token_ad
 export const getAlerts = (kind: "meme" | "gem") => get<{ items?: AlertItem[] }>(`/api/onchain/alerts/${kind}`);
 export const getPushKey = () => get<{ key: string }>("/api/push/key");
 export const pushSubscribe = (subscription: PushSubscriptionJSON) => post<unknown>("/api/push/subscribe", { subscription });
+
+// The Clusters tab's queue and console (wallet_clusters.queue_view, #677).
+export type QueueItem = { chain: string; token: string; symbol?: string; section?: string | null; manual?: boolean; new?: boolean; at?: number;
+  phase?: string | null; progress?: number | null; started_at?: number | null };
+export type QueueLog = { ts: number; kind: string; chain?: string; token?: string; symbol?: string; msg?: string };
+export type ClusterQueue = { running: QueueItem[]; queue: QueueItem[]; queued: number; built_today: number; max_per_day: number; log: QueueLog[]; now: number };
+export const getClusterQueue = (since: number) => get<ClusterQueue>(`/api/onchain/clusters/queue?since=${since}`, 15000);
