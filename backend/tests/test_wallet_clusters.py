@@ -233,19 +233,19 @@ def test_manual_check_starts_at_once_with_progress(data, monkeypatch):
     monkeypatch.setattr(sw, "KEEP_S", 10**10)
     rpc = FakeChain(market(), {POOL})
     monkeypatch.setattr(ss, "_default_rpc", lambda chain: rpc)
+    # Every partial result as it is published: polling alone can miss a fast run.
+    seen, publish = {}, wc.live
+    monkeypatch.setattr(wc, "live", lambda **d: (seen.update(d), publish(**d)))
 
     async def go():
         assert wc.start_manual("robinhood", TOKEN, "TEST")
         assert not wc.start_manual("robinhood", TOKEN, "TEST")     # already running
         assert wc.token_status("robinhood", TOKEN)["running"]
-        seen = {}
         for _ in range(200):
             await asyncio.sleep(0.01)
-            seen.update(wc.token_status("robinhood", TOKEN).get("live") or {})
             if not wc.token_status("robinhood", TOKEN)["running"]:
                 break
-        return seen
-    seen = asyncio.run(go())
+    asyncio.run(go())
     assert seen["holders"][0]["address"] == w(3) and seen["counts"]["holders"] and any(c["edges"] for c in seen["clusters"])
     assert (data / "wallet_clusters" / f"robinhood-{TOKEN}.json").exists()
     assert not wc.start_manual("robinhood", TOKEN)                 # built within the hour
