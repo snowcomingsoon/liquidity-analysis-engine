@@ -1,0 +1,1523 @@
+{
+"entries": [
+{
+"chain": "bsc",
+"token_address": "Mock018xyzAddr142542",
+"pair_address": "pair18",
+"symbol": "ARCO",
+"name": "Arco Credit",
+"score": 91.1,
+"market_cap": 4100000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 6.2,
+"launched_at": 1767677730,
+"usage": {
+"vol_7d_avg": 532450.9851111763,
+"holders": 26547
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/bsc/pair18"
+},
+{
+"chain": "solana",
+"token_address": "Mock000xyzAddr0",
+"pair_address": "pair0",
+"symbol": "ZEPH",
+"name": "Zephyr Protocol",
+"score": 90.9,
+"market_cap": 4100000.0,
+"fdv": 9840000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 16.5,
+"launched_at": 1789191330,
+"usage": {
+"vol_7d_avg": 1024822.8872060218,
+"holders": 6568
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/solana/pair0"
+},
+{
+"chain": "base",
+"token_address": "Mock011xyzAddr87109",
+"pair_address": "pair11",
+"symbol": "MASK",
+"name": "Maskline",
+"score": 90.7,
+"market_cap": 450000.0,
+"fdv": 1080000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 18.9,
+"launched_at": 1789536930,
+"usage": {
+"vol_7d_avg": 16644.347877249682,
+"holders": 20690
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/base/pair11"
+},
+{
+"chain": "base",
+"token_address": "Mock026xyzAddr205894",
+"pair_address": "pair26",
+"symbol": "TERA",
+"name": "Terafarm",
+"score": 89.2,
+"market_cap": 4100000.0,
+"fdv": 6560000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 22.9,
+"launched_at": 1768887330,
+"usage": {
+"vol_7d_avg": 703719.0569516643,
+"holders": 33344
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/base/pair26"
+},
+{
+"chain": "bsc",
+"token_address": "Mock008xyzAddr63352",
+"pair_address": "pair8",
+"symbol": "MESH",
+"name": "Meshwave",
+"score": 87.9,
+"market_cap": 8400000.0,
+"fdv": 20160000.0,
+"liquidity_usd": 588000.0,
+"change_24h": -2.7,
+"launched_at": 1789191330,
+"usage": {
+"vol_7d_avg": 445690.7104556709,
+"holders": 27802
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/bsc/pair8"
+},
+{
+"chain": "solana",
+"token_address": "Mock015xyzAddr118785",
+"pair_address": "pair15",
+"symbol": "CORE",
+"name": "Corelink",
+"score": 85.6,
+"market_cap": 800000.0,
+"fdv": 1280000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": 19.4,
+"launched_at": 1776576930,
+"usage": {
+"vol_7d_avg": 168929.96530278915,
+"holders": 25332
+},
+"arena": "payments",
+"arena_label": "Stablecoin Payments",
+"pair_url": "https://dexscreener.com/solana/pair15"
+},
+{
+"chain": "solana",
+"token_address": "Mock025xyzAddr197975",
+"pair_address": "pair25",
+"symbol": "SAGE",
+"name": "Sage Agents",
+"score": 83.1,
+"market_cap": 210000.0,
+"fdv": 336000.0,
+"liquidity_usd": 14700.000000000002,
+"change_24h": 33.9,
+"launched_at": 1788413730,
+"usage": {
+"vol_7d_avg": 45136.371011378746,
+"holders": 17512
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/solana/pair25"
+},
+{
+"chain": "robinhood",
+"token_address": "Mock009xyzAddr71271",
+"pair_address": "pair9",
+"symbol": "ORBT",
+"name": "Orbit RWA",
+"score": 83.0,
+"market_cap": 800000.0,
+"fdv": 960000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": 31.5,
+"launched_at": 1773812130,
+"usage": {
+"vol_7d_avg": 24782.425578626036,
+"holders": 5486
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/robinhood/pair9"
+},
+{
+"chain": "ethereum",
+"token_address": "Mock027xyzAddr213813",
+"pair_address": "pair27",
+"symbol": "UMBR",
+"name": "Umbra",
+"score": 78.1,
+"market_cap": 4100000.0,
+"fdv": 4920000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 24.7,
+"launched_at": 1774676130,
+"usage": {
+"vol_7d_avg": 931374.2273913197,
+"holders": 15259
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/ethereum/pair27"
+},
+{
+"chain": "base",
+"token_address": "Mock006xyzAddr47514",
+"pair_address": "pair6",
+"symbol": "NOVA",
+"name": "Nova Layer",
+"score": 77.4,
+"market_cap": 210000.0,
+"fdv": 504000.0,
+"liquidity_usd": 14700.000000000002,
+"change_24h": 18.1,
+"launched_at": 1773552930,
+"usage": {
+"vol_7d_avg": 49901.05196887145,
+"holders": 30913
+},
+"arena": "payments",
+"arena_label": "Stablecoin Payments",
+"pair_url": "https://dexscreener.com/base/pair6"
+},
+{
+"chain": "base",
+"token_address": "Mock021xyzAddr166299",
+"pair_address": "pair21",
+"symbol": "EMBR",
+"name": "Ember Robotics",
+"score": 77.2,
+"market_cap": 4100000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 28.3,
+"launched_at": 1775799330,
+"usage": {
+"vol_7d_avg": 252535.95715986338,
+"holders": 16931
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/base/pair21"
+},
+{
+"chain": "ethereum",
+"token_address": "Mock022xyzAddr174218",
+"pair_address": "pair22",
+"symbol": "NIMB",
+"name": "Nimbus Oracle",
+"score": 76.7,
+"market_cap": 4100000.0,
+"fdv": 9840000.0,
+"liquidity_usd": 287000.0,
+"change_24h": -11.5,
+"launched_at": 1770874530,
+"usage": {
+"vol_7d_avg": 1222081.9245170115,
+"holders": 30939
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/ethereum/pair22"
+},
+{
+"chain": "base",
+"token_address": "Mock001xyzAddr7919",
+"pair_address": "pair1",
+"symbol": "VOLT",
+"name": "Volt Compute",
+"score": 75.9,
+"market_cap": 4100000.0,
+"fdv": 4920000.0,
+"liquidity_usd": 287000.0,
+"change_24h": -16.0,
+"launched_at": 1773207330,
+"usage": {
+"vol_7d_avg": 562061.6297736318,
+"holders": 16172
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/base/pair1"
+},
+{
+"chain": "solana",
+"token_address": "Mock005xyzAddr39595",
+"pair_address": "pair5",
+"symbol": "TIDE",
+"name": "Tidewater",
+"score": 75.8,
+"market_cap": 450000.0,
+"fdv": 540000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 1.7,
+"launched_at": 1768196130,
+"usage": {
+"vol_7d_avg": 98725.95648401533,
+"holders": 37386
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/solana/pair5"
+},
+{
+"chain": "bsc",
+"token_address": "Mock003xyzAddr23757",
+"pair_address": "pair3",
+"symbol": "VEIL",
+"name": "Veil Finance",
+"score": 75.7,
+"market_cap": 210000.0,
+"fdv": 504000.0,
+"liquidity_usd": 14700.000000000002,
+"change_24h": -15.4,
+"launched_at": 1782624930,
+"usage": {
+"vol_7d_avg": 6939.06162032407,
+"holders": 9127
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/bsc/pair3"
+},
+{
+"chain": "ethereum",
+"token_address": "Mock002xyzAddr15838",
+"pair_address": "pair2",
+"symbol": "PATH",
+"name": "Pathfinder",
+"score": 74.6,
+"market_cap": 450000.0,
+"fdv": 450000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 25.8,
+"launched_at": 1786944930,
+"usage": {
+"vol_7d_avg": 128378.66228914341,
+"holders": 38607
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/ethereum/pair2"
+},
+{
+"chain": "robinhood",
+"token_address": "Mock024xyzAddr190056",
+"pair_address": "pair24",
+"symbol": "RUNE",
+"name": "Runeforge",
+"score": 73.2,
+"market_cap": 800000.0,
+"fdv": 960000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": 32.4,
+"launched_at": 1769060130,
+"usage": {
+"vol_7d_avg": 97032.55081801835,
+"holders": 35997
+},
+"arena": "payments",
+"arena_label": "Stablecoin Payments",
+"pair_url": "https://dexscreener.com/robinhood/pair24"
+},
+{
+"chain": "bsc",
+"token_address": "Mock028xyzAddr221732",
+"pair_address": "pair28",
+"symbol": "WAVE",
+"name": "Wavelength",
+"score": 73.2,
+"market_cap": 1300000.0,
+"fdv": 2080000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": 20.7,
+"launched_at": 1791178530,
+"usage": {
+"vol_7d_avg": 313601.54573402065,
+"holders": 31348
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/bsc/pair28"
+},
+{
+"chain": "bsc",
+"token_address": "Mock023xyzAddr182137",
+"pair_address": "pair23",
+"symbol": "PIXL",
+"name": "Pixel Arena",
+"score": 71.8,
+"market_cap": 8400000.0,
+"fdv": 8400000.0,
+"liquidity_usd": 588000.0,
+"change_24h": -10.4,
+"launched_at": 1777268130,
+"usage": {
+"vol_7d_avg": 1909306.079854877,
+"holders": 31766
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/bsc/pair23"
+},
+{
+"chain": "robinhood",
+"token_address": "Mock004xyzAddr31676",
+"pair_address": "pair4",
+"symbol": "BRIX",
+"name": "Brix Labs",
+"score": 69.2,
+"market_cap": 2700000.0,
+"fdv": 2700000.0,
+"liquidity_usd": 189000.00000000003,
+"change_24h": 12.3,
+"launched_at": 1767677730,
+"usage": {
+"vol_7d_avg": 670991.5274947436,
+"holders": 12244
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/robinhood/pair4"
+},
+{
+"chain": "robinhood",
+"token_address": "Mock014xyzAddr110866",
+"pair_address": "pair14",
+"symbol": "LUMA",
+"name": "Lumafield",
+"score": 68.3,
+"market_cap": 1300000.0,
+"fdv": 3120000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": -13.7,
+"launched_at": 1772602530,
+"usage": {
+"vol_7d_avg": 172198.5093056867,
+"holders": 18608
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/robinhood/pair14"
+},
+{
+"chain": "ethereum",
+"token_address": "Mock007xyzAddr55433",
+"pair_address": "pair7",
+"symbol": "KYRA",
+"name": "Kyra AI",
+"score": 66.8,
+"market_cap": 8400000.0,
+"fdv": 10080000.0,
+"liquidity_usd": 588000.0,
+"change_24h": 24.1,
+"launched_at": 1781674530,
+"usage": {
+"vol_7d_avg": 360522.98539165064,
+"holders": 20077
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/ethereum/pair7"
+},
+{
+"chain": "solana",
+"token_address": "Mock010xyzAddr79190",
+"pair_address": "pair10",
+"symbol": "HUSH",
+"name": "Hush Network",
+"score": 65.9,
+"market_cap": 4100000.0,
+"fdv": 6560000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 13.5,
+"launched_at": 1766813730,
+"usage": {
+"vol_7d_avg": 996831.9882431901,
+"holders": 4906
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/solana/pair10"
+},
+{
+"chain": "ethereum",
+"token_address": "Mock012xyzAddr95028",
+"pair_address": "pair12",
+"symbol": "PAYD",
+"name": "Payday",
+"score": 63.7,
+"market_cap": 8400000.0,
+"fdv": 20160000.0,
+"liquidity_usd": 588000.0,
+"change_24h": 29.0,
+"launched_at": 1777095330,
+"usage": {
+"vol_7d_avg": 221068.0067867443,
+"holders": 30657
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/ethereum/pair12"
+},
+{
+"chain": "ethereum",
+"token_address": "Mock017xyzAddr134623",
+"pair_address": "pair17",
+"symbol": "GLYPH",
+"name": "Glyph Data",
+"score": 62.8,
+"market_cap": 800000.0,
+"fdv": 800000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": -10.3,
+"launched_at": 1768800930,
+"usage": {
+"vol_7d_avg": 98712.80032841848,
+"holders": 37515
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/ethereum/pair17"
+}
+],
+"early": [
+{
+"chain": "bsc",
+"token_address": "Mock023xyzAddr182137",
+"pair_address": "pair23",
+"symbol": "PIXL",
+"name": "Pixel Arena",
+"score": 78.4,
+"market_cap": 90000.0,
+"fdv": 8400000.0,
+"liquidity_usd": 588000.0,
+"change_24h": -10.4,
+"launched_at": 1792042530,
+"usage": {
+"vol_7d_avg": 1909306.079854877,
+"holders": 31766
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/bsc/pair23",
+"early": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock004xyzAddr31676",
+"pair_address": "pair4",
+"symbol": "BRIX",
+"name": "Brix Labs",
+"score": 68.7,
+"market_cap": 90000.0,
+"fdv": 2700000.0,
+"liquidity_usd": 189000.00000000003,
+"change_24h": 12.3,
+"launched_at": 1790746530,
+"usage": {
+"vol_7d_avg": 670991.5274947436,
+"holders": 12244
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/robinhood/pair4",
+"early": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock014xyzAddr110866",
+"pair_address": "pair14",
+"symbol": "LUMA",
+"name": "Lumafield",
+"score": 67.6,
+"market_cap": 90000.0,
+"fdv": 3120000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": -13.7,
+"launched_at": 1789191330,
+"usage": {
+"vol_7d_avg": 172198.5093056867,
+"holders": 18608
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/robinhood/pair14",
+"early": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock007xyzAddr55433",
+"pair_address": "pair7",
+"symbol": "KYRA",
+"name": "Kyra AI",
+"score": 66.2,
+"market_cap": 240000.0,
+"fdv": 10080000.0,
+"liquidity_usd": 588000.0,
+"change_24h": 24.1,
+"launched_at": 1790660130,
+"usage": {
+"vol_7d_avg": 360522.98539165064,
+"holders": 20077
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/ethereum/pair7",
+"early": true
+},
+{
+"chain": "solana",
+"token_address": "Mock010xyzAddr79190",
+"pair_address": "pair10",
+"symbol": "HUSH",
+"name": "Hush Network",
+"score": 72.4,
+"market_cap": 160000.0,
+"fdv": 6560000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 13.5,
+"launched_at": 1791956130,
+"usage": {
+"vol_7d_avg": 996831.9882431901,
+"holders": 4906
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/solana/pair10",
+"early": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock012xyzAddr95028",
+"pair_address": "pair12",
+"symbol": "PAYD",
+"name": "Payday",
+"score": 57.6,
+"market_cap": 160000.0,
+"fdv": 20160000.0,
+"liquidity_usd": 588000.0,
+"change_24h": 29.0,
+"launched_at": 1791524130,
+"usage": {
+"vol_7d_avg": 221068.0067867443,
+"holders": 30657
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/ethereum/pair12",
+"early": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock017xyzAddr134623",
+"pair_address": "pair17",
+"symbol": "GLYPH",
+"name": "Glyph Data",
+"score": 54.8,
+"market_cap": 240000.0,
+"fdv": 800000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": -10.3,
+"launched_at": 1790228130,
+"usage": {
+"vol_7d_avg": 98712.80032841848,
+"holders": 37515
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/ethereum/pair17",
+"early": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock029xyzAddr229651",
+"pair_address": "pair29",
+"symbol": "YIELD",
+"name": "Yieldmill",
+"score": 61.9,
+"market_cap": 160000.0,
+"fdv": 4320000.0,
+"liquidity_usd": 189000.00000000003,
+"change_24h": 5.7,
+"launched_at": 1790400930,
+"usage": {
+"vol_7d_avg": 775980.4772789278,
+"holders": 24296
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/robinhood/pair29",
+"early": true
+},
+{
+"chain": "bsc",
+"token_address": "Mock013xyzAddr102947",
+"pair_address": "pair13",
+"symbol": "QUST",
+"name": "Questfall",
+"score": 59.7,
+"market_cap": 240000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 8.2,
+"launched_at": 1792128930,
+"usage": {
+"vol_7d_avg": 963931.4707664537,
+"holders": 8876
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/bsc/pair13",
+"early": true
+},
+{
+"chain": "base",
+"token_address": "Mock016xyzAddr126704",
+"pair_address": "pair16",
+"symbol": "FERN",
+"name": "Fernway",
+"score": 63.3,
+"market_cap": 90000.0,
+"fdv": 1560000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": -10.0,
+"launched_at": 1791869730,
+"usage": {
+"vol_7d_avg": 30390.953783142784,
+"holders": 39008
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/base/pair16",
+"early": true
+}
+],
+"arenas": [
+{
+"key": "ai",
+"label": "AI Agents",
+"heat": 3,
+"size": 4,
+"median": 90.9,
+"entries": [
+{
+"chain": "bsc",
+"token_address": "Mock018xyzAddr142542",
+"pair_address": "pair18",
+"symbol": "ARCO",
+"name": "Arco Credit",
+"score": 91.1,
+"market_cap": 4100000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 6.2,
+"launched_at": 1767677730,
+"usage": {
+"vol_7d_avg": 532450.9851111763,
+"holders": 26547
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/bsc/pair18",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "solana",
+"token_address": "Mock000xyzAddr0",
+"pair_address": "pair0",
+"symbol": "ZEPH",
+"name": "Zephyr Protocol",
+"score": 90.9,
+"market_cap": 4100000.0,
+"fdv": 9840000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 16.5,
+"launched_at": 1789191330,
+"usage": {
+"vol_7d_avg": 1024822.8872060218,
+"holders": 6568
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/solana/pair0",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock009xyzAddr71271",
+"pair_address": "pair9",
+"symbol": "ORBT",
+"name": "Orbit RWA",
+"score": 83.0,
+"market_cap": 800000.0,
+"fdv": 960000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": 31.5,
+"launched_at": 1773812130,
+"usage": {
+"vol_7d_avg": 24782.425578626036,
+"holders": 5486
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/robinhood/pair9",
+"arena_rank": 3,
+"in": false
+},
+{
+"chain": "ethereum",
+"token_address": "Mock027xyzAddr213813",
+"pair_address": "pair27",
+"symbol": "UMBR",
+"name": "Umbra",
+"score": 78.1,
+"market_cap": 4100000.0,
+"fdv": 4920000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 24.7,
+"launched_at": 1774676130,
+"usage": {
+"vol_7d_avg": 931374.2273913197,
+"holders": 15259
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/ethereum/pair27",
+"arena_rank": 4,
+"in": false
+}
+]
+},
+{
+"key": "depin",
+"label": "DePIN Compute",
+"heat": 2,
+"size": 4,
+"median": 73.2,
+"entries": [
+{
+"chain": "base",
+"token_address": "Mock001xyzAddr7919",
+"pair_address": "pair1",
+"symbol": "VOLT",
+"name": "Volt Compute",
+"score": 75.9,
+"market_cap": 4100000.0,
+"fdv": 4920000.0,
+"liquidity_usd": 287000.0,
+"change_24h": -16.0,
+"launched_at": 1773207330,
+"usage": {
+"vol_7d_avg": 562061.6297736318,
+"holders": 16172
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/base/pair1",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "bsc",
+"token_address": "Mock028xyzAddr221732",
+"pair_address": "pair28",
+"symbol": "WAVE",
+"name": "Wavelength",
+"score": 73.2,
+"market_cap": 1300000.0,
+"fdv": 2080000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": 20.7,
+"launched_at": 1791178530,
+"usage": {
+"vol_7d_avg": 313601.54573402065,
+"holders": 31348
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/bsc/pair28",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "solana",
+"token_address": "Mock010xyzAddr79190",
+"pair_address": "pair10",
+"symbol": "HUSH",
+"name": "Hush Network",
+"score": 65.9,
+"market_cap": 4100000.0,
+"fdv": 6560000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 13.5,
+"launched_at": 1766813730,
+"usage": {
+"vol_7d_avg": 996831.9882431901,
+"holders": 4906
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/solana/pair10",
+"arena_rank": 3,
+"in": false
+},
+{
+"chain": "robinhood",
+"token_address": "Mock019xyzAddr150461",
+"pair_address": "pair19",
+"symbol": "SOLA",
+"name": "Solace Pay",
+"score": 56.2,
+"market_cap": 6900000.0,
+"fdv": 16560000.0,
+"liquidity_usd": 483000.00000000006,
+"change_24h": -14.7,
+"launched_at": 1789450530,
+"usage": {
+"vol_7d_avg": 2040377.804661769,
+"holders": 29276
+},
+"arena": "depin",
+"arena_label": "DePIN Compute",
+"pair_url": "https://dexscreener.com/robinhood/pair19",
+"arena_rank": 4,
+"in": false
+}
+]
+},
+{
+"key": "perps",
+"label": "Perps & Derivatives",
+"heat": 2,
+"size": 4,
+"median": 74.6,
+"entries": [
+{
+"chain": "base",
+"token_address": "Mock011xyzAddr87109",
+"pair_address": "pair11",
+"symbol": "MASK",
+"name": "Maskline",
+"score": 90.7,
+"market_cap": 450000.0,
+"fdv": 1080000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 18.9,
+"launched_at": 1789536930,
+"usage": {
+"vol_7d_avg": 16644.347877249682,
+"holders": 20690
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/base/pair11",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock002xyzAddr15838",
+"pair_address": "pair2",
+"symbol": "PATH",
+"name": "Pathfinder",
+"score": 74.6,
+"market_cap": 450000.0,
+"fdv": 450000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 25.8,
+"launched_at": 1786944930,
+"usage": {
+"vol_7d_avg": 128378.66228914341,
+"holders": 38607
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/ethereum/pair2",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock029xyzAddr229651",
+"pair_address": "pair29",
+"symbol": "YIELD",
+"name": "Yieldmill",
+"score": 59.9,
+"market_cap": 2700000.0,
+"fdv": 4320000.0,
+"liquidity_usd": 189000.00000000003,
+"change_24h": 5.7,
+"launched_at": 1777008930,
+"usage": {
+"vol_7d_avg": 775980.4772789278,
+"holders": 24296
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/robinhood/pair29",
+"arena_rank": 3,
+"in": false
+},
+{
+"chain": "solana",
+"token_address": "Mock020xyzAddr158380",
+"pair_address": "pair20",
+"symbol": "DRIFT",
+"name": "Driftnet",
+"score": 56.5,
+"market_cap": 800000.0,
+"fdv": 800000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": -12.6,
+"launched_at": 1767332130,
+"usage": {
+"vol_7d_avg": 49883.34483059186,
+"holders": 7049
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/solana/pair20",
+"arena_rank": 4,
+"in": false
+}
+]
+},
+{
+"key": "rwa",
+"label": "RWA",
+"heat": 1,
+"size": 3,
+"median": 75.7,
+"entries": [
+{
+"chain": "base",
+"token_address": "Mock021xyzAddr166299",
+"pair_address": "pair21",
+"symbol": "EMBR",
+"name": "Ember Robotics",
+"score": 77.2,
+"market_cap": 4100000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 28.3,
+"launched_at": 1775799330,
+"usage": {
+"vol_7d_avg": 252535.95715986338,
+"holders": 16931
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/base/pair21",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "bsc",
+"token_address": "Mock003xyzAddr23757",
+"pair_address": "pair3",
+"symbol": "VEIL",
+"name": "Veil Finance",
+"score": 75.7,
+"market_cap": 210000.0,
+"fdv": 504000.0,
+"liquidity_usd": 14700.000000000002,
+"change_24h": -15.4,
+"launched_at": 1782624930,
+"usage": {
+"vol_7d_avg": 6939.06162032407,
+"holders": 9127
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/bsc/pair3",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock012xyzAddr95028",
+"pair_address": "pair12",
+"symbol": "PAYD",
+"name": "Payday",
+"score": 63.7,
+"market_cap": 8400000.0,
+"fdv": 20160000.0,
+"liquidity_usd": 588000.0,
+"change_24h": 29.0,
+"launched_at": 1777095330,
+"usage": {
+"vol_7d_avg": 221068.0067867443,
+"holders": 30657
+},
+"arena": "rwa",
+"arena_label": "RWA",
+"pair_url": "https://dexscreener.com/ethereum/pair12",
+"arena_rank": 3,
+"in": false
+}
+]
+},
+{
+"key": "chains",
+"label": "Chains L0/L1/L2",
+"heat": 1,
+"size": 3,
+"median": 69.2,
+"entries": [
+{
+"chain": "ethereum",
+"token_address": "Mock022xyzAddr174218",
+"pair_address": "pair22",
+"symbol": "NIMB",
+"name": "Nimbus Oracle",
+"score": 76.7,
+"market_cap": 4100000.0,
+"fdv": 9840000.0,
+"liquidity_usd": 287000.0,
+"change_24h": -11.5,
+"launched_at": 1770874530,
+"usage": {
+"vol_7d_avg": 1222081.9245170115,
+"holders": 30939
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/ethereum/pair22",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock004xyzAddr31676",
+"pair_address": "pair4",
+"symbol": "BRIX",
+"name": "Brix Labs",
+"score": 69.2,
+"market_cap": 2700000.0,
+"fdv": 2700000.0,
+"liquidity_usd": 189000.00000000003,
+"change_24h": 12.3,
+"launched_at": 1767677730,
+"usage": {
+"vol_7d_avg": 670991.5274947436,
+"holders": 12244
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/robinhood/pair4",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "bsc",
+"token_address": "Mock013xyzAddr102947",
+"pair_address": "pair13",
+"symbol": "QUST",
+"name": "Questfall",
+"score": 58.9,
+"market_cap": 4100000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 8.2,
+"launched_at": 1782797730,
+"usage": {
+"vol_7d_avg": 963931.4707664537,
+"holders": 8876
+},
+"arena": "chains",
+"arena_label": "Chains L0/L1/L2",
+"pair_url": "https://dexscreener.com/bsc/pair13",
+"arena_rank": 3,
+"in": false
+}
+]
+},
+{
+"key": "privacy",
+"label": "Privacy",
+"heat": 3,
+"size": 3,
+"median": 71.8,
+"entries": [
+{
+"chain": "solana",
+"token_address": "Mock005xyzAddr39595",
+"pair_address": "pair5",
+"symbol": "TIDE",
+"name": "Tidewater",
+"score": 75.8,
+"market_cap": 450000.0,
+"fdv": 540000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 1.7,
+"launched_at": 1768196130,
+"usage": {
+"vol_7d_avg": 98725.95648401533,
+"holders": 37386
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/solana/pair5",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "bsc",
+"token_address": "Mock023xyzAddr182137",
+"pair_address": "pair23",
+"symbol": "PIXL",
+"name": "Pixel Arena",
+"score": 71.8,
+"market_cap": 8400000.0,
+"fdv": 8400000.0,
+"liquidity_usd": 588000.0,
+"change_24h": -10.4,
+"launched_at": 1777268130,
+"usage": {
+"vol_7d_avg": 1909306.079854877,
+"holders": 31766
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/bsc/pair23",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock014xyzAddr110866",
+"pair_address": "pair14",
+"symbol": "LUMA",
+"name": "Lumafield",
+"score": 68.3,
+"market_cap": 1300000.0,
+"fdv": 3120000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": -13.7,
+"launched_at": 1772602530,
+"usage": {
+"vol_7d_avg": 172198.5093056867,
+"holders": 18608
+},
+"arena": "privacy",
+"arena_label": "Privacy",
+"pair_url": "https://dexscreener.com/robinhood/pair14",
+"arena_rank": 3,
+"in": false
+}
+]
+},
+{
+"key": "payments",
+"label": "Stablecoin Payments",
+"heat": 1,
+"size": 3,
+"median": 77.4,
+"entries": [
+{
+"chain": "solana",
+"token_address": "Mock015xyzAddr118785",
+"pair_address": "pair15",
+"symbol": "CORE",
+"name": "Corelink",
+"score": 85.6,
+"market_cap": 800000.0,
+"fdv": 1280000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": 19.4,
+"launched_at": 1776576930,
+"usage": {
+"vol_7d_avg": 168929.96530278915,
+"holders": 25332
+},
+"arena": "payments",
+"arena_label": "Stablecoin Payments",
+"pair_url": "https://dexscreener.com/solana/pair15",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "base",
+"token_address": "Mock006xyzAddr47514",
+"pair_address": "pair6",
+"symbol": "NOVA",
+"name": "Nova Layer",
+"score": 77.4,
+"market_cap": 210000.0,
+"fdv": 504000.0,
+"liquidity_usd": 14700.000000000002,
+"change_24h": 18.1,
+"launched_at": 1773552930,
+"usage": {
+"vol_7d_avg": 49901.05196887145,
+"holders": 30913
+},
+"arena": "payments",
+"arena_label": "Stablecoin Payments",
+"pair_url": "https://dexscreener.com/base/pair6",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "robinhood",
+"token_address": "Mock024xyzAddr190056",
+"pair_address": "pair24",
+"symbol": "RUNE",
+"name": "Runeforge",
+"score": 73.2,
+"market_cap": 800000.0,
+"fdv": 960000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": 32.4,
+"launched_at": 1769060130,
+"usage": {
+"vol_7d_avg": 97032.55081801835,
+"holders": 35997
+},
+"arena": "payments",
+"arena_label": "Stablecoin Payments",
+"pair_url": "https://dexscreener.com/robinhood/pair24",
+"arena_rank": 3,
+"in": false
+}
+]
+},
+{
+"key": "gaming",
+"label": "Gaming",
+"heat": 0,
+"size": 3,
+"median": 66.8,
+"entries": [
+{
+"chain": "solana",
+"token_address": "Mock025xyzAddr197975",
+"pair_address": "pair25",
+"symbol": "SAGE",
+"name": "Sage Agents",
+"score": 83.1,
+"market_cap": 210000.0,
+"fdv": 336000.0,
+"liquidity_usd": 14700.000000000002,
+"change_24h": 33.9,
+"launched_at": 1788413730,
+"usage": {
+"vol_7d_avg": 45136.371011378746,
+"holders": 17512
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/solana/pair25",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock007xyzAddr55433",
+"pair_address": "pair7",
+"symbol": "KYRA",
+"name": "Kyra AI",
+"score": 66.8,
+"market_cap": 8400000.0,
+"fdv": 10080000.0,
+"liquidity_usd": 588000.0,
+"change_24h": 24.1,
+"launched_at": 1781674530,
+"usage": {
+"vol_7d_avg": 360522.98539165064,
+"holders": 20077
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/ethereum/pair7",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "base",
+"token_address": "Mock016xyzAddr126704",
+"pair_address": "pair16",
+"symbol": "FERN",
+"name": "Fernway",
+"score": 58.2,
+"market_cap": 1300000.0,
+"fdv": 1560000.0,
+"liquidity_usd": 91000.00000000001,
+"change_24h": -10.0,
+"launched_at": 1782106530,
+"usage": {
+"vol_7d_avg": 30390.953783142784,
+"holders": 39008
+},
+"arena": "gaming",
+"arena_label": "Gaming",
+"pair_url": "https://dexscreener.com/base/pair16",
+"arena_rank": 3,
+"in": false
+}
+]
+},
+{
+"key": "oracles",
+"label": "AI Data / Oracles",
+"heat": 2,
+"size": 3,
+"median": 87.9,
+"entries": [
+{
+"chain": "base",
+"token_address": "Mock026xyzAddr205894",
+"pair_address": "pair26",
+"symbol": "TERA",
+"name": "Terafarm",
+"score": 89.2,
+"market_cap": 4100000.0,
+"fdv": 6560000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 22.9,
+"launched_at": 1768887330,
+"usage": {
+"vol_7d_avg": 703719.0569516643,
+"holders": 33344
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/base/pair26",
+"arena_rank": 1,
+"in": true
+},
+{
+"chain": "bsc",
+"token_address": "Mock008xyzAddr63352",
+"pair_address": "pair8",
+"symbol": "MESH",
+"name": "Meshwave",
+"score": 87.9,
+"market_cap": 8400000.0,
+"fdv": 20160000.0,
+"liquidity_usd": 588000.0,
+"change_24h": -2.7,
+"launched_at": 1789191330,
+"usage": {
+"vol_7d_avg": 445690.7104556709,
+"holders": 27802
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/bsc/pair8",
+"arena_rank": 2,
+"in": true
+},
+{
+"chain": "ethereum",
+"token_address": "Mock017xyzAddr134623",
+"pair_address": "pair17",
+"symbol": "GLYPH",
+"name": "Glyph Data",
+"score": 62.8,
+"market_cap": 800000.0,
+"fdv": 800000.0,
+"liquidity_usd": 56000.00000000001,
+"change_24h": -10.3,
+"launched_at": 1768800930,
+"usage": {
+"vol_7d_avg": 98712.80032841848,
+"holders": 37515
+},
+"arena": "oracles",
+"arena_label": "AI Data / Oracles",
+"pair_url": "https://dexscreener.com/ethereum/pair17",
+"arena_rank": 3,
+"in": false
+}
+]
+}
+],
+"p4p": [
+{
+"chain": "bsc",
+"token_address": "Mock018xyzAddr142542",
+"pair_address": "pair18",
+"symbol": "ARCO",
+"name": "Arco Credit",
+"score": 91.1,
+"market_cap": 4100000.0,
+"fdv": 4100000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 6.2,
+"launched_at": 1767677730,
+"usage": {
+"vol_7d_avg": 532450.9851111763,
+"holders": 26547
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/bsc/pair18"
+},
+{
+"chain": "solana",
+"token_address": "Mock000xyzAddr0",
+"pair_address": "pair0",
+"symbol": "ZEPH",
+"name": "Zephyr Protocol",
+"score": 90.9,
+"market_cap": 4100000.0,
+"fdv": 9840000.0,
+"liquidity_usd": 287000.0,
+"change_24h": 16.5,
+"launched_at": 1789191330,
+"usage": {
+"vol_7d_avg": 1024822.8872060218,
+"holders": 6568
+},
+"arena": "ai",
+"arena_label": "AI Agents",
+"pair_url": "https://dexscreener.com/solana/pair0"
+},
+{
+"chain": "base",
+"token_address": "Mock011xyzAddr87109",
+"pair_address": "pair11",
+"symbol": "MASK",
+"name": "Maskline",
+"score": 90.7,
+"market_cap": 450000.0,
+"fdv": 1080000.0,
+"liquidity_usd": 31500.000000000004,
+"change_24h": 18.9,
+"launched_at": 1789536930,
+"usage": {
+"vol_7d_avg": 16644.347877249682,
+"holders": 20690
+},
+"arena": "perps",
+"arena_label": "Perps & Derivatives",
+"pair_url": "https://dexscreener.com/base/pair11"
+}
+],
+"on_board": 20,
+"backtests": null
+}

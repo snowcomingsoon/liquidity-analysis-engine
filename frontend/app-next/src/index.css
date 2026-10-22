@@ -2,30 +2,58 @@
 
 @font-face { font-family: "Geist"; font-weight: 100 900; font-display: swap; src: url("/static/fonts/geist-latin.woff2") format("woff2"); }
 
-/* The classic phone skin of the current app (static/onchain-v1/classic.css),
-   unchanged: oat paper, warm cards, deep green ink, sage for what is chosen. */
-@theme {
-  --color-bg: #efeae0;
-  --color-card: #f8f5ef;
-  --color-pill: #e4dfd3;
-  --color-press: #d9d3c5;
-  --color-line: #e0d9cb;
-  --color-ink: #2f3a32;
-  --color-ink-2: #4f5a4f;
-  --color-ink-3: #687264;
-  --color-ink-4: #bdb8aa;
-  --color-on-ink: #f3efe6;
-  --color-sage: #c9d4c0;
-  --color-up: #2f7a4a;
-  --color-down: #b4472f;
-  --color-amber: #8f6417;
-  --font-sans: "Geist", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
-  --ease-calm: cubic-bezier(.25, .1, .25, 1);
+/* The phone skin of the app (static/onchain/classic.css), light and dark
+   (theme.js: localStorage "lae:theme"). Tailwind names read these tokens. */
+:root {
+  color-scheme: light;
+  --c-bg: #efeae0; --c-card: #f8f5ef; --c-pill: #e4dfd3; --c-press: #d9d3c5; --c-line: #e0d9cb;
+  --c-text: #2f3a32; --c-text-2: #4f5a4f; --c-text-3: #687264; --c-text-4: #bdb8aa;
+  --c-ink: #2f3a32; --c-on-ink: #f3efe6; --c-sage: #c9d4c0; --c-on-sage: #2f3a32;
+  --c-up: #2f7a4a; --c-down: #b4472f; --c-amber: #8f6417;
+  --c-float: #2f3a32; --c-float-line: #2f3a32; --c-float-shadow: 0 8px 24px rgb(47 58 50 / .18);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #111513; --c-card: #1a1f1c; --c-pill: #252b27; --c-press: #2f3631; --c-line: #29302b;
+  --c-text: #e8ebe4; --c-text-2: #bcc3b8; --c-text-3: #8f998c; --c-text-4: #59625a;
+  --c-ink: #46604e; --c-on-ink: #f1f4ee; --c-sage: #c9d4c0; --c-on-sage: #1d2620;
+  --c-up: #63c48b; --c-down: #ec8468; --c-amber: #d9a94f;
+  --c-float: #1f2a23; --c-float-line: #2d3a31; --c-float-shadow: 0 8px 24px rgb(0 0 0 / .45);
 }
 
-:root { color-scheme: light; }
-html, body { background: var(--color-bg); color: var(--color-ink); }
-body { margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-card: var(--c-card);
+  --color-pill: var(--c-pill);
+  --color-press: var(--c-press);
+  --color-line: var(--c-line);
+  --color-text: var(--c-text);
+  --color-text-2: var(--c-text-2);
+  --color-text-3: var(--c-text-3);
+  --color-text-4: var(--c-text-4);
+  --color-ink: var(--c-ink);
+  --color-on-ink: var(--c-on-ink);
+  --color-sage: var(--c-sage);
+  --color-on-sage: var(--c-on-sage);
+  --color-up: var(--c-up);
+  --color-down: var(--c-down);
+  --color-amber: var(--c-amber);
+  --color-float: var(--c-float);
+  --color-float-line: var(--c-float-line);
+  --shadow-float: var(--c-float-shadow);
+  --font-sans: "Geist", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+html, body { background: var(--c-bg); color: var(--c-text); }
+body { margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 .num { font-variant-numeric: tabular-nums; }
-.no-scrollbar { scrollbar-width: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* The token tile: an emblem drawn from the address when there is no logo (format.js tile()). */
+.tile { position: relative; display: grid; place-items: center; inline-size: 100%; block-size: 100%; overflow: hidden; border-radius: 14px;
+  background: radial-gradient(120% 90% at 20% 15%, hsl(var(--h1) 75% 62%), hsl(var(--h2) 60% 26%) 70%); }
+.tile img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; background: var(--c-bg); }
+.tile .emblem { inline-size: 46%; aspect-ratio: 1; rotate: var(--rot); background: rgb(255 255 255 / .82); box-shadow: 0 0 0 5px var(--c-line); }
+.tile[data-shape="0"] .emblem { border-radius: 50%; background: none; border: 3.5px solid rgb(255 255 255 / .85); box-shadow: none; }
+.tile[data-shape="1"] .emblem { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: none; }
+.tile[data-shape="2"] .emblem { clip-path: polygon(50% 4%, 96% 90%, 4% 90%); box-shadow: none; }
+.tile[data-shape="3"] .emblem { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); box-shadow: none; }
