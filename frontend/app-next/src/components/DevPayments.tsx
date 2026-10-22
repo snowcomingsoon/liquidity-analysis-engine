@@ -4,6 +4,7 @@ import type { DevEvent, DevReport } from "../lib/api";
 
 // What the developer is paid (pump.fun creator fees) and whether they sell
 // (Lorenzo, 22/10, DREGG). The server reads the chain every 30 min.
+export const DREGG_MINT = "XkeTXo1125vz5H9svJpGiw4JvLbN8VmMu9cmMvspump";
 const SOL_ADDR = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const sol = (x?: number | null) => (x == null ? "—" : `${x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)} SOL`);

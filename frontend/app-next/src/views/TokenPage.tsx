@@ -10,7 +10,7 @@ import { Glance } from "../components/Glance";
 import { Logo } from "../components/Logo";
 import { CandleChart } from "../components/CandleChart";
 import { SellsMap } from "../components/SellsMap";
-import { DevPayments } from "../components/DevPayments";
+import { DevPayments, DREGG_MINT } from "../components/DevPayments";
 import { DeepResult, DossierHead, Details, InfoFallback, WhyOf } from "./Dossier";
 import { t as tr } from "../lib/i18n";
 
@@ -290,7 +290,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
         </div>
         {note && <p className="mt-1 text-[13px] text-text-3">{note}</p>}
         <SellsMap chain={e.chain} token={e.token_address} />
-        {e.chain === "solana" && <DevPayments token={e.token_address} symbol={sym} setup={!!entry?.benchmark} />}
+        {e.chain === "solana" && <DevPayments token={e.token_address} symbol={sym} setup={!!entry?.benchmark || e.token_address === DREGG_MINT} />}
         <nav ref={tabs} className="mt-[18px] flex scroll-mt-4 gap-1 rounded-full bg-pill p-1">
           {(["why", "info"] as const).map((t) => (
             <button key={t} type="button" aria-current={tab === t ? "true" : undefined} onClick={() => setTab(t)}
