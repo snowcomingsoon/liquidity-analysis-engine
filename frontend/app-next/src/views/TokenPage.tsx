@@ -5,6 +5,7 @@ import type { Candle, Deep, Entry, Gem, RecheckProgress } from "../lib/types";
 import { age, changeText, usdShort } from "../lib/format";
 import { setTokenHidden } from "../lib/store";
 import { DS_EMBED, INTERVALS, cached, chartFor, embedUrl, forget, liveQuote, type Interval, type Market } from "../lib/chart";
+import { Glance } from "../components/Glance";
 import { Logo } from "../components/Logo";
 import { CandleChart } from "../components/CandleChart";
 import { DeepResult, DossierHead, Details, InfoFallback, WhyOf } from "./Dossier";
@@ -56,6 +57,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
   const e = open.e;
   const m: Market = { chain: e.chain, token: e.token_address, symbol: e.symbol, pair: e.pair_address };
   const [tab, setTab] = useState<"why" | "info">("why");
+  const tabs = useRef<HTMLElement>(null);
   const [entry, setEntry] = useState<Entry | null>(null);
   const [loading, setLoading] = useState(true);
   const [deep, setDeep] = useState<Deep | null>(null);
@@ -230,7 +232,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
       <header className="flex h-14 flex-none items-center gap-2 px-4 pt-[env(safe-area-inset-top)]">
         <button type="button" onClick={close} aria-label="Back" className="-ml-2 grid h-10 w-10 place-items-center"><Icon d="m15 5-7 7 7 7" className="h-6 w-6" /></button>
         <span className="flex min-w-0 flex-1 items-center gap-2.5 text-[16px] font-medium text-text-2">
-          <b className="truncate font-medium">{sym}</b>
+          <b className="truncate font-medium">{open.context?.split(" · score")[0] || sym}</b>
           {born && <><i className="h-4 w-px bg-line" /><span className="flex items-center gap-0.5 text-text-3">
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" aria-hidden="true"><path d="M8 14V7M8 9c0-3 2-4.5 5-4.5 0 3-2 4.5-5 4.5ZM8 8C8 5.5 6.3 4 3.5 4c0 2.6 1.7 4 4.5 4Z" /></svg>{a}</span></>}
         </span>
@@ -244,7 +246,7 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-28">
         <section className="mt-5 flex items-center gap-3">
-          <span className="w-[52px]"><Logo size={52} symbol={sym} image={e.image ?? entry?.image} chain={e.chain} token={e.token_address} /></span>
+          <span className="w-[44px]"><Logo size={44} symbol={sym} image={e.image ?? entry?.image} chain={e.chain} token={e.token_address} /></span>
           <span className="min-w-0 flex-1">
             <b className="block truncate text-[18px] font-semibold">{name}</b>
             <small className="mt-1 flex items-center gap-2 text-[14px] text-text-2">
@@ -263,9 +265,17 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
             <em className={`num text-[13px] font-medium not-italic ${sign === "up" ? "text-up" : sign === "down" ? "text-down" : "text-text-3"}`}>{chg}</em>
           </span>
         </section>
-        {open.context && <p className="mt-5 text-[14px] text-text-2">{open.context}</p>}
-
-        <div className="mt-3 h-[300px]">
+        {entry && <Glance e={entry} />}
+        <div className="mb-2 mt-4 flex items-center justify-between">
+          <h3 className="text-[11.5px] font-medium uppercase tracking-[0.07em] text-text-3">Price</h3>
+          <div className="flex gap-1">
+            {INTERVALS.map((iv) => (
+              <button key={iv} type="button" aria-pressed={iv === interval} onClick={() => setIv(iv)}
+                className={`h-7 rounded-full px-2.5 text-[12.5px] font-medium transition-colors ${iv === interval ? "bg-ink text-on-ink" : "bg-pill text-text-2"}`}>{iv}</button>
+            ))}
+          </div>
+        </div>
+        <div className="h-[240px] overflow-hidden rounded-[16px] bg-card">
           {chart.state === "candles" && !libFailed && <CandleChart candles={chart.candles} k={k} onFail={() => setLibFailed(true)} />}
           {chart.state === "candles" && libFailed && <Line candles={chart.candles} k={k} />}
           {chart.state === "embed" && <iframe className="h-full w-full rounded-[20px] border-0" src={embedUrl(e.chain, chart.pair, interval)} title={`${sym} chart on DexScreener`} loading="lazy" referrerPolicy="no-referrer" />}
@@ -274,18 +284,11 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
           )}
         </div>
         {note && <p className="mt-1 text-[13px] text-text-3">{note}</p>}
-        <div className="mt-3 grid grid-flow-col gap-1" style={{ gridAutoColumns: "minmax(0,1fr)" }}>
-          {INTERVALS.map((iv) => (
-            <button key={iv} type="button" aria-pressed={iv === interval} onClick={() => setIv(iv)}
-              className={`h-9 rounded-full text-[15px] font-medium transition-colors ${iv === interval ? "bg-sage text-on-sage" : "bg-pill text-text-2"}`}>{iv}</button>
-          ))}
-        </div>
-
-        <nav className="mt-[18px] flex gap-2">
+        <nav ref={tabs} className="mt-[18px] flex scroll-mt-4 gap-1 rounded-full bg-pill p-1">
           {(["why", "info"] as const).map((t) => (
             <button key={t} type="button" aria-current={tab === t ? "true" : undefined} onClick={() => setTab(t)}
-              className={`relative h-10 flex-1 rounded-full text-[16px] font-medium ${tab === t ? "text-on-sage" : "bg-pill text-text-2"}`}>
-              {tab === t && <motion.span layoutId="dt-tab" className="absolute inset-0 rounded-full bg-sage" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
+              className={`relative h-9 flex-1 rounded-full text-[14px] font-medium ${tab === t ? "text-text" : "text-text-2"}`}>
+              {tab === t && <motion.span layoutId="dt-tab" className="absolute inset-0 rounded-full bg-card shadow-[0_1px_2px_rgb(0_0_0/.06)]" transition={{ type: "spring", stiffness: 520, damping: 42 }} />}
               <span className="relative">{t === "why" ? "Why" : "Info"}</span>
             </button>
           ))}
@@ -308,9 +311,10 @@ export function TokenPage({ open, onClose }: { open: Opened; onClose: () => void
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-5" style={{ background: "linear-gradient(transparent, var(--c-bg) 18px)" }}>
-        <a href={dex} target="_blank" rel="noopener" className="pointer-events-auto flex h-[52px] items-center justify-center gap-2.5 rounded-full bg-ink text-[16px] font-medium text-on-ink">
-          <Icon d={OUT} />View on DexScreener
-        </a>
+        <div className="pointer-events-auto flex gap-2">
+          <button type="button" onClick={() => tabs.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="h-12 flex-1 rounded-full bg-pill text-[15px] font-semibold">Why · Info</button>
+          <a href={dex} target="_blank" rel="noopener" className="flex h-12 flex-1 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-on-ink">DexScreener ↗</a>
+        </div>
       </div>
     </motion.div>
   );
@@ -349,7 +353,7 @@ function RecheckButton({ rc, wait, onClick }: { rc: Recheck; wait: number; onCli
       </button>
     );
   }
-  const label = rc.failed ? "Re-check failed" : wait > 0 ? (wait >= 3600 ? `Re-check in ${Math.round(wait / 3600)}h` : `Re-check in ${Math.max(1, Math.round(wait / 60))}m`) : "Re-check with DeepSeek";
+  const label = rc.failed ? "Re-check failed" : wait > 0 ? (wait >= 3600 ? `Re-check in ${Math.round(wait / 3600)}h` : `Re-check in ${Math.max(1, Math.round(wait / 60))}m`) : "Deep re-check";
   return <button type="button" disabled={rc.failed || wait > 0} onClick={onClick} className={`${base} bg-pill text-text disabled:text-text-3`}>{label}</button>;
 }
 

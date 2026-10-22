@@ -91,14 +91,6 @@ const fill = (v: number) => ({ background: `linear-gradient(90deg, var(--c-text)
 
 export function GemWhy({ e }: { e: Entry }) {
   const s = Math.round(e.score ?? 0);
-  const bars = [...PILLARS, ["traction", "Traction"] as const].map(([k, label]) => {
-    const v = k === "traction" ? e.traction?.traction : e.pillars?.[k]?.score;
-    return v == null ? null : (
-      <li key={k} className="grid grid-cols-[100px_1fr_40px] items-center gap-3 py-1 text-[15px]">
-        <span>{label}</span><i className="h-1 rounded-full" style={fill(Math.round(v))} /><b className="num text-right font-semibold">{Math.round(v)}</b>
-      </li>
-    );
-  });
   const flags = Object.values(e.pillars ?? {}).flatMap((p) => p?.flags ?? []);
   const title = e.top_rank ? `Top #${e.top_rank}` : e.early ? "Early gem" : e.top_rank === null ? "Not in the Top right now" : `Rank #${e.rank ?? "—"}`;
   return (
@@ -113,7 +105,6 @@ export function GemWhy({ e }: { e: Entry }) {
           <small className="mt-0.5 block text-[14px] leading-snug text-text-2">{e.early ? "Under $300k and past every other bar of the Top: smaller and riskier." : "Usage, holders, code, research and tokenomics, scored every day."}</small>
         </p>
       </div>
-      <ul className="mt-3">{bars}</ul>
       {e.summary && <p className="mt-3 text-[14px] leading-[1.45]">{e.summary}</p>}
       <Report e={e} />
       {(e.traction?.reasons ?? []).length > 0 && <ul className="mt-2">{e.traction!.reasons!.map((r, i) => <Li key={i} tone="good">{r}</Li>)}</ul>}
