@@ -17,17 +17,17 @@ export function TokenRow({ e, name, badge, onOpen, i = 0, dim = false, footer }:
   const sub = marketSub(e);
   return (
     <motion.li layout="position" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.26, ease: [0.25, 0.1, 0.25, 1], delay: Math.min(i, 8) * 0.025 }} className={`mb-2 ${footer ? "rounded-[20px] bg-card" : ""}`}>
+      transition={{ duration: 0.26, ease: [0.25, 0.1, 0.25, 1], delay: Math.min(i, 8) * 0.025 }} className={`trow ${footer ? "has-foot" : ""}`}>
       <button type="button" onClick={() => onOpen(e)}
-        className={`flex w-full items-center gap-3.5 rounded-[20px] ${footer ? "" : "bg-card"} px-3.5 py-2.5 text-left transition-colors duration-150 active:bg-pill`}>
-        <Logo symbol={e.symbol} image={e.image} chain={e.chain} token={e.token_address} />
+        className="flex w-full items-center gap-3 rounded-[12px] px-2 py-2 text-left transition-colors duration-150 active:bg-pill">
+        <Logo size={38} symbol={e.symbol} image={e.image} chain={e.chain} token={e.token_address} />
         <span className="min-w-0 flex-1">
-          <b className={`block truncate text-[16px] font-medium leading-tight ${dim ? "text-text-2" : ""}`}>
+          <b className={`block truncate text-[15px] font-semibold leading-tight ${dim ? "text-text-2" : ""}`}>
             {name ?? e.name ?? e.symbol}
             {badge && <em className="ml-1.5 rounded-full border border-amber px-1.5 align-[2px] text-[10px] font-semibold not-italic tracking-wide text-amber">{BADGE[badge]}</em>}
           </b>
-          <small className="mt-1 flex min-w-0 items-center gap-2 whitespace-nowrap text-[13.5px] text-text-2">
-            {e.score != null && <span className="num rounded-full bg-sage px-2 text-[12px] font-semibold leading-normal text-on-sage">{Math.round(e.score)}</span>}
+          <small className="mt-0.5 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[12.5px] text-text-3">
+            {e.score != null && <span className="rounded-md bg-sage px-1.5 font-mono text-[11.5px] leading-normal text-on-sage">{Math.round(e.score)}</span>}
             <span>{e.symbol}</span>
             {e.launched_at && (
               <span className={`flex items-center gap-0.5 ${fresh ? "text-up" : "text-text-3"}`}>
@@ -37,9 +37,9 @@ export function TokenRow({ e, name, badge, onOpen, i = 0, dim = false, footer }:
             {sub && <span className="min-w-0 truncate">{sub}</span>}
           </small>
         </span>
-        <span className="flex flex-none flex-col items-end gap-1">
-          <b className="num text-[16px] font-semibold leading-none"><i className="mr-1 align-[2px] text-[9px] font-medium not-italic tracking-wide text-text-3">MC</i>{usdShort(e.market_cap)}</b>
-          <em className={`num text-[13px] font-medium not-italic ${sign === "up" ? "text-up" : sign === "down" ? "text-down" : "text-text-3"}`}>{chg}</em>
+        <span className="flex flex-none flex-col items-end gap-0.5">
+          <b className="num text-[14px] font-semibold leading-tight">{usdShort(e.market_cap)}</b>
+          <em className={`num text-[12px] not-italic ${sign === "up" ? "text-up" : sign === "down" ? "text-down" : "text-text-3"}`}>{chg}</em>
         </span>
       </button>
       {footer}

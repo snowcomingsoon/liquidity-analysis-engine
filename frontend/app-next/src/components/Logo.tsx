@@ -10,7 +10,7 @@ const MARK: Record<string, { d: string; fill?: string; stroke?: string }> = {
   arc: { d: "M4 19a8 8 0 0 1 16 0h-3.5a4.5 4.5 0 0 0-9 0z", stroke: "currentColor" },
 };
 
-/** The token picture, or an emblem drawn from the address (format.js tile()). */
+/** The token picture, or a rounded square with its initial (direction A). */
 export function Tile({ symbol, image, chain, token, className = "" }: { symbol?: string; image?: string; chain?: string; token?: string; className?: string }) {
   const [broken, setBroken] = useState(false);
   const seed = String(token || symbol || "?");
@@ -20,7 +20,7 @@ export function Tile({ symbol, image, chain, token, className = "" }: { symbol?:
   const style = { "--h1": h % 360, "--h2": (h >> 9) % 360, "--rot": `${(h >> 5) % 360}deg` } as React.CSSProperties;
   return (
     <span className={`tile ${className}`} style={style} data-shape={(h >> 3) % 4}>
-      <i className="emblem" aria-hidden="true" />
+      <b className="letter" aria-hidden="true">{String(symbol || "?").replace(/^\$/, "").charAt(0).toUpperCase()}</b>
       {src && !broken && <img src={src} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setBroken(true)} />}
     </span>
   );
@@ -31,7 +31,7 @@ export function Logo({ size = 52, ...t }: { size?: number; symbol?: string; imag
   return (
     <span className="relative block flex-none" style={{ width: size, height: size }}>
       <Tile {...t} />
-      {m && (
+      {m && size >= 48 && (
         <i className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-pill not-italic shadow-[0_0_0_2px_var(--c-bg)]">
           <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" aria-hidden="true" fill={m.fill ?? "none"} stroke={m.stroke ?? "none"} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d={m.d} /></svg>
         </i>

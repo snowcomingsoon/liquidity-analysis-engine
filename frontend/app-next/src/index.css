@@ -48,15 +48,10 @@ html, body { background: var(--c-bg); color: var(--c-text); }
 body { margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 .num { font-variant-numeric: tabular-nums; }
 
-/* The token tile: an emblem drawn from the address when there is no logo (format.js tile()). */
+/* The token tile (direction A): the picture, or a rounded square with the initial. */
 .tile { position: relative; display: grid; place-items: center; inline-size: 100%; block-size: 100%; overflow: hidden; border-radius: 14px;
   background: radial-gradient(120% 90% at 20% 15%, hsl(var(--h1) 75% 62%), hsl(var(--h2) 60% 26%) 70%); }
 .tile img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; background: var(--c-bg); }
-.tile .emblem { inline-size: 46%; aspect-ratio: 1; rotate: var(--rot); background: rgb(255 255 255 / .82); box-shadow: 0 0 0 5px var(--c-line); }
-.tile[data-shape="0"] .emblem { border-radius: 50%; background: none; border: 3.5px solid rgb(255 255 255 / .85); box-shadow: none; }
-.tile[data-shape="1"] .emblem { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); box-shadow: none; }
-.tile[data-shape="2"] .emblem { clip-path: polygon(50% 4%, 96% 90%, 4% 90%); box-shadow: none; }
-.tile[data-shape="3"] .emblem { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); box-shadow: none; }
 
 /* The Scout's mark (static/onchain/scout-cube.css, in the classic skin's colours): the ENGN cube that opens and closes. */
 .sc-svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
@@ -78,3 +73,10 @@ body { margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antiali
 @keyframes sc-core { 0%, 30%, 85%, 100% { opacity: 0; transform: scale(.5); } 48%, 68% { opacity: 1; transform: scale(1); } }
 @keyframes sc-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .scout-cube * { animation: none !important; } }
+
+/* Direction A (Lorenzo 22/10, the PDF): rows grouped on one card, tiles as small rounded squares with the initial. */
+ol:has(> li.trow) { background: var(--c-card); border-radius: 16px; padding: 6px; }
+li.trow.has-foot { border-bottom: 1px solid var(--c-line); } li.trow.has-foot:last-child { border-bottom: 0; }
+.tile { border-radius: 30%; background: hsl(var(--h1) 32% 42%); }
+.tile .letter { color: #fff; font-weight: 700; font-size: 42cqi; line-height: 1; }
+.tile { container-type: inline-size; }
